@@ -3,6 +3,7 @@ import type {
   Experiment,
   ExperimentArtifacts,
   ExperimentRun,
+  FactorValidationReport,
   PreregisterExperimentInput,
   ResearchBrief,
   ResearchJob,
@@ -174,6 +175,31 @@ export interface ApiExperimentArtifacts {
   }>;
 }
 
+export interface ApiFactorValidationReport {
+  schema_version: string;
+  policy_id: string;
+  policy_hash: string;
+  label_id: string;
+  label_hash: string;
+  factor_artifact_hash: string;
+  data_quality: {
+    observation_count: number;
+    finite_count: number;
+    coverage_ratio: number;
+    constant_ratio: number;
+  };
+  predictive_power: {
+    mean_pearson_ic: number | null;
+    mean_rank_ic: number | null;
+    icir: number | null;
+    nw_t: number | null;
+    ic_decay: Array<{ horizon: number; mean_ic: number | null }>;
+    quantile_returns: Array<{ quantile: number; mean_return: number | null }>;
+    top_bottom_spread: number | null;
+    monotonic: boolean | null;
+  };
+}
+
 export interface QuantApiClient {
   getSession(): Promise<Session>;
   listResearchJobs(): Promise<ResearchJob[]>;
@@ -188,6 +214,7 @@ export interface QuantApiClient {
   runExperiment(id: string): Promise<ExperimentRun>;
   getExperimentRun(id: string): Promise<ExperimentRun>;
   getExperimentArtifacts(id: string): Promise<ExperimentArtifacts>;
+  getExperimentValidation(id: string): Promise<FactorValidationReport>;
 }
 
 export class QuantApiProblem extends Error {
@@ -377,6 +404,13 @@ export class HttpQuantApiClient implements QuantApiClient {
     return mapExperimentArtifacts(result.body);
   }
 
+  async getExperimentValidation(id: string) {
+    const result = await this.request<ApiFactorValidationReport>(
+      `/experiment-runs/${id}/validation`,
+    );
+    return mapFactorValidationReport(result.body);
+  }
+
   private commandHeaders(id: string, resourceVersion?: number) {
     const etag =
       this.etags.get(id) ??
@@ -560,6 +594,40 @@ export function mapExperimentArtifacts(
       targetArtifactHash: item.target_artifact_hash,
       relation: item.relation,
     })),
+  };
+}
+
+export function mapFactorValidationReport(
+  input: ApiFactorValidationReport,
+): FactorValidationReport {
+  return {
+    policyId: input.policy_id,
+    policyHash: input.policy_hash,
+    labelId: input.label_id,
+    labelHash: input.label_hash,
+    factorArtifactHash: input.factor_artifact_hash,
+    dataQuality: {
+      observationCount: input.data_quality.observation_count,
+      finiteCount: input.data_quality.finite_count,
+      coverageRatio: input.data_quality.coverage_ratio,
+      constantRatio: input.data_quality.constant_ratio,
+    },
+    predictivePower: {
+      meanPearsonIc: input.predictive_power.mean_pearson_ic,
+      meanRankIc: input.predictive_power.mean_rank_ic,
+      icir: input.predictive_power.icir,
+      nwT: input.predictive_power.nw_t,
+      icDecay: input.predictive_power.ic_decay.map((item) => ({
+        horizon: item.horizon,
+        meanIc: item.mean_ic,
+      })),
+      quantileReturns: input.predictive_power.quantile_returns.map((item) => ({
+        quantile: item.quantile,
+        meanReturn: item.mean_return,
+      })),
+      topBottomSpread: input.predictive_power.top_bottom_spread,
+      monotonic: input.predictive_power.monotonic,
+    },
   };
 }
 

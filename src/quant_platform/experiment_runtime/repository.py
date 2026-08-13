@@ -742,6 +742,22 @@ class SqlAlchemyExperimentRepository:
                 "updated_at": model.updated_at,
             }
 
+    def get_validation(
+        self, run_id: str, *, scopes: frozenset[tuple[str, str]]
+    ) -> dict[str, Any] | None:
+        if self.get_run(run_id, scopes=scopes) is None:
+            return None
+        with self._sessions() as session:
+            model = session.scalar(
+                select(FactorValidationModel)
+                .where(FactorValidationModel.run_id == run_id)
+                .order_by(FactorValidationModel.created_at.desc())
+                .limit(1)
+            )
+            if model is None:
+                return None
+            return model.report_payload
+
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
     ) -> dict[str, Any] | None:

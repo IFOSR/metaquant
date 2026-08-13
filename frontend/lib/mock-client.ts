@@ -401,4 +401,33 @@ export const mockClient: QuantApiClient = {
   async getExperimentArtifacts(id: string) {
     return structuredClone(artifactsByRun[id] ?? { items: [], lineage: [] });
   },
+  async getExperimentValidation(id: string) {
+    return {
+      policyId: "policy://cn-a-daily-factor/v1",
+      policyHash: "0".repeat(64),
+      labelId: "label.cn_a.forward_5d",
+      labelHash: "0".repeat(64),
+      factorArtifactHash: "sha256:factor-computation",
+      dataQuality: {
+        observationCount: 46791,
+        finiteCount: 46791,
+        coverageRatio: 0.97,
+        constantRatio: 0.12,
+      },
+      predictivePower: {
+        meanPearsonIc: 0.042,
+        meanRankIc: 0.038,
+        icir: 0.55,
+        nwT: 3.1,
+        icDecay: [{ horizon: 5, meanIc: 0.042 }],
+        quantileReturns: [
+          { quantile: 1, meanReturn: -0.01 },
+          { quantile: 2, meanReturn: 0.0 },
+          { quantile: 3, meanReturn: 0.012 },
+        ],
+        topBottomSpread: 0.022,
+        monotonic: true,
+      },
+    };
+  },
 };

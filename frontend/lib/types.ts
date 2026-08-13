@@ -212,3 +212,27 @@ export interface ExperimentArtifacts {
   items: ExperimentArtifact[];
   lineage: LineageEdge[];
 }
+
+export interface FactorValidationReport {
+  policyId: string;
+  policyHash: string;
+  labelId: string;
+  labelHash: string;
+  factorArtifactHash: string;
+  dataQuality: {
+    observationCount: number;
+    finiteCount: number;
+    coverageRatio: number;
+    constantRatio: number;
+  };
+  predictivePower: {
+    meanPearsonIc: number | null;
+    meanRankIc: number | null;
+    icir: number | null;
+    nwT: number | null;
+    icDecay: Array<{ horizon: number; meanIc: number | null }>;
+    quantileReturns: Array<{ quantile: number; meanReturn: number | null }>;
+    topBottomSpread: number | null;
+    monotonic: boolean | null;
+  };
+}

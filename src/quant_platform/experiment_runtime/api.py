@@ -203,6 +203,21 @@ def build_experiment_router(
             raise _not_found()
         return record
 
+    @router.get("/experiment-runs/{run_id}/robustness")
+    def get_robustness(
+        run_id: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        record = repository.get_robustness(
+            run_id,
+            scopes=actor.scopes(
+                {"research.experiments.read", "research.experiments.run"}
+            ),
+        )
+        if record is None:
+            raise _not_found()
+        return record
+
     @router.get("/experiment-runs/{run_id}")
     def get_run(
         run_id: str,

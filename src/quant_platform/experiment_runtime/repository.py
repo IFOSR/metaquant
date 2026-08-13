@@ -987,6 +987,30 @@ class SqlAlchemyExperimentRepository:
                 return None
             return model.report_payload
 
+    def get_robustness(
+        self, run_id: str, *, scopes: frozenset[tuple[str, str]]
+    ) -> dict[str, Any] | None:
+        if self.get_run(run_id, scopes=scopes) is None:
+            return None
+        with self._sessions() as session:
+            model = session.scalar(
+                select(ExperimentArtifactModel)
+                .where(
+                    ExperimentArtifactModel.run_id == run_id,
+                    ExperimentArtifactModel.artifact_type == "RobustnessReport",
+                )
+                .order_by(ExperimentArtifactModel.created_at.desc())
+                .limit(1)
+            )
+            if model is None:
+                return None
+            payload = json.loads(self._artifacts.get(model.content_hash).decode())
+            return {
+                "run_id": run_id,
+                "content_hash": model.content_hash,
+                "report": payload,
+            }
+
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
     ) -> dict[str, Any] | None:

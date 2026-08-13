@@ -30,6 +30,11 @@ from quant_platform.validation.statistics import (
     deflated_sharpe_ratio,
     probability_of_backtest_overfitting,
 )
+from quant_platform.validation.trial_ledger import (
+    TrialDisposition,
+    TrialLedger,
+    TrialLedgerEntry,
+)
 from quant_platform.validation.validator import (
     CrossSection,
     DataQualityReport,
@@ -59,6 +64,9 @@ __all__ = [
     "ParameterNeighborhoodReport",
     "PredictivePowerReport",
     "QuantileReturn",
+    "TrialDisposition",
+    "TrialLedger",
+    "TrialLedgerEntry",
     "ValidationPolicy",
     "ValidationPolicyCatalog",
     "align_cross_sections",

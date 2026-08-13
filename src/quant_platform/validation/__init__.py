@@ -6,6 +6,13 @@ from quant_platform.validation.alpha_pool import (
     InMemoryAlphaPoolCatalog,
     LifecycleState,
 )
+from quant_platform.validation.capacity import (
+    AumPoint,
+    CapacityModel,
+    CapacityReport,
+    NameCapacity,
+    run_capacity,
+)
 from quant_platform.validation.contracts import (
     ForwardReturnLabel,
     LabelObservation,
@@ -70,6 +77,9 @@ __all__ = [
     "AlphaPool",
     "AlphaPoolCatalog",
     "AlphaPoolFactor",
+    "AumPoint",
+    "CapacityModel",
+    "CapacityReport",
     "DataQualityReport",
     "FactorDirection",
     "FactorSeries",
@@ -89,6 +99,7 @@ __all__ = [
     "LabelSnapshotRow",
     "LifecycleState",
     "NegativeControlReport",
+    "NameCapacity",
     "ParameterNeighborhoodReport",
     "PairwiseCorrelation",
     "PredictivePowerReport",
@@ -106,6 +117,7 @@ __all__ = [
     "deflated_sharpe_ratio",
     "perturb_factor",
     "probability_of_backtest_overfitting",
+    "run_capacity",
     "run_negative_controls",
     "run_independence_analysis",
     "run_parameter_neighborhood",

@@ -12,6 +12,7 @@ from quant_platform.experiment_runtime.repository import (
 from quant_platform.experiment_runtime.schemas import (
     PreregisterExperimentCommand,
     RunExperimentCommand,
+    ValidateExperimentCommand,
 )
 from quant_platform.experiments import ResourceBudget
 from quant_platform.research.api import (
@@ -127,6 +128,32 @@ def build_experiment_router(
                 reason=command.metadata.reason,
                 parent_artifact_id=command.metadata.parent_artifact_id,
                 expected_resource_version=_resource_version(if_match),
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+        return receipt.model_dump(mode="json")
+
+    @router.post("/experiment-runs/{run_id}:validate", status_code=202)
+    def validate_run(
+        run_id: str,
+        command: ValidateExperimentCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+        idempotency_key: str = Header(alias="Idempotency-Key", min_length=16),
+    ) -> dict[str, Any]:
+        try:
+            receipt = repository.validate(
+                actor_id=actor.actor_id,
+                scopes=actor.scopes({"research.experiments.run"}),
+                run_id=run_id,
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(
+                    {"run_id": run_id, **command.model_dump(mode="json")}
+                ),
+                reason=command.metadata.reason,
+                parent_artifact_id=command.metadata.parent_artifact_id,
+                policy_id=command.policy_id,
+                label_payload=command.label.model_dump(mode="json"),
+                label_available_time=command.label_available_time,
             )
         except ValueError as exc:
             raise _problem(exc) from exc

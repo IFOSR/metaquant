@@ -35,3 +35,31 @@ class RunExperimentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     metadata: CommandMetadata
+
+
+class LabelObservationCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instrument_id: str
+    event_time: datetime
+    value: float | None
+
+
+class LabelCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    market: str
+    horizon: int
+    field_ref: str
+    return_definition: str = "close_to_close"
+    observations: list[LabelObservationCommand] = Field(min_length=1)
+
+
+class ValidateExperimentCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metadata: CommandMetadata
+    policy_id: str
+    label: LabelCommand
+    label_available_time: datetime

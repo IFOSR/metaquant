@@ -31,6 +31,7 @@ from quant_platform.experiment_runtime.catalog import (
     FormalSnapshotCatalog,
 )
 from quant_platform.experiments import (
+    ArtifactManifest,
     ExperimentSpec,
     FactorComputationArtifact,
     FactorObservation,
@@ -56,10 +57,20 @@ from quant_platform.research.models import (
     ExperimentLineageModel,
     ExperimentRunModel,
     ExperimentSpecModel,
+    FactorValidationModel,
     OutboxEventModel,
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import CommandReceipt
+from quant_platform.validation import (
+    ForwardReturnLabel,
+    InMemoryValidationPolicyCatalog,
+    LabelObservation,
+    LabelSeries,
+    ValidationPolicyCatalog,
+    assert_label_pit_safe,
+    validate_factor,
+)
 
 
 def _now() -> datetime:
@@ -82,6 +93,7 @@ class SqlAlchemyExperimentRepository:
         snapshot_catalog: FormalSnapshotCatalog,
         execution_identity: ExecutionIdentity,
         before_commit: Callable[[], None] | None = None,
+        policy_catalog: ValidationPolicyCatalog | None = None,
     ) -> None:
         self._engine = engine
         self._sessions = sessionmaker(engine, expire_on_commit=False)
@@ -90,6 +102,7 @@ class SqlAlchemyExperimentRepository:
         self._snapshot_catalog = snapshot_catalog
         self._execution_identity = execution_identity
         self._before_commit = before_commit
+        self._policy_catalog = policy_catalog or InMemoryValidationPolicyCatalog(())
 
     def preregister(
         self,
@@ -567,6 +580,148 @@ class SqlAlchemyExperimentRepository:
                 raise ValueError("IDEMPOTENCY_KEY_REUSE")
             return CommandReceipt.model_validate(existing.response)
 
+    def validate(
+        self,
+        *,
+        actor_id: str,
+        scopes: frozenset[tuple[str, str]],
+        run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        reason: str,
+        parent_artifact_id: str | None,
+        policy_id: str,
+        label_payload: dict[str, Any],
+        label_available_time: datetime,
+    ) -> CommandReceipt:
+        policy = self._policy_catalog.resolve(policy_id)
+        label = _label_series(label_payload)
+
+        with self._sessions.begin() as session:
+            self._lock_key(session, actor_id, idempotency_key)
+            stored_receipt = session.get(
+                ExperimentCommandReceiptModel, (actor_id, idempotency_key)
+            )
+            if stored_receipt is not None:
+                if stored_receipt.request_hash != request_hash:
+                    raise ValueError("IDEMPOTENCY_KEY_REUSE")
+                return CommandReceipt.model_validate(stored_receipt.response)
+
+            run = session.get(ExperimentRunModel, run_id)
+            if run is None or (run.project_id, run.market) not in scopes:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            if run.state != "SUCCEEDED":
+                raise ValueError("RUN_NOT_SUCCEEDED")
+
+            factor, factor_store_address = self._load_factor_artifact(session, run_id)
+            decision_time = self._decision_time(session, run.experiment_id)
+            assert_label_pit_safe(
+                label_available_time=label_available_time,
+                decision_time=decision_time,
+            )
+
+            report = validate_factor(factor, label, policy)
+
+            validation_id = f"validation_{uuid4().hex}"
+            report_store = self._artifacts.put(
+                canonical_bytes(report.payload()), media_type="application/json"
+            )
+            edge = LineageEdge(
+                source_artifact_hash=factor_store_address,
+                target_artifact_hash=report_store.content_hash,
+                relation=LineageRelation.VALIDATED_BY,
+            )
+            receipt = CommandReceipt(
+                command_id=f"cmd_{uuid4().hex}",
+                resource_id=validation_id,
+                submitted_at=_now(),
+            )
+            timestamp = _now()
+            session.add_all(
+                [
+                    FactorValidationModel(
+                        id=validation_id,
+                        run_id=run_id,
+                        policy_id=policy.policy_id,
+                        policy_hash=policy.content_hash(),
+                        label_id=label.label.label_id,
+                        label_hash=label.content_hash(),
+                        factor_artifact_hash=factor_store_address,
+                        output_hash=report.output_hash,
+                        report_payload=report.payload(),
+                        created_at=timestamp,
+                    ),
+                    ExperimentLineageModel(
+                        edge_hash=edge.edge_hash,
+                        run_id=run_id,
+                        source_artifact_hash=edge.source_artifact_hash,
+                        target_artifact_hash=edge.target_artifact_hash,
+                        relation=edge.relation.value,
+                    ),
+                    ExperimentCommandReceiptModel(
+                        actor_id=actor_id,
+                        idempotency_key=idempotency_key,
+                        request_hash=request_hash,
+                        response=receipt.model_dump(mode="json"),
+                        created_at=timestamp,
+                    ),
+                    _audit(
+                        actor_id,
+                        "experiment.validate.succeeded",
+                        run_id,
+                        reason,
+                        parent_artifact_id,
+                        receipt.command_id,
+                        report.output_hash,
+                    ),
+                    _outbox(
+                        "ExperimentValidated",
+                        "ExperimentRun",
+                        run_id,
+                        receipt.command_id,
+                        {"run_id": run_id, "output_hash": report.output_hash},
+                    ),
+                ]
+            )
+            self._run_before_commit()
+        return receipt
+
+    def _load_factor_artifact(
+        self, session: Session, run_id: str
+    ) -> tuple[FactorComputationArtifact, str]:
+        model = session.scalar(
+            select(ExperimentArtifactModel).where(
+                ExperimentArtifactModel.run_id == run_id,
+                ExperimentArtifactModel.artifact_type == "FactorComputationArtifact",
+            )
+        )
+        if model is None:
+            raise ValueError("FACTOR_ARTIFACT_NOT_FOUND")
+        payload = json.loads(self._artifacts.get(model.content_hash).decode())
+        manifest = ArtifactManifest(
+            artifact_id=model.id,
+            artifact_type=model.artifact_type,
+            schema_version=model.schema_version,
+            content_hash=model.domain_hash,
+        )
+        factor = FactorComputationArtifact.from_payload(
+            payload,
+            artifact_id=model.id,
+            run_id=model.run_id,
+            attempt_id=model.attempt_id,
+            manifest=manifest,
+        )
+        return factor, model.content_hash
+
+    def _decision_time(self, session: Session, experiment_id: str) -> datetime:
+        spec = session.get(ExperimentSpecModel, experiment_id)
+        if spec is None:
+            raise ValueError("RESOURCE_NOT_FOUND")
+        value = spec.spec_payload.get("decision_time")
+        if not isinstance(value, str):
+            raise ValueError("SPEC_DECISION_TIME_MISSING")
+        return datetime.fromisoformat(value)
+
     def get_run(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
     ) -> dict[str, Any] | None:
@@ -890,3 +1045,22 @@ def _outbox(
         published=False,
         published_at=None,
     )
+
+
+def _label_series(payload: dict[str, Any]) -> LabelSeries:
+    label = ForwardReturnLabel(
+        label_id=str(payload["label_id"]),
+        market=str(payload["market"]),
+        horizon=int(payload["horizon"]),
+        field_ref=str(payload["field_ref"]),
+        return_definition=str(payload.get("return_definition", "close_to_close")),
+    )
+    observations = tuple(
+        LabelObservation(
+            instrument_id=str(item["instrument_id"]),
+            event_time=datetime.fromisoformat(item["event_time"]),
+            value=item["value"],
+        )
+        for item in payload["observations"]
+    )
+    return LabelSeries(label=label, observations=observations)

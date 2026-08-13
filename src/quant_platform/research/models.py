@@ -279,3 +279,24 @@ class ExperimentCommandReceiptModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class FactorValidationModel(Base):
+    __tablename__ = "factor_validations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("experiment_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    policy_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    policy_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    label_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    label_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    factor_artifact_hash: Mapped[str] = mapped_column(String(80), nullable=False)
+    output_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    report_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

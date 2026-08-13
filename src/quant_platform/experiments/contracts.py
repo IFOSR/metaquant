@@ -467,6 +467,38 @@ class FactorComputationArtifact:
             if item.name not in {"artifact_id", "run_id", "attempt_id", "manifest"}
         }
 
+    @classmethod
+    def from_payload(
+        cls,
+        payload: dict[str, Any],
+        *,
+        artifact_id: str,
+        run_id: str,
+        attempt_id: str,
+        manifest: ArtifactManifest,
+    ) -> FactorComputationArtifact:
+        observations = tuple(
+            FactorObservation(
+                instrument_id=str(item["instrument_id"]),
+                event_time=datetime.fromisoformat(item["event_time"]),
+                value=item["value"],
+            )
+            for item in payload["observations"]
+        )
+        return cls(
+            artifact_id=artifact_id,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            experiment_spec_hash=str(payload["experiment_spec_hash"]),
+            factor_ir_hash=str(payload["factor_ir_hash"]),
+            snapshot_id=str(payload["snapshot_id"]),
+            snapshot_manifest_hash=str(payload["snapshot_manifest_hash"]),
+            input_hash=str(payload["input_hash"]),
+            observations=observations,
+            output_hash=str(payload["output_hash"]),
+            manifest=manifest,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ValidationSummary:

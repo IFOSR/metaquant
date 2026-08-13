@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -108,6 +109,15 @@ def test_algebra_propagates_null_and_handles_divide_by_zero_explicitly() -> None
         table({"x": [4], "y": [0]}),
         aliases=("x", "y"),
     ) == [0.0]
+
+
+def test_executor_rejects_tampered_ir_hash() -> None:
+    expression = {"op": "returns", "args": [{"ref": "x"}], "params": {"periods": 1}}
+    compiled = compile_factor_ir(spec(expression))
+    tampered = replace(compiled, ir_hash="f" * 64)
+
+    with pytest.raises(FactorExecutionError):
+        execute_factor(tampered, table({"x": [1.0, 2.0, 3.0]}))
 
 
 def test_window_operators_group_by_instrument_and_apply_min_periods() -> None:

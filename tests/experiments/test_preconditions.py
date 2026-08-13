@@ -401,3 +401,90 @@ def test_commodity_futures_require_full_market_scope() -> None:
             contract_chain_ref="contract-chain://actual/v1",
             roll_policy_ref="roll-policy://oi-3d/v1",
         )
+
+
+def test_commodity_futures_scope_fields_fail_closed_on_mismatch() -> None:
+    futures_payload = factor_payload()
+    futures_payload["market_scope"] = {
+        "market": "CN_COMMODITY_FUTURES",
+        "frequency": "1d",
+        "universe_ref": "universe://cn-futures-actual/v1",
+        "exchange_scope": ["SHFE"],
+        "contract_chain_ref": "contract-chain://actual/v1",
+        "roll_policy_ref": "roll-policy://oi-3d/v1",
+    }
+    compiled = compile_factor_ir(futures_payload)
+
+    futures_spec = registered_spec(
+        factor_ir_hash=compiled.ir_hash,
+        market="CN_COMMODITY_FUTURES",
+        universe_ref="universe://cn-futures-actual/v1",
+        settlement_clock="T+1_OPEN",
+        exchange_scope=("SHFE",),
+        contract_chain_ref="contract-chain://actual/v1",
+        roll_policy_ref="roll-policy://oi-3d/v1",
+    )
+    futures_job = ResearchJobRecord(
+        id="job-001",
+        project_id="local",
+        resource_version=2,
+        title="Futures momentum",
+        market=MarketId.CN_COMMODITY_FUTURES,
+        environment="RESEARCH",
+        state=ResearchJobState.READY,
+        owner="researcher-1",
+        universe_ref="universe://cn-futures-actual/v1",
+        frequency="1d",
+        decision_clock="T_CLOSE+30m",
+        trade_clock="T+1_OPEN",
+        settlement_clock="T+1_OPEN",
+        exchange_scope=["SHFE"],
+        contract_selection="ACTUAL_CONTRACTS_ONLY",
+        roll_policy="roll-policy://oi-3d/v1",
+        horizon="20TD",
+        research_brief_version_id="brief-001",
+        budget={"candidate_limit": 10, "wall_clock_minutes": 30},
+        created_at=at(),
+        updated_at=at(),
+    )
+
+    def futures_binding(**changes: object) -> FormalSnapshotBinding:
+        values = {
+            "snapshot_id": "snapshot-001",
+            "snapshot_manifest_hash": "3" * 64,
+            "sealed": True,
+            "artifact_class": ArtifactClass.FORMAL,
+            "market": "CN_COMMODITY_FUTURES",
+            "universe_ref": "universe://cn-futures-actual/v1",
+            "frequency": "1d",
+            "decision_clock": "T_CLOSE+30m",
+            "trade_clock": "T+1_OPEN",
+            "settlement_clock": "T+1_OPEN",
+            "exchange_scope": ("SHFE",),
+            "contract_chain_ref": "contract-chain://actual/v1",
+            "roll_policy_ref": "roll-policy://oi-3d/v1",
+            "purpose": QueryPurpose.RESEARCH,
+            "allowed_license_tags": frozenset({"licensed-research"}),
+        }
+        values.update(changes)
+        return FormalSnapshotBinding(**cast(Any, values))
+
+    validate_formal_preconditions(
+        spec=futures_spec,
+        research_job=futures_job,
+        research_brief=brief(),
+        frozen_snapshot=snapshot(),
+        snapshot_binding=futures_binding(),
+        compiled_ir=compiled,
+    )
+
+    with pytest.raises(FormalPreconditionError) as caught:
+        validate_formal_preconditions(
+            spec=futures_spec,
+            research_job=futures_job,
+            research_brief=brief(),
+            frozen_snapshot=snapshot(),
+            snapshot_binding=futures_binding(exchange_scope=("DCE",)),
+            compiled_ir=compiled,
+        )
+    assert "EXCHANGE_SCOPE_MISMATCH" in {item.code for item in caught.value.violations}

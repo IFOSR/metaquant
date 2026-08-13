@@ -26,3 +26,6 @@ mlruns/
 
 # Env & secrets
 .env
+
+# Agent runtime state
+.deepseek/

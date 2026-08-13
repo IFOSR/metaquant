@@ -83,7 +83,7 @@ export function ExperimentMonitor({
             <div>
               <span className="eyebrow">Run / attempts</span>
               <strong className="mono">{run.id}</strong>
-              <span>{run.attemptCount}</span>
+              <span>{run.attemptCount} attempts</span>
             </div>
             <div>
               <span className="eyebrow">Run fingerprint</span>

@@ -478,3 +478,16 @@ def test_compiler_does_not_mutate_caller_payload() -> None:
     compile_factor_ir(spec)
 
     assert spec == original
+
+
+def test_rejects_zero_policy_clip_not_supported_by_executor() -> None:
+    spec = equity_spec()
+    spec["expression"] = {
+        "op": "safe_div",
+        "args": [{"ref": "close"}, {"ref": "close"}],
+        "params": {"zero_policy": "clip"},
+    }
+
+    error = compile_error(spec)
+
+    assert "zero_policy" in str(error)

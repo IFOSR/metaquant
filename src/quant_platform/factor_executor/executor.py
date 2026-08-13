@@ -69,6 +69,11 @@ def _check_integrity(compiled: CompiledFactorIR) -> None:
         raise FactorExecutionError("compiled IR integrity check failed")
     if hashlib.sha256(encoded.encode()).hexdigest() != compiled.expression_hash:
         raise FactorExecutionError("compiled IR integrity hash failed")
+    if (
+        hashlib.sha256(compiled.canonical_json.encode("utf-8")).hexdigest()
+        != compiled.ir_hash
+    ):
+        raise FactorExecutionError("compiled IR integrity hash failed")
 
 
 def execute_factor(

@@ -533,11 +533,11 @@ def _validate_parameters(operator_name: str, params: dict[str, Any], path: str) 
     if (
         operator_name in {"safe_div", "div"}
         and "zero_policy" in params
-        and params["zero_policy"] not in {"null", "zero", "clip"}
+        and params["zero_policy"] not in {"null", "zero"}
     ):
         _fail(
             "IR_INVALID_PARAMETER",
-            "zero_policy must be null, zero, or clip",
+            "zero_policy must be null or zero",
             f"{path}.params.zero_policy",
         )
     if operator_name == "winsorize":

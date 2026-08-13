@@ -177,6 +177,29 @@ def validate_formal_preconditions(
         "FREQUENCY_NOT_FORMAL",
         "formal frequency must be 1d",
     )
+    if scope["market"] == "CN_COMMODITY_FUTURES":
+        require(
+            tuple(spec.exchange_scope)
+            == tuple(research_job.exchange_scope)
+            == tuple(snapshot_binding.exchange_scope)
+            == tuple(scope.get("exchange_scope", ())),
+            "EXCHANGE_SCOPE_MISMATCH",
+            "commodity futures exchange scope differs",
+        )
+        require(
+            spec.contract_chain_ref
+            == snapshot_binding.contract_chain_ref
+            == scope.get("contract_chain_ref"),
+            "CONTRACT_CHAIN_MISMATCH",
+            "commodity futures contract chain differs",
+        )
+        require(
+            spec.roll_policy_ref
+            == snapshot_binding.roll_policy_ref
+            == scope.get("roll_policy_ref"),
+            "ROLL_POLICY_MISMATCH",
+            "commodity futures roll policy differs",
+        )
     require(
         spec.decision_clock
         == research_job.decision_clock

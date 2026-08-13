@@ -26,6 +26,10 @@ from quant_platform.data_gateway import (
     SnapshotQuery,
     SourceClass,
 )
+from quant_platform.experiment_runtime.catalog import (
+    ExecutionIdentity,
+    FormalSnapshotCatalog,
+)
 from quant_platform.experiments import (
     ExperimentSpec,
     FactorComputationArtifact,
@@ -44,10 +48,6 @@ from quant_platform.experiments import (
 )
 from quant_platform.factor_executor import FactorInputRow, FactorTable, execute_factor
 from quant_platform.factor_ir import compile_factor_ir
-from quant_platform.experiment_runtime.catalog import (
-    ExecutionIdentity,
-    FormalSnapshotCatalog,
-)
 from quant_platform.research.models import (
     AuditEventModel,
     ExperimentArtifactModel,

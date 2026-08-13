@@ -12,6 +12,7 @@ from quant_platform.validation import (
     LabelSeries,
     ValidationPolicy,
     run_negative_controls,
+    run_parameter_neighborhood,
 )
 
 
@@ -124,3 +125,43 @@ def test_percentile_is_zero_for_empty_controls() -> None:
 
     assert report.observed_ic is None
     assert report.percentile == 0.0
+
+
+def test_run_parameter_neighborhood_is_deterministic() -> None:
+    artifact, series = perfect_factor_and_label()
+
+    first = run_parameter_neighborhood(artifact, series, policy())
+    second = run_parameter_neighborhood(artifact, series, policy())
+
+    assert first == second
+    assert first.content_hash() == second.content_hash()
+
+
+def test_perfect_factor_is_stable_under_perturbation() -> None:
+    artifact, series = perfect_factor_and_label()
+
+    report = run_parameter_neighborhood(artifact, series, policy())
+
+    assert report.baseline_ic == pytest.approx(1.0)
+    assert report.stable is True
+    assert len(report.perturbed_ics) == 4
+
+
+def test_negative_factor_keeps_sign_under_perturbation() -> None:
+    artifact = factor(
+        FactorObservation("A", at(1), 1.0),
+        FactorObservation("B", at(1), 2.0),
+        FactorObservation("C", at(1), 3.0),
+        FactorObservation("D", at(1), 4.0),
+    )
+    series = label(
+        LabelObservation("A", at(1), 0.4),
+        LabelObservation("B", at(1), 0.3),
+        LabelObservation("C", at(1), 0.2),
+        LabelObservation("D", at(1), 0.1),
+    )
+
+    report = run_parameter_neighborhood(artifact, series, policy())
+
+    assert report.baseline_ic == pytest.approx(-1.0)
+    assert report.stable is True

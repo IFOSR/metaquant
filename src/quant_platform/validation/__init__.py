@@ -20,7 +20,10 @@ from quant_platform.validation.policy import (
 )
 from quant_platform.validation.robustness import (
     NegativeControlReport,
+    ParameterNeighborhoodReport,
+    perturb_factor,
     run_negative_controls,
+    run_parameter_neighborhood,
 )
 from quant_platform.validation.validator import (
     CrossSection,
@@ -48,12 +51,15 @@ __all__ = [
     "LabelSnapshotCatalog",
     "LabelSnapshotRow",
     "NegativeControlReport",
+    "ParameterNeighborhoodReport",
     "PredictivePowerReport",
     "QuantileReturn",
     "ValidationPolicy",
     "ValidationPolicyCatalog",
     "align_cross_sections",
     "assert_label_pit_safe",
+    "perturb_factor",
     "run_negative_controls",
+    "run_parameter_neighborhood",
     "validate_factor",
 ]

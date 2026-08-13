@@ -152,8 +152,8 @@ def build_experiment_router(
                 reason=command.metadata.reason,
                 parent_artifact_id=command.metadata.parent_artifact_id,
                 policy_id=command.policy_id,
-                label_payload=command.label.model_dump(mode="json"),
-                label_available_time=command.label_available_time,
+                label_snapshot_id=command.label_snapshot_id,
+                label_snapshot_manifest_hash=command.label_snapshot_manifest_hash,
             )
         except ValueError as exc:
             raise _problem(exc) from exc

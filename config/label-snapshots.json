@@ -1,0 +1,29 @@
+[
+  {
+    "schema_version": "label-snapshot/v1",
+    "snapshot_id": "label-snapshot-cn-a-001",
+    "sealed": true,
+    "artifact_class": "FORMAL_LABEL",
+    "label": {
+      "label_id": "label://cn-a-fwd-5d/v1",
+      "market": "CN_A",
+      "horizon": 5,
+      "field_ref": "market.eod.forward_return_5d",
+      "return_definition": "close_to_close"
+    },
+    "rows": [
+      {
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-01T15:00:00+00:00",
+        "available_time": "2026-08-08T15:00:00+00:00",
+        "value": 0.2
+      },
+      {
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-02T15:00:00+00:00",
+        "available_time": "2026-08-11T15:00:00+00:00",
+        "value": 0.15
+      }
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "schema_version": "validation-policy/v1",
+    "policy_id": "policy://cn-a-daily-factor/v1",
+    "market": "CN_A",
+    "min_coverage": 0.5,
+    "min_observations": 30,
+    "max_constant_ratio": 0.9,
+    "ic_sign": "ANY",
+    "min_icir": 0.0,
+    "min_nw_t": 0.0,
+    "quantile_count": 5,
+    "decay_horizons": [1, 5, 10, 20, 60]
+  }
+]

@@ -33,6 +33,10 @@ from quant_platform.security import (
     Scope,
     StaticBearerPrincipalProvider,
 )
+from quant_platform.validation import (
+    JsonLabelSnapshotCatalog,
+    JsonValidationPolicyCatalog,
+)
 
 
 def _default_principal_provider(token: str) -> ResearchPrincipal | None:
@@ -132,6 +136,12 @@ def create_app(
                 executor_version=settings.execution_executor_version,
                 config_hash=settings.execution_config_hash,
                 config_path=Path(settings.formal_snapshot_catalog_path),
+            ),
+            policy_catalog=JsonValidationPolicyCatalog.from_path(
+                Path(settings.validation_policy_catalog_path)
+            ),
+            label_snapshot_catalog=JsonLabelSnapshotCatalog.from_path(
+                Path(settings.label_snapshot_catalog_path)
             ),
         )
     principal_provider = research_principal_provider or _default_principal_provider

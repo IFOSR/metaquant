@@ -63,12 +63,10 @@ from quant_platform.research.models import (
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import CommandReceipt
 from quant_platform.validation import (
-    ForwardReturnLabel,
+    InMemoryLabelSnapshotCatalog,
     InMemoryValidationPolicyCatalog,
-    LabelObservation,
-    LabelSeries,
+    LabelSnapshotCatalog,
     ValidationPolicyCatalog,
-    assert_label_pit_safe,
     validate_factor,
 )
 
@@ -94,6 +92,7 @@ class SqlAlchemyExperimentRepository:
         execution_identity: ExecutionIdentity,
         before_commit: Callable[[], None] | None = None,
         policy_catalog: ValidationPolicyCatalog | None = None,
+        label_snapshot_catalog: LabelSnapshotCatalog | None = None,
     ) -> None:
         self._engine = engine
         self._sessions = sessionmaker(engine, expire_on_commit=False)
@@ -103,6 +102,9 @@ class SqlAlchemyExperimentRepository:
         self._execution_identity = execution_identity
         self._before_commit = before_commit
         self._policy_catalog = policy_catalog or InMemoryValidationPolicyCatalog(())
+        self._label_snapshot_catalog = (
+            label_snapshot_catalog or InMemoryLabelSnapshotCatalog(())
+        )
 
     def preregister(
         self,
@@ -591,11 +593,14 @@ class SqlAlchemyExperimentRepository:
         reason: str,
         parent_artifact_id: str | None,
         policy_id: str,
-        label_payload: dict[str, Any],
-        label_available_time: datetime,
+        label_snapshot_id: str,
+        label_snapshot_manifest_hash: str,
     ) -> CommandReceipt:
         policy = self._policy_catalog.resolve(policy_id)
-        label = _label_series(label_payload)
+        label_snapshot = self._label_snapshot_catalog.resolve(
+            label_snapshot_id, label_snapshot_manifest_hash
+        )
+        label = label_snapshot.to_label_series()
 
         with self._sessions.begin() as session:
             self._lock_key(session, actor_id, idempotency_key)
@@ -617,10 +622,7 @@ class SqlAlchemyExperimentRepository:
 
             factor, factor_store_address = self._load_factor_artifact(session, run_id)
             decision_time = self._decision_time(session, run.experiment_id)
-            assert_label_pit_safe(
-                label_available_time=label_available_time,
-                decision_time=decision_time,
-            )
+            label_snapshot.assert_pit_safe(decision_time)
 
             report = validate_factor(factor, label, policy)
 
@@ -1123,22 +1125,3 @@ def _outbox(
         published=False,
         published_at=None,
     )
-
-
-def _label_series(payload: dict[str, Any]) -> LabelSeries:
-    label = ForwardReturnLabel(
-        label_id=str(payload["label_id"]),
-        market=str(payload["market"]),
-        horizon=int(payload["horizon"]),
-        field_ref=str(payload["field_ref"]),
-        return_definition=str(payload.get("return_definition", "close_to_close")),
-    )
-    observations = tuple(
-        LabelObservation(
-            instrument_id=str(item["instrument_id"]),
-            event_time=datetime.fromisoformat(item["event_time"]),
-            value=item["value"],
-        )
-        for item in payload["observations"]
-    )
-    return LabelSeries(label=label, observations=observations)

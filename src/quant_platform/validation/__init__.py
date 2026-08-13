@@ -4,6 +4,13 @@ from quant_platform.validation.contracts import (
     LabelSeries,
     assert_label_pit_safe,
 )
+from quant_platform.validation.label_snapshot import (
+    FormalLabelSnapshot,
+    InMemoryLabelSnapshotCatalog,
+    JsonLabelSnapshotCatalog,
+    LabelSnapshotCatalog,
+    LabelSnapshotRow,
+)
 from quant_platform.validation.policy import (
     ICSign,
     InMemoryValidationPolicyCatalog,
@@ -25,12 +32,17 @@ __all__ = [
     "CrossSection",
     "DataQualityReport",
     "FactorValidationReport",
+    "FormalLabelSnapshot",
     "ForwardReturnLabel",
     "ICSign",
+    "InMemoryLabelSnapshotCatalog",
     "InMemoryValidationPolicyCatalog",
+    "JsonLabelSnapshotCatalog",
     "JsonValidationPolicyCatalog",
     "LabelObservation",
     "LabelSeries",
+    "LabelSnapshotCatalog",
+    "LabelSnapshotRow",
     "PredictivePowerReport",
     "QuantileReturn",
     "ValidationPolicy",

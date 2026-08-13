@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     minio_bucket: str = "artifacts"
     minio_secure: bool = False
     formal_snapshot_catalog_path: str = "/app/config/formal-snapshots.json"
+    label_snapshot_catalog_path: str = "/app/config/label-snapshots.json"
+    validation_policy_catalog_path: str = "/app/config/validation-policies.json"
     execution_code_sha: str = "0" * 40
     execution_image_digest: str = "sha256:" + "0" * 64
     execution_dependency_lock_hash: str = "0" * 64

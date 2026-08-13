@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,8 +28,12 @@ from quant_platform.research.models import (
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.validation import (
+    FormalLabelSnapshot,
+    ForwardReturnLabel,
     ICSign,
+    InMemoryLabelSnapshotCatalog,
     InMemoryValidationPolicyCatalog,
+    LabelSnapshotRow,
     ValidationPolicy,
 )
 from tests.experiment_support import (
@@ -168,6 +173,26 @@ def test_postgres_concurrent_identical_fingerprints_create_one_run() -> None:
         )
 
 
+def label_snapshot() -> FormalLabelSnapshot:
+    return FormalLabelSnapshot(
+        snapshot_id="label-snapshot-cn-a-001",
+        label=ForwardReturnLabel(
+            label_id="label.cn_a.forward_5d",
+            market="CN_A",
+            horizon=5,
+            field_ref="market.eod.forward_return_5d",
+        ),
+        rows=(
+            LabelSnapshotRow(
+                instrument_id="600000.SSE",
+                event_time=datetime.fromisoformat(at(2)),
+                available_time=datetime.fromisoformat(at(12)),
+                value=0.2,
+            ),
+        ),
+    )
+
+
 def _validation_repository(engine: Engine) -> SqlAlchemyExperimentRepository:
     policy = ValidationPolicy(
         policy_id="policy://cn-a-daily-factor/v1",
@@ -202,6 +227,7 @@ def _validation_repository(engine: Engine) -> SqlAlchemyExperimentRepository:
             config_hash="d" * 64,
         ),
         policy_catalog=InMemoryValidationPolicyCatalog((policy,)),
+        label_snapshot_catalog=InMemoryLabelSnapshotCatalog((label_snapshot(),)),
     )
 
 
@@ -245,26 +271,15 @@ def test_postgres_validate_command_stores_report_and_lineage() -> None:
                 or 0
             )
 
+        label_snap = label_snapshot()
         validated = client.post(
             f"/v1/experiment-runs/{run_id}:validate",
             headers=headers("g3-pg-validate-0001"),
             json={
                 "metadata": metadata("Validate factor"),
                 "policy_id": "policy://cn-a-daily-factor/v1",
-                "label": {
-                    "label_id": "label.cn_a.forward_5d",
-                    "market": "CN_A",
-                    "horizon": 5,
-                    "field_ref": "market.eod.forward_return_5d",
-                    "observations": [
-                        {
-                            "instrument_id": "600000.SSE",
-                            "event_time": at(2, 15),
-                            "value": 0.2,
-                        }
-                    ],
-                },
-                "label_available_time": at(12),
+                "label_snapshot_id": label_snap.snapshot_id,
+                "label_snapshot_manifest_hash": label_snap.content_hash(),
             },
         )
         validated.raise_for_status()

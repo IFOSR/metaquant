@@ -1,0 +1,29 @@
+{
+  "resource_id": "rj_20260811_0042",
+  "snapshot_version": "17",
+  "events": [
+    {
+      "event_id": "evt_11891",
+      "sequence": 11891,
+      "type": "RUN_STAGE_CHANGED",
+      "occurred_at": "2026-08-11T09:51:08+08:00",
+      "data": {
+        "from": "FACTOR_COMPUTE",
+        "to": "VALIDATION_GATE_2",
+        "attempt": 3
+      }
+    },
+    {
+      "event_id": "evt_11892",
+      "sequence": 11892,
+      "type": "BUDGET_UPDATED",
+      "occurred_at": "2026-08-11T09:55:32+08:00",
+      "data": {
+        "cpu_hours_used": 11.8,
+        "wall_clock_minutes_used": 37
+      }
+    }
+  ],
+  "resume_after": "evt_11892",
+  "must_refetch_snapshot": true
+}

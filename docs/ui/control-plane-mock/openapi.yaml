@@ -1,0 +1,1821 @@
+openapi: 3.1.0
+info:
+  title: Quant Research Platform Control Plane UI Mock
+  version: 0.2.0
+  description: >
+    G0 frontend contract baseline. Endpoints marked frontend-proposal require
+    backend review before implementation.
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:4010
+    description: Local mock
+security:
+  - oidc: []
+  - bearerAuth: []
+tags:
+  - name: Session
+    description: Authenticated principal, roles, scopes, and capabilities.
+  - name: ResearchJobs
+    description: Research intake, brief versions, candidates, and job state.
+  - name: Factors
+    description: Factor compilation and immutable factor versions.
+  - name: Experiments
+    description: Preregistration, runs, validation, and gate decisions.
+  - name: Reports
+    description: Signed reports with evidence and provenance.
+  - name: Approvals
+    description: Version-bound approvals and append-only audit events.
+  - name: Lineage
+    description: Dataset, rule, artifact, and dependency lineage.
+  - name: Events
+    description: Authorized incremental event notifications.
+paths:
+  /v1/session:
+    get:
+      tags: [Session]
+      operationId: getSession
+      summary: Get the authenticated session and capabilities
+      x-source: frontend-proposal
+      responses:
+        "200":
+          description: Actor context and server-authorized capabilities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+  /v1/research-jobs:
+    get:
+      tags: [ResearchJobs]
+      operationId: listResearchJobs
+      summary: List authorized research jobs
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/Market"
+        - $ref: "#/components/parameters/State"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated research jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchJobPage"
+    post:
+      tags: [ResearchJobs]
+      operationId: createResearchJob
+      summary: Create a research job
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResearchJobCommand"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/research-jobs/{job_id}:
+    get:
+      tags: [ResearchJobs]
+      operationId: getResearchJob
+      summary: Get a research job snapshot
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Current server snapshot
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchJob"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/research-jobs/{job_id}/brief-versions:
+    get:
+      tags: [ResearchJobs]
+      operationId: listResearchBriefVersions
+      summary: List research brief versions
+      x-source: g0-contract-baseline
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Immutable brief version history, including drafts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ResearchBriefVersion"
+                  next_cursor:
+                    type: [string, "null"]
+        "404":
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [ResearchJobs]
+      operationId: createResearchBriefVersion
+      summary: Create a draft research brief version
+      x-source: g0-contract-baseline
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResearchBriefVersionCommand"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/research-brief-versions/{brief_version_id}:
+    get:
+      tags: [ResearchJobs]
+      operationId: getResearchBriefVersion
+      summary: Get a research brief version
+      x-source: g0-contract-baseline
+      parameters:
+        - $ref: "#/components/parameters/BriefVersionId"
+      responses:
+        "200":
+          description: One research brief version
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchBriefVersion"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [ResearchJobs]
+      operationId: updateResearchBriefVersion
+      summary: Update a draft research brief version
+      x-source: g0-contract-baseline
+      parameters:
+        - $ref: "#/components/parameters/BriefVersionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResearchBriefVersionCommand"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/research-brief-versions/{brief_version_id}:freeze:
+    post:
+      tags: [ResearchJobs]
+      operationId: freezeResearchBriefVersion
+      summary: Freeze a research brief version
+      x-source: g0-contract-baseline
+      parameters:
+        - $ref: "#/components/parameters/BriefVersionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandMetadata"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/research-jobs/{job_id}:propose:
+    post:
+      tags: [ResearchJobs]
+      operationId: proposeCandidates
+      summary: Request candidate proposals
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandMetadata"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/research-jobs/{job_id}/candidates:
+    get:
+      tags: [ResearchJobs]
+      operationId: listResearchCandidates
+      summary: List the complete candidate ledger
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Complete candidate ledger, including failed candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidatePage"
+  /v1/factors:compile:
+    post:
+      tags: [Factors]
+      operationId: compileFactor
+      summary: Compile a factor specification
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [metadata, factor_spec_id]
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/CommandMetadata"
+                factor_spec_id:
+                  type: string
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/factors/{factor_id}/versions:
+    get:
+      tags: [Factors]
+      operationId: listFactorVersions
+      summary: List immutable factor versions
+      x-source: technical-design
+      parameters:
+        - name: factor_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Factor versions with compiled IR diagnostics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FactorVersion"
+  /v1/experiments:preregister:
+    post:
+      tags: [Experiments]
+      operationId: preregisterExperiment
+      summary: Preregister an experiment specification
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - metadata
+                - job_id
+                - candidate_ids
+                - validation_policy_version
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/CommandMetadata"
+                job_id:
+                  type: string
+                candidate_ids:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                validation_policy_version:
+                  type: string
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+  /v1/experiments/{experiment_id}:run:
+    post:
+      tags: [Experiments]
+      operationId: runExperiment
+      summary: Run a preregistered experiment
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/ExperimentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandMetadata"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+  /v1/experiments/{experiment_id}:
+    get:
+      tags: [Experiments]
+      operationId: getExperiment
+      summary: Get an experiment and its runs
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/ExperimentId"
+      responses:
+        "200":
+          description: Experiment, current attempt, budget, and heartbeat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experiment"
+  /v1/experiments/{experiment_id}/validation:
+    get:
+      tags: [Experiments]
+      operationId: getExperimentValidation
+      summary: Get experiment validation results
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/ExperimentId"
+      responses:
+        "200":
+          description: Validation bundle and gate decisions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationBundle"
+  /v1/gate-decisions:
+    post:
+      tags: [Experiments]
+      operationId: createGateDecision
+      summary: Record a version-bound gate decision
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - metadata
+                - experiment_run_id
+                - factor_version_id
+                - gate
+                - decision
+                - validation_bundle_hash
+                - policy_version_id
+                - resource_version
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/CommandMetadata"
+                experiment_run_id:
+                  type: string
+                factor_version_id:
+                  type: string
+                gate:
+                  type: string
+                  enum: [GATE_0, GATE_1, GATE_2, GATE_3, GATE_4, GATE_5]
+                decision:
+                  type: string
+                  enum: [PASS, FAIL, QUARANTINE, BLOCKED, REQUEST_WAIVER]
+                validation_bundle_hash:
+                  type: string
+                policy_version_id:
+                  type: string
+                resource_version:
+                  type: integer
+                  minimum: 1
+                reason_codes:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                evidence_ref_ids:
+                  type: array
+                  items:
+                    type: string
+                waiver:
+                  oneOf:
+                    - $ref: "#/components/schemas/WaiverRequest"
+                    - type: "null"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/runs/{run_id}:retry:
+    post:
+      tags: [Experiments]
+      operationId: retryRun
+      summary: Create a retry attempt for a failed run
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandMetadata"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/runs/{run_id}:cancel:
+    post:
+      tags: [Experiments]
+      operationId: cancelRun
+      summary: Request cancellation of a run
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandMetadata"
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/reports/{report_id}:
+    get:
+      tags: [Reports]
+      operationId: getResearchReport
+      summary: Get a signed research report
+      x-source: frontend-proposal
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signed research report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchReport"
+  /v1/approvals:
+    get:
+      tags: [Approvals]
+      operationId: listApprovals
+      summary: List approval work and history
+      x-source: frontend-proposal
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Approval inbox and history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Approval"
+                  next_cursor:
+                    type: [string, "null"]
+    post:
+      tags: [Approvals]
+      operationId: createApprovalDecision
+      summary: Record an approval decision
+      x-source: integrated-design
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [metadata, approval_id, decision, resource_version]
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/CommandMetadata"
+                approval_id:
+                  type: string
+                decision:
+                  type: string
+                  enum: [APPROVE, REJECT, REQUEST_CHANGES]
+                resource_version:
+                  type: integer
+                  minimum: 1
+      responses:
+        "202":
+          $ref: "#/components/responses/CommandAccepted"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/lineage/{artifact_id}:
+    get:
+      tags: [Lineage]
+      operationId: getLineage
+      summary: Get artifact lineage
+      x-source: technical-design
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Upstream and downstream artifact graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineageGraph"
+  /v1/dataset-snapshots/{snapshot_id}:
+    get:
+      tags: [Lineage]
+      operationId: getDatasetSnapshot
+      summary: Get dataset snapshot metadata
+      x-source: frontend-proposal
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dataset snapshot metadata; no direct object-store URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactSummary"
+  /v1/rule-snapshots/{snapshot_id}:
+    get:
+      tags: [Lineage]
+      operationId: getRuleSnapshot
+      summary: Get rule set snapshot metadata
+      x-source: frontend-proposal
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Market rule snapshot metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactSummary"
+  /v1/audit-events:
+    get:
+      tags: [Approvals]
+      operationId: listAuditEvents
+      summary: List append-only audit events
+      x-source: technical-design
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - name: resource_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Append-only audit event page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditEvent"
+                  next_cursor:
+                    type: [string, "null"]
+  /v1/events:
+    get:
+      tags: [Events]
+      operationId: streamEvents
+      summary: Stream authorized control-plane events
+      x-source: frontend-proposal
+      parameters:
+        - name: after
+          in: query
+          schema:
+            type: string
+        - name: resource_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Authorized event stream; transport is pending backend decision
+          content:
+            text/event-stream:
+              schema:
+                type: string
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Strong ETag of the aggregate version being changed.
+      schema:
+        type: string
+        minLength: 3
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ExperimentId:
+      name: experiment_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+    BriefVersionId:
+      name: brief_version_id
+      in: path
+      required: true
+      schema:
+        type: string
+    Market:
+      name: market
+      in: query
+      schema:
+        $ref: "#/components/schemas/MarketId"
+    State:
+      name: state
+      in: query
+      schema:
+        $ref: "#/components/schemas/ResearchJobState"
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: https://identity.example.invalid/.well-known/openid-configuration
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    CommandAccepted:
+      description: Command accepted for asynchronous processing
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CommandReceipt"
+    Problem:
+      description: RFC 9457-style problem response
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    MarketId:
+      type: string
+      enum: [CN_A, CN_COMMODITY_FUTURES]
+    Environment:
+      type: string
+      enum: [RESEARCH, PAPER, LIVE]
+    FrequencyId:
+      type: string
+      enum: [1d]
+    ResearchJobState:
+      type: string
+      enum:
+        - DRAFT
+        - READY
+        - RUNNING
+        - WAITING_INPUT
+        - BLOCKED_POLICY
+        - SUCCEEDED
+        - FAILED
+        - CANCELLED
+        - ARCHIVED
+    ResearchBriefVersionState:
+      type: string
+      enum: [DRAFT, FROZEN, SUPERSEDED]
+    ExperimentSpecState:
+      type: string
+      enum: [DRAFT, PREREGISTERED, SUPERSEDED, CLOSED]
+    ExperimentRunState:
+      type: string
+      enum:
+        - QUEUED
+        - RUNNING
+        - WAITING_INPUT
+        - BLOCKED_POLICY
+        - SUCCEEDED
+        - FAILED_RETRYABLE
+        - FAILED_TERMINAL
+        - QUARANTINED
+        - NON_REPRODUCIBLE
+        - CANCELLED
+    AttemptState:
+      type: string
+      enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, TIMED_OUT]
+    ReplicationState:
+      type: string
+      enum: [DRAFT, RUNNING, REPRODUCED, NON_REPRODUCIBLE, FAILED, CLOSED]
+    PackageReleaseState:
+      type: string
+      enum: [DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, REVOKED]
+    DeploymentRunState:
+      type: string
+      enum:
+        - PENDING
+        - STARTING
+        - RUNNING
+        - PAUSED
+        - STOPPING
+        - STOPPED
+        - FAILED
+        - KILLED
+    Session:
+      type: object
+      required: [actor, roles, capabilities, environments, markets]
+      properties:
+        actor:
+          type: object
+          required: [id, display_name]
+          properties:
+            id:
+              type: string
+            display_name:
+              type: string
+        roles:
+          type: array
+          items:
+            type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        environments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Environment"
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketId"
+    Budget:
+      type: object
+      additionalProperties: false
+      required: [candidate_limit, wall_clock_minutes]
+      properties:
+        candidate_limit:
+          type: integer
+          minimum: 1
+        llm_token_limit:
+          type: integer
+          minimum: 0
+        cpu_hours:
+          type: number
+          minimum: 0
+        wall_clock_minutes:
+          type: integer
+          minimum: 1
+    CommandMetadata:
+      type: object
+      additionalProperties: false
+      required: [reason, parent_artifact_id, budget, schema_version]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+        parent_artifact_id:
+          type: [string, "null"]
+        budget:
+          $ref: "#/components/schemas/Budget"
+        schema_version:
+          type: string
+    CreateResearchJobCommand:
+      type: object
+      additionalProperties: false
+      required:
+        - metadata
+        - market
+        - universe_ref
+        - frequency
+        - decision_clock
+        - trade_clock
+        - horizon
+        - research_brief_version_id
+      properties:
+        metadata:
+          $ref: "#/components/schemas/CommandMetadata"
+        market:
+          $ref: "#/components/schemas/MarketId"
+        universe_ref:
+          type: string
+        frequency:
+          $ref: "#/components/schemas/FrequencyId"
+        decision_clock:
+          type: string
+        trade_clock:
+          type: string
+        settlement_clock:
+          type: string
+        exchange_scope:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [SHFE, INE, DCE, CZCE, GFEX]
+        contract_selection:
+          type: string
+          enum: [ACTUAL_CONTRACTS_ONLY]
+        roll_policy:
+          type: string
+          description: Immutable RollPolicyVersion reference.
+        horizon:
+          type: string
+        research_brief_version_id:
+          type: string
+      allOf:
+        - if:
+            properties:
+              market:
+                const: CN_COMMODITY_FUTURES
+            required: [market]
+          then:
+            properties:
+              settlement_clock:
+                type: string
+              exchange_scope:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+              contract_selection:
+                type: string
+                const: ACTUAL_CONTRACTS_ONLY
+              roll_policy:
+                type: string
+            required:
+              - settlement_clock
+              - exchange_scope
+              - contract_selection
+              - roll_policy
+    ResearchBriefContent:
+      type: object
+      required:
+        - hypothesis
+        - economic_mechanism
+        - expected_direction
+        - falsification_conditions
+        - allowed_data_domains
+        - constraints
+      properties:
+        hypothesis:
+          type: string
+          minLength: 3
+        economic_mechanism:
+          type: string
+          minLength: 3
+        expected_direction:
+          type: string
+          enum: [POSITIVE, NEGATIVE, NON_MONOTONIC, UNKNOWN]
+        falsification_conditions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        allowed_data_domains:
+          type: array
+          items:
+            type: string
+        forbidden_data_domains:
+          type: array
+          items:
+            type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        evidence_ref_ids:
+          type: array
+          items:
+            type: string
+        uncertainties:
+          type: array
+          items:
+            type: string
+    ResearchBriefVersion:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/ResearchBriefContent"
+        - type: object
+          required:
+            - id
+            - job_id
+            - version
+            - resource_version
+            - status
+            - content_hash
+            - created_at
+            - created_by
+          properties:
+            id:
+              type: string
+            job_id:
+              type: string
+            version:
+              type: integer
+              minimum: 1
+            resource_version:
+              type: integer
+              minimum: 1
+            status:
+              $ref: "#/components/schemas/ResearchBriefVersionState"
+            content_hash:
+              type: [string, "null"]
+            created_at:
+              type: string
+              format: date-time
+            created_by:
+              type: string
+            frozen_at:
+              type: [string, "null"]
+              format: date-time
+            frozen_by:
+              type: [string, "null"]
+    CreateResearchBriefVersionCommand:
+      type: object
+      additionalProperties: false
+      required: [metadata, brief]
+      properties:
+        metadata:
+          $ref: "#/components/schemas/CommandMetadata"
+        brief:
+          $ref: "#/components/schemas/ResearchBriefContent"
+    UpdateResearchBriefVersionCommand:
+      type: object
+      additionalProperties: false
+      required: [metadata, brief]
+      properties:
+        metadata:
+          $ref: "#/components/schemas/CommandMetadata"
+        brief:
+          $ref: "#/components/schemas/ResearchBriefContent"
+    ResourceFreshness:
+      type: object
+      required: [as_of, is_stale]
+      properties:
+        as_of:
+          type: string
+          format: date-time
+        is_stale:
+          type: boolean
+        stale_reason:
+          type: [string, "null"]
+    ResearchJob:
+      type: object
+      required:
+        - id
+        - version
+        - title
+        - market
+        - environment
+        - state
+        - owner
+        - budget
+        - freshness
+        - allowed_actions
+      properties:
+        id:
+          type: string
+        version:
+          type: string
+        title:
+          type: string
+        market:
+          $ref: "#/components/schemas/MarketId"
+        environment:
+          $ref: "#/components/schemas/Environment"
+        state:
+          $ref: "#/components/schemas/ResearchJobState"
+        owner:
+          type: string
+        current_stage:
+          type: string
+        budget:
+          $ref: "#/components/schemas/Budget"
+        budget_used:
+          type: object
+          additionalProperties:
+            type: number
+        latest_attempt:
+          $ref: "#/components/schemas/Attempt"
+        snapshot_refs:
+          type: array
+          items:
+            type: string
+        policy_version:
+          type: string
+        run_fingerprint:
+          type: [string, "null"]
+        freshness:
+          $ref: "#/components/schemas/ResourceFreshness"
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Blocker"
+        allowed_actions:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+    ResearchJobPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchJob"
+        next_cursor:
+          type: [string, "null"]
+    Attempt:
+      type: object
+      required: [attempt, state]
+      properties:
+        id:
+          type: string
+        attempt:
+          type: integer
+          minimum: 1
+        state:
+          $ref: "#/components/schemas/AttemptState"
+        started_at:
+          type: [string, "null"]
+          format: date-time
+        heartbeat_at:
+          type: [string, "null"]
+          format: date-time
+        error_code:
+          type: [string, "null"]
+    Blocker:
+      type: object
+      required: [code, title, responsibility]
+      properties:
+        code:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        responsibility:
+          enum: [RESEARCHER, RESEARCH_LEAD, RISK_REVIEWER, DATA_STEWARD, PLATFORM_ADMIN]
+        policy_version:
+          type: [string, "null"]
+    Candidate:
+      type: object
+      required:
+        - id
+        - disposition
+        - mechanism
+        - expected_direction
+        - lookback
+        - inputs
+        - formula
+        - failure_conditions
+      properties:
+        id:
+          type: string
+        disposition:
+          enum: [ACTIVE, FAILED, DUPLICATE, REJECTED, OVER_BUDGET]
+        mechanism:
+          type: string
+        expected_direction:
+          type: string
+          enum: [POSITIVE, NEGATIVE, NON_MONOTONIC, UNKNOWN]
+        lookback:
+          type: string
+          description: Trading-calendar duration such as 20TD.
+        inputs:
+          type: array
+          items:
+            type: string
+        formula:
+          type: string
+        failure_conditions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        failure_reason:
+          type: [string, "null"]
+    CandidatePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candidate"
+        next_cursor:
+          type: [string, "null"]
+    FactorVersion:
+      type: object
+      required:
+        - factor_id
+        - version
+        - expression_hash
+        - context_hash
+        - compile_status
+        - inputs
+        - temporal_dependencies
+      properties:
+        factor_id:
+          type: string
+        version:
+          type: string
+        expression_hash:
+          type: string
+        context_hash:
+          type: string
+        compile_status:
+          enum: [PENDING, PASSED, FAILED]
+        canonical_ir:
+          type: [object, "null"]
+          additionalProperties: true
+        inputs:
+          type: array
+          items:
+            type: object
+            required: [field_ref, unit, available_time_rule]
+            properties:
+              field_ref:
+                type: string
+              unit:
+                type: string
+              available_time_rule:
+                type: string
+        temporal_dependencies:
+          type: array
+          items:
+            type: string
+        diagnostics:
+          type: array
+          items:
+            type: object
+            required: [severity, code, message]
+            properties:
+              severity:
+                enum: [ERROR, WARNING, INFO]
+              code:
+                type: string
+              message:
+                type: string
+              path:
+                type: [string, "null"]
+    Experiment:
+      type: object
+      required:
+        - id
+        - job_id
+        - spec_state
+        - runs
+        - freshness
+        - allowed_actions
+      properties:
+        id:
+          type: string
+        job_id:
+          type: string
+        spec_state:
+          $ref: "#/components/schemas/ExperimentSpecState"
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExperimentRun"
+        budget:
+          $ref: "#/components/schemas/Budget"
+        budget_used:
+          type: object
+          additionalProperties:
+            type: number
+        freshness:
+          $ref: "#/components/schemas/ResourceFreshness"
+        allowed_actions:
+          type: array
+          items:
+            type: string
+    ExperimentRun:
+      type: object
+      required:
+        - id
+        - state
+        - run_class
+        - attempts
+        - dataset_snapshot_id
+        - rule_set_snapshot_id
+        - run_fingerprint
+      properties:
+        id:
+          type: string
+        state:
+          $ref: "#/components/schemas/ExperimentRunState"
+        run_class:
+          type: string
+          enum: [EXPLORATORY, FORMAL]
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attempt"
+        dataset_snapshot_id:
+          type: string
+        rule_set_snapshot_id:
+          type: string
+        run_fingerprint:
+          type: string
+    GateResult:
+      type: object
+      required: [gate, status, policy_version, checks]
+      properties:
+        gate:
+          enum: [GATE_0, GATE_1, GATE_2, GATE_3, GATE_4, GATE_5]
+        status:
+          enum: [PASS, FAIL, WARN, WAIVED, NOT_RUN]
+        policy_version:
+          type: string
+        checks:
+          type: array
+          items:
+            type: object
+            required: [code, status]
+            properties:
+              code:
+                type: string
+              status:
+                enum: [PASS, FAIL, WARN, WAIVED, NOT_RUN]
+              actual:
+                type: [number, string, "null"]
+              threshold:
+                type: [number, string, "null"]
+              evidence_refs:
+                type: array
+                items:
+                  type: string
+    ValidationBundle:
+      type: object
+      required: [experiment_id, market, gates, freshness]
+      properties:
+        experiment_id:
+          type: string
+        market:
+          $ref: "#/components/schemas/MarketId"
+        gates:
+          type: array
+          items:
+            $ref: "#/components/schemas/GateResult"
+        metrics:
+          type: object
+          additionalProperties:
+            type: [number, string, "null"]
+        freshness:
+          $ref: "#/components/schemas/ResourceFreshness"
+    ResearchReport:
+      type: object
+      required:
+        - id
+        - job_id
+        - experiment_spec_id
+        - experiment_run_id
+        - status
+        - report_kind
+        - code_sha
+        - image_digest
+        - run_fingerprint
+        - policy_version_ids
+        - approval_ids
+        - conclusions
+        - evidence_catalog
+        - manifest
+        - lineage_summary
+      properties:
+        id:
+          type: string
+        job_id:
+          type: string
+        experiment_spec_id:
+          type: string
+        experiment_run_id:
+          type: string
+        status:
+          enum: [DRAFT, SIGNED, SIGNATURE_INVALID, SUPERSEDED]
+        report_kind:
+          enum: [FORMAL_RESEARCH, EXPLORATORY, PAPER_PROXY, LIVE_ACTUAL]
+        code_sha:
+          type: string
+        image_digest:
+          type: string
+        run_fingerprint:
+          type: string
+        policy_version_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        approval_ids:
+          type: array
+          items:
+            type: string
+        conclusions:
+          type: array
+          items:
+            type: object
+            required: [statement, evidence_refs]
+            properties:
+              statement:
+                type: string
+              evidence_refs:
+                type: array
+                items:
+                  type: string
+        limitations:
+          type: array
+          items:
+            type: string
+        evidence_catalog:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRef"
+        manifest:
+          type: object
+          required: [content_hash, signature_status]
+          properties:
+            content_hash:
+              type: string
+            merkle_root:
+              type: string
+            signature_status:
+              enum: [VALID, INVALID, NOT_SIGNED]
+        lineage_summary:
+          type: array
+          items:
+            type: object
+            required: [artifact_id, artifact_type, version]
+            properties:
+              artifact_id:
+                type: string
+              artifact_type:
+                type: string
+              version:
+                type: string
+    EvidenceRef:
+      type: object
+      additionalProperties: false
+      required: [id, artifact_id, content_hash]
+      properties:
+        id:
+          type: string
+        artifact_id:
+          type: string
+        content_hash:
+          type: string
+        page:
+          type: [integer, "null"]
+          minimum: 1
+        bbox:
+          type: [array, "null"]
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+        row_selector:
+          type: [string, "null"]
+        column_selector:
+          type: [string, "null"]
+        metric_path:
+          type: [string, "null"]
+    Approval:
+      type: object
+      required:
+        - id
+        - kind
+        - state
+        - environment
+        - subject
+        - submitted_by
+        - required_approvals
+        - approvals_received
+        - approver_ids
+        - separation_of_duties_ok
+      properties:
+        id:
+          type: string
+        kind:
+          enum: [PREREGISTRATION, GATE_WAIVER, LOCKBOX, ALPHA_POOL, REPORT, PAPER_PUBLISH, LIVE_PUBLISH]
+        state:
+          enum: [PENDING, APPROVED, REJECTED, CHANGES_REQUESTED, EXPIRED]
+        environment:
+          $ref: "#/components/schemas/Environment"
+        subject:
+          type: object
+          required: [id, version]
+          properties:
+            id:
+              type: string
+            version:
+              type: string
+        required_approvals:
+          type: integer
+          minimum: 1
+        approvals_received:
+          type: integer
+          minimum: 0
+        submitted_by:
+          type: string
+        approver_ids:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        separation_of_duties_ok:
+          type: boolean
+        allowed_actions:
+          type: array
+          items:
+            type: string
+    WaiverRequest:
+      type: object
+      required: [policy_code, scope, compensating_controls, expires_at]
+      properties:
+        policy_code:
+          type: string
+        scope:
+          type: string
+        compensating_controls:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+    LineageGraph:
+      type: object
+      required: [root_artifact_id, nodes, edges]
+      properties:
+        root_artifact_id:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineageNode"
+        edges:
+          type: array
+          items:
+            type: object
+            required: [from, to, relation]
+            properties:
+              from:
+                type: string
+              to:
+                type: string
+              relation:
+                type: string
+    LineageNode:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - artifact_type
+        - version
+        - schema_version
+        - content_hash
+        - produced_by_run_id
+      properties:
+        id:
+          type: string
+        artifact_type:
+          type: string
+        version:
+          type: string
+        schema_version:
+          type: string
+        content_hash:
+          type: string
+        produced_by_run_id:
+          type: [string, "null"]
+        code_sha:
+          type: [string, "null"]
+        image_digest:
+          type: [string, "null"]
+        policy_version_ids:
+          type: array
+          items:
+            type: string
+        approval_ids:
+          type: array
+          items:
+            type: string
+    StrategyBuildArtifact:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - strategy_spec_version_id
+        - alpha_pool_version_id
+        - factor_version_ids
+        - dataset_snapshot_id
+        - rule_set_snapshot_id
+        - content_hash
+      properties:
+        id:
+          type: string
+        strategy_spec_version_id:
+          type: string
+        alpha_pool_version_id:
+          type: string
+        factor_version_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        dataset_snapshot_id:
+          type: string
+        rule_set_snapshot_id:
+          type: string
+        content_hash:
+          type: string
+    StrategyPackagePayload:
+      type: object
+      additionalProperties: false
+      required:
+        - package_id
+        - version
+        - strategy_build_artifact_id
+        - formal_backtest_run_id
+        - factor_version_ids
+        - dataset_snapshot_id
+        - rule_set_snapshot_id
+        - risk_model_version_id
+        - cost_model_version_id
+        - execution_model_version_id
+        - code_sha
+        - image_digest
+        - content_hash
+      properties:
+        package_id:
+          type: string
+        version:
+          type: string
+        strategy_build_artifact_id:
+          type: string
+        formal_backtest_run_id:
+          type: string
+        factor_version_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        dataset_snapshot_id:
+          type: string
+        rule_set_snapshot_id:
+          type: string
+        risk_model_version_id:
+          type: string
+        cost_model_version_id:
+          type: string
+        execution_model_version_id:
+          type: string
+        code_sha:
+          type: string
+        image_digest:
+          type: string
+        content_hash:
+          type: string
+    PackageAttestation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - package_content_hash
+        - environment
+        - decision
+        - approved_by
+        - approval_ids
+        - attested_at
+      properties:
+        id:
+          type: string
+        package_content_hash:
+          type: string
+        environment:
+          type: string
+          enum: [PAPER, LIVE]
+        decision:
+          type: string
+          enum: [APPROVE, REJECT, REVOKE]
+        approved_by:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+        approval_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+        attested_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+    ArtifactSummary:
+      type: object
+      required: [id, artifact_type, version, content_hash, created_at, freshness]
+      properties:
+        id:
+          type: string
+        artifact_type:
+          enum: [DatasetSnapshot, TradingRuleVersion, ValidationPolicy, SourceArtifact]
+        version:
+          type: string
+        content_hash:
+          type: string
+        market:
+          oneOf:
+            - $ref: "#/components/schemas/MarketId"
+            - type: "null"
+        effective_at:
+          type: [string, "null"]
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+        license:
+          type: [string, "null"]
+        freshness:
+          $ref: "#/components/schemas/ResourceFreshness"
+    AuditEvent:
+      type: object
+      required:
+        - id
+        - occurred_at
+        - actor
+        - action
+        - resource_id
+        - resource_version
+        - reason
+      properties:
+        id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        action:
+          type: string
+        resource_id:
+          type: string
+        resource_version:
+          type: string
+        reason:
+          type: string
+        parent_artifact_id:
+          type: [string, "null"]
+        request_id:
+          type: string
+    CommandReceipt:
+      type: object
+      required: [command_id, status, resource_id, submitted_at]
+      properties:
+        command_id:
+          type: string
+        status:
+          const: ACCEPTED
+        resource_id:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      required: [type, title, status, code, request_id, retryable]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+        request_id:
+          type: string
+        retryable:
+          type: boolean
+        current_version:
+          type: [string, "null"]
+        field_errors:
+          type: array
+          items:
+            type: object
+            required: [path, code, message]
+            properties:
+              path:
+                type: string
+              code:
+                type: string
+              message:
+                type: string

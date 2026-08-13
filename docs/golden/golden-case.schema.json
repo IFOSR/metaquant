@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quant-platform.local/schemas/golden-case-v1.json",
+  "title": "Quant Platform Market Golden Set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "market", "fixture_class", "cases"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "market": {
+      "enum": ["CN_A", "CN_COMMODITY_FUTURES"]
+    },
+    "fixture_class": {"const": "SYNTHETIC_CONTRACT"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "evidence_status",
+          "formal_eligible",
+          "inputs",
+          "expected"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "evidence_status": {"const": "SYNTHETIC_CONTRACT"},
+          "formal_eligible": {"const": false},
+          "inputs": {"type": "object", "minProperties": 1},
+          "expected": {"type": "object", "minProperties": 1}
+        }
+      }
+    }
+  }
+}

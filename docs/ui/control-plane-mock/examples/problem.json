@@ -1,0 +1,11 @@
+{
+  "type": "https://quant.example/problems/stale-object-version",
+  "title": "对象版本已变化",
+  "status": 409,
+  "detail": "审批对象已从版本 16 更新到版本 17，请刷新并重新检查 diff。",
+  "code": "STALE_OBJECT_VERSION",
+  "request_id": "req_01J5BEXAMPLE",
+  "retryable": false,
+  "current_version": "17",
+  "field_errors": []
+}

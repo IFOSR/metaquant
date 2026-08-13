@@ -1,0 +1,317 @@
+{
+  "schema_version": "factor-ir-golden/v1",
+  "cases": [
+    {
+      "id": "cn-a-price-momentum-20d-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_a.price_momentum_20d",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_A",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-a-liquid-pit/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "close",
+            "field_ref": "market.eod.close_adjusted",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          }
+        ],
+        "expression": {
+          "op": "returns",
+          "args": [{"ref": "close"}],
+          "params": {"periods": 20}
+        },
+        "validation_policy_ref": "policy://cn-a-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_a.price_momentum_20d",
+        "expression_hash": "a4abd97323ca73ecf111804826acb29bf02b06e6d8a71f8a9c99ca7c965871ab",
+        "lookback": 20,
+        "available_time": "T_CLOSE+20m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["returns"]
+      }
+    },
+    {
+      "id": "cn-a-short-term-reversal-5d-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_a.short_term_reversal_5d",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_A",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-a-liquid-pit/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "close",
+            "field_ref": "market.eod.close_adjusted",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          }
+        ],
+        "expression": {
+          "op": "neg",
+          "args": [
+            {
+              "op": "returns",
+              "args": [{"ref": "close"}],
+              "params": {"periods": 5}
+            }
+          ]
+        },
+        "validation_policy_ref": "policy://cn-a-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_a.short_term_reversal_5d",
+        "expression_hash": "db72ed33fdf4d68b6710631e79833cfadf7cc9b1aef2478281c1b21bf3eabb54",
+        "lookback": 5,
+        "available_time": "T_CLOSE+20m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["neg", "returns"]
+      }
+    },
+    {
+      "id": "cn-a-price-volume-correlation-20d-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_a.price_volume_correlation_20d",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_A",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-a-liquid-pit/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "close",
+            "field_ref": "market.eod.close_adjusted",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          },
+          {
+            "alias": "volume",
+            "field_ref": "market.eod.volume",
+            "data_type": "ScalarSeries",
+            "unit": "SHARE",
+            "available_time_rule": "T_CLOSE+25m"
+          }
+        ],
+        "expression": {
+          "op": "ts_corr",
+          "args": [
+            {
+              "op": "returns",
+              "args": [{"ref": "close"}],
+              "params": {"periods": 1}
+            },
+            {
+              "op": "returns",
+              "args": [{"ref": "volume"}],
+              "params": {"periods": 1}
+            }
+          ],
+          "params": {"window": 20}
+        },
+        "validation_policy_ref": "policy://cn-a-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_a.price_volume_correlation_20d",
+        "expression_hash": "280f357ca8e852745d5847cb42248bf08df0f753fe71d9e66acee8294e599e76",
+        "lookback": 20,
+        "available_time": "T_CLOSE+25m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["returns", "ts_corr"]
+      }
+    },
+    {
+      "id": "cn-futures-time-series-momentum-60d-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_futures.time_series_momentum_60d",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_COMMODITY_FUTURES",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-commodity-liquid-pit/v1",
+          "exchange_scope": ["SHFE", "INE", "DCE", "CZCE", "GFEX"],
+          "contract_chain_ref": "chain://commodity/main-volume-pit/v1",
+          "roll_policy_ref": "policy://roll/volume-no-future/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "settlement",
+            "field_ref": "market.daily.settlement",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          }
+        ],
+        "expression": {
+          "op": "returns",
+          "args": [{"ref": "settlement"}],
+          "params": {"periods": 60}
+        },
+        "validation_policy_ref": "policy://cn-commodity-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_futures.time_series_momentum_60d",
+        "expression_hash": "560594a5146f99f328e29d2434000c0f43d85ce0a401a5c9d380525c5247995d",
+        "lookback": 60,
+        "available_time": "T_CLOSE+20m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["returns"]
+      }
+    },
+    {
+      "id": "cn-futures-curve-carry-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_futures.curve_carry",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_COMMODITY_FUTURES",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-commodity-liquid-pit/v1",
+          "exchange_scope": ["SHFE", "INE", "DCE", "CZCE", "GFEX"],
+          "contract_chain_ref": "chain://commodity/near-far-pit/v1",
+          "roll_policy_ref": "policy://roll/volume-no-future/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "near_settlement",
+            "field_ref": "curve.near.settlement",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          },
+          {
+            "alias": "far_settlement",
+            "field_ref": "curve.far.settlement",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          }
+        ],
+        "expression": {
+          "op": "safe_div",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {"ref": "near_settlement"},
+                {"ref": "far_settlement"}
+              ]
+            },
+            {"ref": "far_settlement"}
+          ],
+          "params": {"zero_policy": "null"}
+        },
+        "validation_policy_ref": "policy://cn-commodity-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_futures.curve_carry",
+        "expression_hash": "05ff36363110ae07559d4f11cce97df3fc414316fe96d7758e8fe9c762e0d538",
+        "lookback": 0,
+        "available_time": "T_CLOSE+20m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["safe_div", "sub"]
+      }
+    },
+    {
+      "id": "cn-futures-price-open-interest-correlation-20d-v1",
+      "ir": {
+        "schema_version": "factor-ir/v1",
+        "factor_id": "classic.cn_futures.price_open_interest_correlation_20d",
+        "version": "1.0.0",
+        "market_scope": {
+          "market": "CN_COMMODITY_FUTURES",
+          "frequency": "1d",
+          "universe_ref": "universe://cn-commodity-liquid-pit/v1",
+          "exchange_scope": ["SHFE", "INE", "DCE", "CZCE", "GFEX"],
+          "contract_chain_ref": "chain://commodity/main-volume-pit/v1",
+          "roll_policy_ref": "policy://roll/volume-no-future/v1"
+        },
+        "decision_clock": {
+          "signal_time": "T_CLOSE+30m",
+          "earliest_trade_time": "T+1_OPEN"
+        },
+        "inputs": [
+          {
+            "alias": "settlement",
+            "field_ref": "market.daily.settlement",
+            "data_type": "ScalarSeries",
+            "unit": "CNY",
+            "available_time_rule": "T_CLOSE+20m"
+          },
+          {
+            "alias": "open_interest",
+            "field_ref": "market.daily.open_interest",
+            "data_type": "ScalarSeries",
+            "unit": "LOT",
+            "available_time_rule": "T_CLOSE+25m"
+          }
+        ],
+        "expression": {
+          "op": "ts_corr",
+          "args": [
+            {
+              "op": "returns",
+              "args": [{"ref": "settlement"}],
+              "params": {"periods": 1}
+            },
+            {
+              "op": "returns",
+              "args": [{"ref": "open_interest"}],
+              "params": {"periods": 1}
+            }
+          ],
+          "params": {"window": 20}
+        },
+        "validation_policy_ref": "policy://cn-commodity-daily-factor/v1"
+      },
+      "expected": {
+        "factor_id": "classic.cn_futures.price_open_interest_correlation_20d",
+        "expression_hash": "823cbb857b37c8578c95fbe431326a9aba661014e90569872c20555840edf0fc",
+        "lookback": 20,
+        "available_time": "T_CLOSE+25m",
+        "output_kind": "ScalarSeries",
+        "output_unit": "1",
+        "operators": ["returns", "ts_corr"]
+      }
+    }
+  ]
+}

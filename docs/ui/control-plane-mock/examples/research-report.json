@@ -1,0 +1,75 @@
+{
+  "id": "report_20260811_0042_v1",
+  "job_id": "rj_20260811_0042",
+  "experiment_spec_id": "exp_spec_0042_v1",
+  "experiment_run_id": "exp_run_0042_003",
+  "status": "SIGNED",
+  "report_kind": "FORMAL_RESEARCH",
+  "code_sha": "git:9d92c4f",
+  "image_digest": "sha256:image-example-44d1",
+  "run_fingerprint": "sha256:7a45df0f-example-only-12bc",
+  "policy_version_ids": [
+    "validation-policy://cn-commodity-futures/1.2.0",
+    "cost-policy://cn-commodity-futures/1.0.0"
+  ],
+  "approval_ids": [
+    "approval_report_0042"
+  ],
+  "conclusions": [
+    {
+      "statement": "候选因子在预注册 OOS 区间保持方向一致，但成本后容量未达到晋级阈值。",
+      "evidence_refs": [
+        "validation://exp_0042/gate-2/oos-direction",
+        "validation://exp_0042/gate-4/capacity"
+      ]
+    }
+  ],
+  "limitations": [
+    "结果仅覆盖首批流动性达标商品期货品种。",
+    "报告不构成 Alpha Pool 晋级或策略发布批准。"
+  ],
+  "evidence_catalog": [
+    {
+      "id": "evidence_oos_direction",
+      "artifact_id": "validation://exp_run_0042_003/gate-2/oos-direction",
+      "content_hash": "sha256:evidence-oos-example",
+      "page": 4,
+      "bbox": [72.0, 118.0, 510.0, 302.0],
+      "row_selector": null,
+      "column_selector": null,
+      "metric_path": "oos.rank_ic"
+    },
+    {
+      "id": "evidence_capacity",
+      "artifact_id": "validation://exp_run_0042_003/gate-4/capacity",
+      "content_hash": "sha256:evidence-capacity-example",
+      "page": 7,
+      "bbox": [70.0, 96.0, 515.0, 344.0],
+      "row_selector": null,
+      "column_selector": null,
+      "metric_path": "capacity.net_alpha"
+    }
+  ],
+  "manifest": {
+    "content_hash": "sha256:report-example-8e2d",
+    "merkle_root": "sha256:merkle-example-908a",
+    "signature_status": "VALID"
+  },
+  "lineage_summary": [
+    {
+      "artifact_id": "factor://term-structure-momentum/1.0.0",
+      "artifact_type": "CompiledIR",
+      "version": "1.0.0"
+    },
+    {
+      "artifact_id": "snapshot://cn-futures/eod/2026-08-08/v4",
+      "artifact_type": "DatasetSnapshot",
+      "version": "v4"
+    },
+    {
+      "artifact_id": "rules://cn-futures/2026-08/v2",
+      "artifact_type": "TradingRuleVersion",
+      "version": "v2"
+    }
+  ]
+}

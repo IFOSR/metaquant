@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quant-platform"
+version = "0.1.0"
+description = "Deterministic quant research platform control-plane baseline"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic==1.16.4",
+  "fastapi==0.116.1",
+  "minio==7.2.16",
+  "psycopg[binary]==3.2.9",
+  "pydantic-settings==2.10.1",
+  "sqlalchemy==2.0.42",
+  "uvicorn[standard]==0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "mypy==1.17.1",
+  "pytest==8.4.1",
+  "pytest-cov==6.2.1",
+  "pyyaml==6.0.3",
+  "ruff==0.12.4",
+]
+orchestration = [
+  "dagster==1.11.5",
+  "dagster-webserver==1.11.5",
+]
+tracking = [
+  "boto3==1.39.16",
+  "mlflow==3.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quant_platform"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+  "integration: requires Docker-managed PostgreSQL and MinIO",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["quant_platform"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["dagster", "dagster.*", "minio", "minio.*"]
+ignore_missing_imports = true

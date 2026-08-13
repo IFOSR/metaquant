@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quant-platform.local/schemas/factor-ir/v1",
+  "title": "Factor IR v1",
+  "description": "Closed, declarative schema for daily CN_A and CN_COMMODITY_FUTURES factor compilation. It describes factor computation but never return calculation or execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "factor_id",
+    "version",
+    "market_scope",
+    "decision_clock",
+    "inputs",
+    "expression",
+    "validation_policy_ref"
+  ],
+  "properties": {
+    "schema_version": {"const": "factor-ir/v1"},
+    "factor_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "origin": {"type": "object"},
+    "economic_thesis": {"type": "object"},
+    "market_scope": {"$ref": "#/$defs/marketScope"},
+    "decision_clock": {"$ref": "#/$defs/decisionClock"},
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/input"}
+    },
+    "expression": {"$ref": "#/$defs/expression"},
+    "postprocess": {"$ref": "#/$defs/postprocess"},
+    "missing_policy": {"$ref": "#/$defs/missingPolicy"},
+    "validation_policy_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*://.+$"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "marketScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "frequency", "universe_ref"],
+      "properties": {
+        "market": {
+          "enum": ["CN_A", "CN_COMMODITY_FUTURES"]
+        },
+        "frequency": {"const": "1d"},
+        "universe_ref": {"type": "string", "minLength": 1},
+        "exchange_scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["SHFE", "INE", "DCE", "CZCE", "GFEX"]
+          }
+        },
+        "contract_chain_ref": {"type": "string", "minLength": 1},
+        "roll_policy_ref": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "market": {"const": "CN_COMMODITY_FUTURES"}
+            },
+            "required": ["market"]
+          },
+          "then": {
+            "required": [
+              "exchange_scope",
+              "contract_chain_ref",
+              "roll_policy_ref"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["exchange_scope"]},
+                {"required": ["contract_chain_ref"]},
+                {"required": ["roll_policy_ref"]}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "decisionClock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal_time", "earliest_trade_time"],
+      "properties": {
+        "signal_time": {
+          "type": "string",
+          "pattern": "^T(?:_CLOSE|_OPEN)?(?:[+-]\\d+(?:m|h))?$"
+        },
+        "earliest_trade_time": {
+          "type": "string",
+          "pattern": "^(?:T(?:_CLOSE|_OPEN)?(?:[+-]\\d+(?:m|h))?|T\\+\\d+_(?:OPEN|CLOSE)(?:\\+\\d+(?:m|h))?)$"
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "field_ref",
+        "data_type",
+        "unit",
+        "available_time_rule"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "field_ref": {"type": "string", "minLength": 1},
+        "data_type": {
+          "enum": [
+            "ScalarSeries",
+            "CrossSection",
+            "EventSeries",
+            "UniverseMask",
+            "ExposureMatrix"
+          ],
+          "not": {"const": "LabelSeries"}
+        },
+        "unit": {"type": "string", "minLength": 1},
+        "available_time_rule": {
+          "type": "string",
+          "pattern": "^T(?:_CLOSE|_OPEN)?(?:[+-]\\d+(?:m|h))?$"
+        }
+      }
+    },
+    "missingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_missing_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "min_observations": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "imputation": {
+          "enum": [
+            "none",
+            "zero",
+            "cross_section_median",
+            "group_median"
+          ]
+        },
+        "stale_limit": {
+          "type": "string",
+          "pattern": "^\\d+TD$"
+        }
+      }
+    },
+    "postprocess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/postprocessStep"}
+        }
+      }
+    },
+    "postprocessStep": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "params"],
+          "properties": {
+            "op": {"const": "winsorize"},
+            "params": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["method", "limit"],
+              "properties": {
+                "method": {"const": "mad"},
+                "limit": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op"],
+          "properties": {
+            "op": {"const": "zscore"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op"],
+          "properties": {
+            "op": {"const": "cs_rank"}
+          }
+        }
+      ]
+    },
+    "expression": {
+      "oneOf": [
+        {"$ref": "#/$defs/reference"},
+        {"$ref": "#/$defs/literal"},
+        {"$ref": "#/$defs/call"}
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "literal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["literal"],
+      "properties": {
+        "literal": {"type": "number"},
+        "unit": {"type": "string", "minLength": 1}
+      }
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "args"],
+      "properties": {
+        "op": {
+          "enum": [
+            "neg",
+            "abs",
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "safe_div",
+            "log",
+            "signed_power",
+            "clip",
+            "lag",
+            "delta",
+            "returns",
+            "rolling_mean",
+            "rolling_std",
+            "rolling_min",
+            "rolling_max",
+            "ts_rank",
+            "ts_corr",
+            "cs_rank",
+            "zscore",
+            "winsorize"
+          ]
+        },
+        "args": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/expression"}
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "integer", "boolean", "null"]
+          }
+        }
+      }
+    }
+  }
+}

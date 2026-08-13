@@ -1,0 +1,152 @@
+{
+  "schema_version": "1.0",
+  "market": "CN_A",
+  "fixture_class": "SYNTHETIC_CONTRACT",
+  "cases": [
+    {
+      "id": "cn-a-t-plus-one-mixed-lots-v1",
+      "kind": "t_plus_one",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "trade_date": "2026-08-11",
+        "lots": [
+          {"quantity": 100, "acquired_on": "2026-08-10"},
+          {"quantity": 200, "acquired_on": "2026-08-11"}
+        ]
+      },
+      "expected": {"sellable_quantity": 100}
+    },
+    {
+      "id": "cn-a-main-board-limit-v1",
+      "kind": "price_limit",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "basis_price": "9.10",
+        "percentage": "0.10",
+        "tick_size": "0.01"
+      },
+      "expected": {"lower": "8.19", "upper": "10.01"}
+    },
+    {
+      "id": "cn-a-st-limit-v1",
+      "kind": "price_limit",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "basis_price": "9.10",
+        "percentage": "0.05",
+        "tick_size": "0.01"
+      },
+      "expected": {"lower": "8.65", "upper": "9.56"}
+    },
+    {
+      "id": "cn-a-one-price-upper-limit-v1",
+      "kind": "tradability",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "side": "BUY",
+        "halted": false,
+        "volume": 1200,
+        "high": "11.00",
+        "low": "11.00",
+        "upper_limit": "11.00",
+        "lower_limit": "9.00"
+      },
+      "expected": {
+        "certainty": "BLOCKED",
+        "reason": "locked_upper_limit"
+      }
+    },
+    {
+      "id": "cn-a-suspension-v1",
+      "kind": "tradability",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "side": "SELL",
+        "halted": true,
+        "volume": 0,
+        "high": "10.00",
+        "low": "10.00",
+        "upper_limit": "11.00",
+        "lower_limit": "9.00"
+      },
+      "expected": {"certainty": "BLOCKED", "reason": "trading_halt"}
+    },
+    {
+      "id": "cn-a-st-effective-date-v1",
+      "kind": "status",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "status": "ST",
+        "announced_at": "2026-08-10T08:00:00+00:00",
+        "effective_from": "2026-08-11",
+        "trade_date": "2026-08-11",
+        "decision_at": "2026-08-10T09:00:00+00:00"
+      },
+      "expected": {"status": "ST"}
+    },
+    {
+      "id": "cn-a-historical-index-membership-v1",
+      "kind": "membership",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "index_id": "CSI300_PIT",
+        "instrument_id": "600000.SSE",
+        "announced_at": "2026-06-01T08:00:00+00:00",
+        "effective_from": "2026-06-12",
+        "trade_date": "2026-06-12",
+        "decision_at": "2026-06-11T08:00:00+00:00"
+      },
+      "expected": {"included": true}
+    },
+    {
+      "id": "cn-a-cash-dividend-payable-v1",
+      "kind": "corporate_action",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "action": "cash_dividend",
+        "quantity": 100,
+        "cash": "1000.00",
+        "cost_basis_per_share": "10.00",
+        "record_date": "2026-07-01",
+        "ex_date": "2026-07-02",
+        "payable_date": "2026-07-05",
+        "cash_per_share": "0.50",
+        "as_of": "2026-07-05"
+      },
+      "expected": {
+        "quantity": 100,
+        "cash": "1050.00",
+        "cost_basis_per_share": "10.00"
+      }
+    },
+    {
+      "id": "cn-a-split-v1",
+      "kind": "corporate_action",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "action": "split",
+        "quantity": 100,
+        "cash": "1000.00",
+        "cost_basis_per_share": "10.00",
+        "record_date": "2026-07-01",
+        "ex_date": "2026-07-02",
+        "ratio": "1.5",
+        "as_of": "2026-07-02"
+      },
+      "expected": {
+        "quantity": 150,
+        "cash": "1000.00",
+        "cost_basis_per_share": "6.666666666666666666666666667"
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+[
+  {
+    "snapshot_id": "snapshot-cn-a-001",
+    "frozen_at": "2026-08-12T15:00:00+00:00",
+    "sealed": true,
+    "artifact_class": "FORMAL",
+    "market": "CN_A",
+    "universe_ref": "universe://csi300-pit/v1",
+    "frequency": "1d",
+    "decision_clock": "T_CLOSE+30m",
+    "trade_clock": "T+1_OPEN",
+    "purpose": "RESEARCH",
+    "allowed_license_tags": [
+      "licensed-research"
+    ],
+    "datasets": [
+      {
+        "dataset_id": "market-eod",
+        "source_id": "licensed-source",
+        "source_class": "FORMAL",
+        "fields": [
+          {
+            "name": "market.eod.close_adjusted",
+            "value_type": "decimal",
+            "unit": "CNY",
+            "license_tag": "licensed-research",
+            "allowed_purposes": [
+              "RESEARCH"
+            ]
+          },
+          {
+            "name": "future_sentinel",
+            "value_type": "decimal",
+            "unit": "1",
+            "license_tag": "licensed-research",
+            "allowed_purposes": [
+              "RESEARCH"
+            ]
+          }
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "dataset_id": "market-eod",
+        "field": "market.eod.close_adjusted",
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-01T15:00:00+00:00",
+        "available_time": "2026-08-01T15:00:00+00:00",
+        "ingested_at": "2026-08-01T15:00:00+00:00",
+        "revision_id": "r1",
+        "source_id": "licensed-source",
+        "license_tag": "licensed-research",
+        "value": 10
+      },
+      {
+        "dataset_id": "market-eod",
+        "field": "market.eod.close_adjusted",
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-02T15:00:00+00:00",
+        "available_time": "2026-08-02T15:00:00+00:00",
+        "ingested_at": "2026-08-02T15:00:00+00:00",
+        "revision_id": "r1",
+        "source_id": "licensed-source",
+        "license_tag": "licensed-research",
+        "value": 12
+      },
+      {
+        "dataset_id": "market-eod",
+        "field": "market.eod.close_adjusted",
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-09T15:00:00+00:00",
+        "available_time": "2026-08-11T15:00:00+00:00",
+        "ingested_at": "2026-08-11T15:00:00+00:00",
+        "revision_id": "future",
+        "source_id": "licensed-source",
+        "license_tag": "licensed-research",
+        "value": -999999
+      },
+      {
+        "dataset_id": "market-eod",
+        "field": "future_sentinel",
+        "instrument_id": "600000.SSE",
+        "event_time": "2026-08-02T15:00:00+00:00",
+        "available_time": "2026-08-02T15:00:00+00:00",
+        "ingested_at": "2026-08-02T15:00:00+00:00",
+        "revision_id": "sentinel",
+        "source_id": "licensed-source",
+        "license_tag": "licensed-research",
+        "value": 999999
+      }
+    ]
+  }
+]

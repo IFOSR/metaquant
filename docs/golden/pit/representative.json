@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0",
+  "evidence_status": "SYNTHETIC_CONTRACT",
+  "formal_eligible": false,
+  "snapshot_id": "pit-representative-v1",
+  "frozen_at": "2026-08-10T00:00:00+00:00",
+  "rows": [
+    {
+      "dataset_id": "cn_a_master",
+      "field": "index_membership",
+      "instrument_id": "600000.SSE",
+      "event_time": "2026-08-01T00:00:00+08:00",
+      "available_time": "2026-07-25T18:00:00+08:00",
+      "ingested_at": "2026-07-25T18:05:00+08:00",
+      "revision_id": "membership-r1",
+      "value": {
+        "index_id": "000300.CSI",
+        "member": true,
+        "effective_from": "2026-08-01",
+        "effective_to": null
+      }
+    },
+    {
+      "dataset_id": "cn_a_master",
+      "field": "security_status",
+      "instrument_id": "600000.SSE",
+      "event_time": "2026-08-04T00:00:00+08:00",
+      "available_time": "2026-08-04T18:00:00+08:00",
+      "ingested_at": "2026-08-04T18:05:00+08:00",
+      "revision_id": "status-r1",
+      "value": {
+        "status": "ST",
+        "effective_from": "2026-08-05",
+        "effective_to": null
+      }
+    },
+    {
+      "dataset_id": "cn_a_master",
+      "field": "security_status",
+      "instrument_id": "000001.SSE",
+      "event_time": "2026-08-04T00:00:00+08:00",
+      "available_time": "2026-08-05T09:00:00+08:00",
+      "ingested_at": "2026-08-05T09:05:00+08:00",
+      "revision_id": "status-late-r1",
+      "value": {
+        "status": "SUSPENDED",
+        "effective_from": "2026-08-05",
+        "effective_to": null
+      }
+    },
+    {
+      "dataset_id": "futures_master",
+      "field": "actual_contract",
+      "instrument_id": "RB2610.SHFE",
+      "event_time": "2026-01-01T00:00:00+08:00",
+      "available_time": "2026-01-01T08:00:00+08:00",
+      "ingested_at": "2026-01-01T08:05:00+08:00",
+      "revision_id": "contract-r1",
+      "value": {
+        "product": "RB",
+        "exchange": "SHFE",
+        "listed_on": "2026-01-01",
+        "last_trade_date": "2026-10-15",
+        "tradable": true,
+        "continuous": false
+      }
+    },
+    {
+      "dataset_id": "futures_master",
+      "field": "actual_contract",
+      "instrument_id": "RB.CONTINUOUS",
+      "event_time": "2026-01-01T00:00:00+08:00",
+      "available_time": "2026-01-01T08:00:00+08:00",
+      "ingested_at": "2026-01-01T08:05:00+08:00",
+      "revision_id": "continuous-r1",
+      "value": {
+        "product": "RB",
+        "exchange": "SHFE",
+        "listed_on": "2026-01-01",
+        "last_trade_date": "2026-12-31",
+        "tradable": false,
+        "continuous": true
+      }
+    }
+  ]
+}

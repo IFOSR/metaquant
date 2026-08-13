@@ -25,6 +25,11 @@ from quant_platform.validation.robustness import (
     run_negative_controls,
     run_parameter_neighborhood,
 )
+from quant_platform.validation.statistics import (
+    benjamini_hochberg,
+    deflated_sharpe_ratio,
+    probability_of_backtest_overfitting,
+)
 from quant_platform.validation.validator import (
     CrossSection,
     DataQualityReport,
@@ -58,7 +63,10 @@ __all__ = [
     "ValidationPolicyCatalog",
     "align_cross_sections",
     "assert_label_pit_safe",
+    "benjamini_hochberg",
+    "deflated_sharpe_ratio",
     "perturb_factor",
+    "probability_of_backtest_overfitting",
     "run_negative_controls",
     "run_parameter_neighborhood",
     "validate_factor",

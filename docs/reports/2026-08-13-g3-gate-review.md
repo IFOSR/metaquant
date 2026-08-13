@@ -88,10 +88,10 @@ $ make check (equivalent, with source/tests volume-mounted)
 104 files already formatted
 All checks passed!
 Success: no issues found in 98 source files
-215 passed, 2 skipped
+216 passed, 2 skipped
 ```
 
-The 215 tests include the G3 experiment contract/precondition tests, factor
+The 216 tests include the G3 experiment contract/precondition tests, factor
 executor contract/executor tests, artifact store tests, and experiment
 execution API tests. The 2 skipped tests are G3 infrastructure tests that
 require the integration environment (see 3.3).
@@ -120,8 +120,8 @@ and the G3 PostgreSQL/MinIO integration tests passed before cleanup.
 
 ## 4. Independent-review remediation
 
-An independent review found eight defects. Seven were remediated and
-re-verified; one remains as a recorded issue (section 5).
+An independent review found eight defects. All eight were remediated and
+re-verified.
 
 ### Remediated
 
@@ -169,13 +169,14 @@ re-verified; one remains as a recorded issue (section 5).
   override. `image_digest` and `executor_version` remain deployment-supplied
   identifiers.
 
-## 5. Remaining issues (not remediated in this gate)
-
-- **R8 (LOW) — Attempt/Run state machines are not enforced at construction.**
-  Transition validation lives in `transition()` methods; the frozen dataclass
-  constructors do not reject an invalid initial state. Normal flows go through
-  the repository and transition methods, so this is a defense-in-depth gap
-  rather than an exploitable path.
+- **R8 (LOW)** — `Attempt` construction did not validate its invariants (a
+  non-positive ordinal or a naive timestamp could be constructed directly).
+  Added `Attempt.__post_init__` to validate the identifier, positive ordinal,
+  and timezone-aware timestamps. Full state-machine enforcement at
+  construction remains an accepted trade-off: `dataclasses.replace` (which
+  `transition()` relies on) re-enters the constructor, so requiring `QUEUED`
+  there would break transitions. Construction is gated by the `queued()`
+  factory and transitions by `transition()`.
 
 ## 6. Gate decision
 
@@ -185,7 +186,7 @@ fail-closed preconditions, PostgreSQL transaction/audit/outbox/idempotency
 semantics, reversible migration, and frontend experiment monitoring are all
 implemented and pass the full verification chain.
 
-The gate passes. R8 is recorded and may be addressed alongside G4 planning.
+The gate passes.
 
 G3 must preserve:
 

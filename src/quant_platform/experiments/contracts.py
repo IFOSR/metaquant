@@ -356,6 +356,14 @@ class Attempt:
     queued_at: datetime
     updated_at: datetime
 
+    def __post_init__(self) -> None:
+        _required(self.attempt_id, "attempt_id")
+        _required(self.run_id, "run_id")
+        if self.ordinal < 1:
+            raise ValueError("attempt ordinal must be positive")
+        _aware(self.queued_at, "queued_at")
+        _aware(self.updated_at, "updated_at")
+
     @classmethod
     def queued(
         cls,

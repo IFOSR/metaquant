@@ -343,3 +343,25 @@ def test_run_fingerprint_binds_every_execution_identity_field() -> None:
         changed = dict(inputs)
         changed[field] = replacement
         assert compute_run_fingerprint(**changed) != baseline
+
+
+def test_attempt_direct_construction_validates_invariants() -> None:
+    with pytest.raises(ValueError, match="ordinal"):
+        Attempt(
+            attempt_id="attempt-001",
+            run_id="run-001",
+            ordinal=0,
+            state=AttemptState.QUEUED,
+            queued_at=at(),
+            updated_at=at(),
+        )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        Attempt(
+            attempt_id="attempt-001",
+            run_id="run-001",
+            ordinal=1,
+            state=AttemptState.QUEUED,
+            queued_at=datetime(2026, 8, 12, 12),
+            updated_at=at(),
+        )

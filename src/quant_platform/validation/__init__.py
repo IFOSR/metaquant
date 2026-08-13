@@ -12,6 +12,11 @@ from quant_platform.validation.contracts import (
     LabelSeries,
     assert_label_pit_safe,
 )
+from quant_platform.validation.independence import (
+    IndependenceReport,
+    PairwiseCorrelation,
+    run_independence_analysis,
+)
 from quant_platform.validation.label_snapshot import (
     FormalLabelSnapshot,
     InMemoryLabelSnapshotCatalog,
@@ -69,6 +74,7 @@ __all__ = [
     "InMemoryAlphaPoolCatalog",
     "InMemoryLabelSnapshotCatalog",
     "InMemoryValidationPolicyCatalog",
+    "IndependenceReport",
     "JsonLabelSnapshotCatalog",
     "JsonValidationPolicyCatalog",
     "LabelObservation",
@@ -78,6 +84,7 @@ __all__ = [
     "LifecycleState",
     "NegativeControlReport",
     "ParameterNeighborhoodReport",
+    "PairwiseCorrelation",
     "PredictivePowerReport",
     "QuantileReturn",
     "RobustnessReport",
@@ -93,6 +100,7 @@ __all__ = [
     "perturb_factor",
     "probability_of_backtest_overfitting",
     "run_negative_controls",
+    "run_independence_analysis",
     "run_parameter_neighborhood",
     "run_robustness",
     "validate_factor",

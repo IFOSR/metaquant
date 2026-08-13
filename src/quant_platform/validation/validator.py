@@ -18,10 +18,8 @@ from quant_platform.experiments import (
     FactorComputationArtifact,
     canonical_hash,
 )
-from quant_platform.validation import (
-    LabelSeries,
-    ValidationPolicy,
-)
+from quant_platform.validation.contracts import LabelSeries
+from quant_platform.validation.policy import ValidationPolicy
 
 
 @dataclass(frozen=True, slots=True)

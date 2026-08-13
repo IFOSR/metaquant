@@ -10,6 +10,7 @@ from quant_platform.experiment_runtime.repository import (
     SqlAlchemyExperimentRepository,
 )
 from quant_platform.experiment_runtime.schemas import (
+    AssessRobustnessCommand,
     PreregisterExperimentCommand,
     RunExperimentCommand,
     ValidateExperimentCommand,
@@ -154,6 +155,34 @@ def build_experiment_router(
                 policy_id=command.policy_id,
                 label_snapshot_id=command.label_snapshot_id,
                 label_snapshot_manifest_hash=command.label_snapshot_manifest_hash,
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+        return receipt.model_dump(mode="json")
+
+    @router.post("/experiment-runs/{run_id}:assess-robustness", status_code=202)
+    def assess_robustness(
+        run_id: str,
+        command: AssessRobustnessCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+        idempotency_key: str = Header(alias="Idempotency-Key", min_length=16),
+    ) -> dict[str, Any]:
+        try:
+            receipt = repository.assess_robustness(
+                actor_id=actor.actor_id,
+                scopes=actor.scopes({"research.experiments.run"}),
+                run_id=run_id,
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(
+                    {"run_id": run_id, **command.model_dump(mode="json")}
+                ),
+                reason=command.metadata.reason,
+                parent_artifact_id=command.metadata.parent_artifact_id,
+                policy_id=command.policy_id,
+                label_snapshot_id=command.label_snapshot_id,
+                label_snapshot_manifest_hash=command.label_snapshot_manifest_hash,
+                n_shuffles=command.n_shuffles,
+                seed=command.seed,
             )
         except ValueError as exc:
             raise _problem(exc) from exc

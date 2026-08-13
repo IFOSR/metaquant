@@ -10,9 +10,11 @@ from quant_platform.validation import (
     ICSign,
     LabelObservation,
     LabelSeries,
+    TrialLedger,
     ValidationPolicy,
     run_negative_controls,
     run_parameter_neighborhood,
+    run_robustness,
 )
 
 
@@ -165,3 +167,25 @@ def test_negative_factor_keeps_sign_under_perturbation() -> None:
 
     assert report.baseline_ic == pytest.approx(-1.0)
     assert report.stable is True
+
+
+def test_run_robustness_is_deterministic() -> None:
+    artifact, series = perfect_factor_and_label()
+    ledger = TrialLedger()
+
+    first = run_robustness(artifact, series, policy(), ledger, n_shuffles=10, seed=3)
+    second = run_robustness(artifact, series, policy(), ledger, n_shuffles=10, seed=3)
+
+    assert first == second
+    assert first.content_hash() == second.content_hash()
+
+
+def test_run_robustness_aggregates_controls_and_ledger() -> None:
+    artifact, series = perfect_factor_and_label()
+    ledger = TrialLedger()
+
+    report = run_robustness(artifact, series, policy(), ledger, n_shuffles=10, seed=0)
+
+    assert report.trial_ledger_hash == ledger.content_hash()
+    assert report.negative_control.observed_ic == pytest.approx(1.0)
+    assert report.parameter_neighborhood.stable is True

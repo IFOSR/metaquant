@@ -25,6 +25,7 @@ from quant_platform.research.models import (
     ExperimentLineageModel,
     ExperimentRunModel,
     FactorValidationModel,
+    TrialLedgerModel,
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.validation import (
@@ -300,3 +301,72 @@ def test_postgres_validate_command_stores_report_and_lineage() -> None:
 
     assert lineage_after == lineage_before + 1
     assert validation_after == validation_before + 1
+
+
+def test_postgres_assess_robustness_stores_report_and_ledger() -> None:
+    engine = create_engine(_database_url(), pool_pre_ping=True)
+    experiments = _validation_repository(engine)
+    app = create_app(
+        readiness_probe=lambda: {"postgres": True, "minio": True},
+        research_repository=experiments._research,
+        experiment_repository=experiments,
+        research_principal_provider=provider,
+    )
+    with TestClient(app) as client:
+        job_id, brief_id = create_frozen_brief(client)
+        registered = client.post(
+            "/v1/experiments:preregister",
+            headers=headers("g3-pg-robust-preregister-0001"),
+            json=preregister_command(job_id, brief_id),
+        )
+        registered.raise_for_status()
+        experiment_id = registered.json()["resource_id"]
+        run_response = client.post(
+            f"/v1/experiments/{experiment_id}:run",
+            headers=headers("g3-pg-robust-run-0001", '"1"'),
+            json=run_command(),
+        )
+        run_response.raise_for_status()
+        run_id = run_response.json()["resource_id"]
+
+        with engine.connect() as connection:
+            ledger_before = (
+                connection.scalar(select(func.count()).select_from(TrialLedgerModel))
+                or 0
+            )
+            lineage_before = (
+                connection.scalar(
+                    select(func.count()).select_from(ExperimentLineageModel)
+                )
+                or 0
+            )
+
+        label_snap = label_snapshot()
+        assessed = client.post(
+            f"/v1/experiment-runs/{run_id}:assess-robustness",
+            headers=headers("g3-pg-robustness-0001"),
+            json={
+                "metadata": metadata("Assess robustness"),
+                "policy_id": "policy://cn-a-daily-factor/v1",
+                "label_snapshot_id": label_snap.snapshot_id,
+                "label_snapshot_manifest_hash": label_snap.content_hash(),
+                "n_shuffles": 5,
+                "seed": 0,
+            },
+        )
+        assessed.raise_for_status()
+
+        with engine.connect() as connection:
+            ledger_after = (
+                connection.scalar(select(func.count()).select_from(TrialLedgerModel))
+                or 0
+            )
+            lineage_after = (
+                connection.scalar(
+                    select(func.count()).select_from(ExperimentLineageModel)
+                )
+                or 0
+            )
+
+    assert ledger_after == ledger_before + 1
+    assert lineage_after == lineage_before + 1

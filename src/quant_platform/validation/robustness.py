@@ -17,6 +17,7 @@ from quant_platform.experiments import (
 )
 from quant_platform.validation.contracts import LabelObservation, LabelSeries
 from quant_platform.validation.policy import ValidationPolicy
+from quant_platform.validation.trial_ledger import TrialLedger
 from quant_platform.validation.validator import FactorValidationReport, validate_factor
 
 
@@ -187,4 +188,40 @@ def run_parameter_neighborhood(
         mean_ic=mean,
         ic_spread=spread,
         stable=stable,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RobustnessReport:
+    negative_control: NegativeControlReport
+    parameter_neighborhood: ParameterNeighborhoodReport
+    trial_ledger_hash: str
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema_version": "robustness/v1",
+            "negative_control": self.negative_control.payload(),
+            "parameter_neighborhood": self.parameter_neighborhood.payload(),
+            "trial_ledger_hash": self.trial_ledger_hash,
+        }
+
+    def content_hash(self) -> str:
+        return canonical_hash(self.payload())
+
+
+def run_robustness(
+    factor: FactorComputationArtifact,
+    label: LabelSeries,
+    policy: ValidationPolicy,
+    ledger: TrialLedger,
+    *,
+    n_shuffles: int = 100,
+    seed: int = 0,
+) -> RobustnessReport:
+    return RobustnessReport(
+        negative_control=run_negative_controls(
+            factor, label, policy, n_shuffles=n_shuffles, seed=seed
+        ),
+        parameter_neighborhood=run_parameter_neighborhood(factor, label, policy),
+        trial_ledger_hash=ledger.content_hash(),
     )

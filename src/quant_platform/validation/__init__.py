@@ -21,9 +21,11 @@ from quant_platform.validation.policy import (
 from quant_platform.validation.robustness import (
     NegativeControlReport,
     ParameterNeighborhoodReport,
+    RobustnessReport,
     perturb_factor,
     run_negative_controls,
     run_parameter_neighborhood,
+    run_robustness,
 )
 from quant_platform.validation.statistics import (
     benjamini_hochberg,
@@ -64,6 +66,7 @@ __all__ = [
     "ParameterNeighborhoodReport",
     "PredictivePowerReport",
     "QuantileReturn",
+    "RobustnessReport",
     "TrialDisposition",
     "TrialLedger",
     "TrialLedgerEntry",
@@ -77,5 +80,6 @@ __all__ = [
     "probability_of_backtest_overfitting",
     "run_negative_controls",
     "run_parameter_neighborhood",
+    "run_robustness",
     "validate_factor",
 ]

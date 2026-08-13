@@ -30,9 +30,7 @@ def upgrade() -> None:
         sa.Column("output_hash", sa.String(64), nullable=False, unique=True),
         sa.Column("report_payload", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["run_id"], ["experiment_runs.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["run_id"], ["experiment_runs.id"], ondelete="CASCADE"),
     )
     op.create_index("ix_factor_validations_run_id", "factor_validations", ["run_id"])
 

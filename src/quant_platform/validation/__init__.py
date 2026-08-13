@@ -50,6 +50,11 @@ from quant_platform.validation.trial_ledger import (
     TrialLedger,
     TrialLedgerEntry,
 )
+from quant_platform.validation.turnover import (
+    FactorSeries,
+    TurnoverReport,
+    run_turnover,
+)
 from quant_platform.validation.validator import (
     CrossSection,
     DataQualityReport,
@@ -67,6 +72,7 @@ __all__ = [
     "AlphaPoolFactor",
     "DataQualityReport",
     "FactorDirection",
+    "FactorSeries",
     "FactorValidationReport",
     "FormalLabelSnapshot",
     "ForwardReturnLabel",
@@ -91,6 +97,7 @@ __all__ = [
     "TrialDisposition",
     "TrialLedger",
     "TrialLedgerEntry",
+    "TurnoverReport",
     "ValidationPolicy",
     "ValidationPolicyCatalog",
     "align_cross_sections",
@@ -103,5 +110,6 @@ __all__ = [
     "run_independence_analysis",
     "run_parameter_neighborhood",
     "run_robustness",
+    "run_turnover",
     "validate_factor",
 ]

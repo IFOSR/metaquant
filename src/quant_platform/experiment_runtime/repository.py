@@ -312,6 +312,12 @@ class SqlAlchemyExperimentRepository:
         )
         input_table = _factor_table(compiled.canonical_json, snapshot, spec)
         result = execute_factor(compiled, input_table)
+        referenced_fields = {
+            item["field_ref"] for item in json.loads(compiled.canonical_json)["inputs"]
+        }
+        # Future-truncation evidence: compare the gateway-filtered result
+        # against an explicitly truncated table built without the gateway, so a
+        # gateway regression that leaks future rows surfaces as a mismatch.
         future_truncated_snapshot = FrozenSnapshot.create(
             snapshot_id=snapshot.snapshot_id,
             frozen_at=snapshot.frozen_at,
@@ -323,11 +329,15 @@ class SqlAlchemyExperimentRepository:
         )
         future_comparison = execute_factor(
             compiled,
-            _factor_table(compiled.canonical_json, future_truncated_snapshot, spec),
+            _factor_table_direct(compiled.canonical_json, future_truncated_snapshot),
         )
-        referenced_fields = {
-            item["field_ref"] for item in json.loads(compiled.canonical_json)["inputs"]
+        # Sentinel-isolation evidence: the IR must not reference any sentinel
+        # field injected into the formal snapshot. This is a direct, falsifiable
+        # field check rather than a vacuous hash comparison.
+        sentinel_fields = {
+            row.field for row in snapshot.rows if "sentinel" in row.field.lower()
         }
+        sentinel_isolation_passed = not (referenced_fields & sentinel_fields)
         sentinel_isolated_snapshot = FrozenSnapshot.create(
             snapshot_id=snapshot.snapshot_id,
             frozen_at=snapshot.frozen_at,
@@ -370,9 +380,7 @@ class SqlAlchemyExperimentRepository:
             future_truncation_passed=(
                 result.output_hash == future_comparison.output_hash
             ),
-            sentinel_isolation_passed=(
-                result.output_hash == sentinel_comparison.output_hash
-            ),
+            sentinel_isolation_passed=sentinel_isolation_passed,
             baseline_output_hash=result.output_hash,
             future_truncation_output_hash=future_comparison.output_hash,
             sentinel_isolation_output_hash=sentinel_comparison.output_hash,
@@ -732,6 +740,38 @@ def _factor_table(
                     and math.isfinite(float(value))
                     else None
                 )
+    return FactorTable(
+        tuple(
+            FactorInputRow(timestamp, instrument, row_values)
+            for (timestamp, instrument), row_values in values.items()
+        )
+    )
+
+
+def _factor_table_direct(canonical_ir: str, snapshot: FrozenSnapshot) -> FactorTable:
+    """Build a factor table directly from snapshot rows, bypassing the PIT
+    gateway's available-time filter.
+
+    This is used only for invariance-evidence comparison: it feeds an
+    already-truncated snapshot so a gateway regression that leaks future rows
+    would surface as a hash mismatch against the authoritative result. It must
+    never feed a real computation.
+    """
+    document = json.loads(canonical_ir)
+    aliases = {item["field_ref"]: item["alias"] for item in document["inputs"]}
+    values: dict[tuple[datetime, str], dict[str, float | None]] = defaultdict(dict)
+    for row in snapshot.rows:
+        alias = aliases.get(row.field)
+        if alias is None:
+            continue
+        value = row.value
+        values[(row.event_time, row.instrument_id)][alias] = (
+            float(value)
+            if isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and math.isfinite(float(value))
+            else None
+        )
     return FactorTable(
         tuple(
             FactorInputRow(timestamp, instrument, row_values)

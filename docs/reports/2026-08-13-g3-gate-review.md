@@ -4,7 +4,7 @@
 
 **Run:** `run_deepseek_g3_recovery`
 
-**Decision:** `GO_FOR_G4_WITH_INVARIANCE_EVIDENCE_REMEDIATION_REQUIRED`
+**Decision:** `GO_FOR_G4`
 
 ## 1. Scope reviewed
 
@@ -85,13 +85,13 @@ full verification chain was re-run.
 
 ```text
 $ make check (equivalent, with source/tests volume-mounted)
-101 files already formatted
+102 files already formatted
 All checks passed!
-Success: no issues found in 95 source files
-211 passed, 2 skipped
+Success: no issues found in 96 source files
+212 passed, 2 skipped
 ```
 
-The 211 tests include the G3 experiment contract/precondition tests, factor
+The 212 tests include the G3 experiment contract/precondition tests, factor
 executor contract/executor tests, artifact store tests, and experiment
 execution API tests. The 2 skipped tests are G3 infrastructure tests that
 require the integration environment (see 3.3).
@@ -120,8 +120,8 @@ and the G3 PostgreSQL/MinIO integration tests passed before cleanup.
 
 ## 4. Independent-review remediation
 
-An independent review found eight defects. Five were remediated and
-re-verified; three remain as recorded issues (section 5).
+An independent review found eight defects. Six were remediated and
+re-verified; two remain as recorded issues (section 5).
 
 ### Remediated
 
@@ -149,21 +149,18 @@ re-verified; three remain as recorded issues (section 5).
   fail-closed. Added `EXCHANGE_SCOPE_MISMATCH`, `CONTRACT_CHAIN_MISMATCH`, and
   `ROLL_POLICY_MISMATCH` precondition checks.
 
-## 5. Remaining issues (not remediated in this gate)
+- **R6 (HIGH)** — The invariance evidence was vacuous: both
+  `future_truncation_passed` and `sentinel_isolation_passed` compared two
+  executions that had already been filtered identically by the PIT gateway,
+  so they were always true. Fixed by making both checks falsifiable:
+  future-truncation now compares the gateway-filtered result against an
+  explicitly truncated table built **without** the gateway (so a gateway
+  regression that leaks future rows surfaces as a mismatch), and
+  sentinel-isolation is now a direct check that the IR references no sentinel
+  field. Added a unit test proving the direct builder keeps future rows while
+  the gateway filters them.
 
-- **R6 (HIGH) — Invariance evidence is vacuous.** The executor coordinator
-  computes `future_truncation_passed` and `sentinel_isolation_passed` by
-  comparing the baseline execution against a second execution over a filtered
-  snapshot. Because `_factor_table` already routes every query through
-  `PITDataGateway` (which enforces `available_time <= decision_time` and
-  projects only the IR-referenced fields), both executions operate on
-  identical inputs, so both booleans are always true. The sentinel rows and
-  future rows deliberately present in `config/formal-snapshots.json` are not
-  actually exercised by these checks. The real no-lookahead guarantee is held
-  by the gateway layer, but the `InvarianceEvidence` artifact currently
-  presents a false "future-function detected" signal. This must be remediated
-  through a design decision (either make the checks genuinely adversarial, or
-  remove them and report gateway-level filtering honestly) before G4.
+## 5. Remaining issues (not remediated in this gate)
 
 - **R7 (MEDIUM) — `code_sha`/`executor_version` are caller-asserted
   placeholders.** The run fingerprint includes `code_sha`, `image_digest`, and
@@ -186,11 +183,8 @@ fail-closed preconditions, PostgreSQL transaction/audit/outbox/idempotency
 semantics, reversible migration, and frontend experiment monitoring are all
 implemented and pass the full verification chain.
 
-The gate passes with one required follow-up: **R6 (invariance evidence
-vacuous)** must be remediated before G4 begins, because the `ValidationArtifact`
-invariance evidence is a G3-design-mandated deliverable whose current
-implementation does not provide the detection it claims. R7 and R8 are recorded
-and may be addressed alongside G4 planning.
+The gate passes. R7 and R8 are recorded and may be addressed alongside G4
+planning.
 
 G3 must preserve:
 

@@ -1,3 +1,11 @@
+from quant_platform.validation.alpha_pool import (
+    AlphaPool,
+    AlphaPoolCatalog,
+    AlphaPoolFactor,
+    FactorDirection,
+    InMemoryAlphaPoolCatalog,
+    LifecycleState,
+)
 from quant_platform.validation.contracts import (
     ForwardReturnLabel,
     LabelObservation,
@@ -49,11 +57,16 @@ from quant_platform.validation.validator import (
 
 __all__ = [
     "CrossSection",
+    "AlphaPool",
+    "AlphaPoolCatalog",
+    "AlphaPoolFactor",
     "DataQualityReport",
+    "FactorDirection",
     "FactorValidationReport",
     "FormalLabelSnapshot",
     "ForwardReturnLabel",
     "ICSign",
+    "InMemoryAlphaPoolCatalog",
     "InMemoryLabelSnapshotCatalog",
     "InMemoryValidationPolicyCatalog",
     "JsonLabelSnapshotCatalog",
@@ -62,6 +75,7 @@ __all__ = [
     "LabelSeries",
     "LabelSnapshotCatalog",
     "LabelSnapshotRow",
+    "LifecycleState",
     "NegativeControlReport",
     "ParameterNeighborhoodReport",
     "PredictivePowerReport",

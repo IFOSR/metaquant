@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,20 @@ class JsonFormalSnapshotCatalog(InMemoryFormalSnapshotCatalog):
         return cls(tuple(cast(list[dict[str, Any]], document)))
 
 
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _execution_code_sha() -> str:
+    """Derive the execution code SHA from the executor and IR source files."""
+    pkg_root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256()
+    for subpackage in ("factor_ir", "factor_executor", "experiment_runtime"):
+        for path in sorted((pkg_root / subpackage).glob("*.py")):
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True, slots=True)
 class ExecutionIdentity:
     code_sha: str
@@ -50,3 +65,42 @@ class ExecutionIdentity:
     dependency_lock_hash: str
     executor_version: str
     config_hash: str
+
+    @classmethod
+    def resolved(
+        cls,
+        *,
+        code_sha: str,
+        image_digest: str,
+        dependency_lock_hash: str,
+        executor_version: str,
+        config_hash: str,
+        dependency_lock_path: Path = Path("uv.lock"),
+        config_path: Path = Path("config/formal-snapshots.json"),
+    ) -> ExecutionIdentity:
+        """Fill placeholder content hashes with values derived from files.
+
+        ``code_sha``, ``dependency_lock_hash``, and ``config_hash`` are content
+        hashes: when a caller leaves the zero placeholder, they are derived
+        from the actual source, lock, and snapshot-catalog files so the run
+        fingerprint genuinely pins the executing code. ``image_digest`` and
+        ``executor_version`` are identifiers supplied by the deployment and are
+        passed through unchanged.
+        """
+        return cls(
+            code_sha=code_sha
+            if code_sha != "0" * len(code_sha)
+            else _execution_code_sha(),
+            image_digest=image_digest,
+            dependency_lock_hash=(
+                dependency_lock_hash
+                if dependency_lock_hash != "0" * len(dependency_lock_hash)
+                else _file_sha256(dependency_lock_path)
+            ),
+            executor_version=executor_version,
+            config_hash=(
+                config_hash
+                if config_hash != "0" * len(config_hash)
+                else _file_sha256(config_path)
+            ),
+        )

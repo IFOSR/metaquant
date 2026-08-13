@@ -125,12 +125,13 @@ def create_app(
             snapshot_catalog=JsonFormalSnapshotCatalog.from_path(
                 Path(settings.formal_snapshot_catalog_path)
             ),
-            execution_identity=ExecutionIdentity(
+            execution_identity=ExecutionIdentity.resolved(
                 code_sha=settings.execution_code_sha,
                 image_digest=settings.execution_image_digest,
                 dependency_lock_hash=settings.execution_dependency_lock_hash,
                 executor_version=settings.execution_executor_version,
                 config_hash=settings.execution_config_hash,
+                config_path=Path(settings.formal_snapshot_catalog_path),
             ),
         )
     principal_provider = research_principal_provider or _default_principal_provider

@@ -85,13 +85,13 @@ full verification chain was re-run.
 
 ```text
 $ make check (equivalent, with source/tests volume-mounted)
-102 files already formatted
+104 files already formatted
 All checks passed!
-Success: no issues found in 96 source files
-212 passed, 2 skipped
+Success: no issues found in 98 source files
+215 passed, 2 skipped
 ```
 
-The 212 tests include the G3 experiment contract/precondition tests, factor
+The 215 tests include the G3 experiment contract/precondition tests, factor
 executor contract/executor tests, artifact store tests, and experiment
 execution API tests. The 2 skipped tests are G3 infrastructure tests that
 require the integration environment (see 3.3).
@@ -120,8 +120,8 @@ and the G3 PostgreSQL/MinIO integration tests passed before cleanup.
 
 ## 4. Independent-review remediation
 
-An independent review found eight defects. Six were remediated and
-re-verified; two remain as recorded issues (section 5).
+An independent review found eight defects. Seven were remediated and
+re-verified; one remains as a recorded issue (section 5).
 
 ### Remediated
 
@@ -160,14 +160,16 @@ re-verified; two remain as recorded issues (section 5).
   field. Added a unit test proving the direct builder keeps future rows while
   the gateway filters them.
 
-## 5. Remaining issues (not remediated in this gate)
+- **R7 (MEDIUM)** — `code_sha`, `dependency_lock_hash`, and `config_hash`
+  were zero placeholders injected from environment variables, so the run
+  fingerprint did not actually pin the executing code. Added
+  `ExecutionIdentity.resolved()`: when a content hash is left as the zero
+  placeholder, it is derived from the executor/IR source files, `uv.lock`,
+  and the formal snapshot catalog respectively; explicit values still
+  override. `image_digest` and `executor_version` remain deployment-supplied
+  identifiers.
 
-- **R7 (MEDIUM) — `code_sha`/`executor_version` are caller-asserted
-  placeholders.** The run fingerprint includes `code_sha`, `image_digest`, and
-  `executor_version`, but these are injected from environment variables that
-  default to zero placeholders. They are not derived from the code that
-  actually runs, so the fingerprint does not yet pin the executing code. This
-  requires an architecture decision on how to derive and seal code identity.
+## 5. Remaining issues (not remediated in this gate)
 
 - **R8 (LOW) — Attempt/Run state machines are not enforced at construction.**
   Transition validation lives in `transition()` methods; the frozen dataclass
@@ -183,8 +185,7 @@ fail-closed preconditions, PostgreSQL transaction/audit/outbox/idempotency
 semantics, reversible migration, and frontend experiment monitoring are all
 implemented and pass the full verification chain.
 
-The gate passes. R7 and R8 are recorded and may be addressed alongside G4
-planning.
+The gate passes. R8 is recorded and may be addressed alongside G4 planning.
 
 G3 must preserve:
 

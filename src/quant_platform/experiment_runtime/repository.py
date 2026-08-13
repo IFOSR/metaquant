@@ -612,6 +612,8 @@ class SqlAlchemyExperimentRepository:
                 raise ValueError("RESOURCE_NOT_FOUND")
             if run.state != "SUCCEEDED":
                 raise ValueError("RUN_NOT_SUCCEEDED")
+            if run.market != label.label.market or run.market != policy.market:
+                raise ValueError("MARKET_MISMATCH")
 
             factor, factor_store_address = self._load_factor_artifact(session, run_id)
             decision_time = self._decision_time(session, run.experiment_id)
@@ -622,10 +624,58 @@ class SqlAlchemyExperimentRepository:
 
             report = validate_factor(factor, label, policy)
 
+            existing = session.scalar(
+                select(FactorValidationModel).where(
+                    FactorValidationModel.output_hash == report.output_hash
+                )
+            )
+            if existing is not None:
+                replay = CommandReceipt(
+                    command_id=f"cmd_{uuid4().hex}",
+                    resource_id=existing.id,
+                    submitted_at=_now(),
+                )
+                session.add_all(
+                    [
+                        ExperimentCommandReceiptModel(
+                            actor_id=actor_id,
+                            idempotency_key=idempotency_key,
+                            request_hash=request_hash,
+                            response=replay.model_dump(mode="json"),
+                            created_at=_now(),
+                        ),
+                        _audit(
+                            actor_id,
+                            "experiment.validate.reused",
+                            run_id,
+                            reason,
+                            parent_artifact_id,
+                            replay.command_id,
+                            report.output_hash,
+                        ),
+                        _outbox(
+                            "ExperimentValidatedReused",
+                            "ExperimentRun",
+                            run_id,
+                            replay.command_id,
+                            {"run_id": run_id, "output_hash": report.output_hash},
+                        ),
+                    ]
+                )
+                self._run_before_commit()
+                return replay
+
             validation_id = f"validation_{uuid4().hex}"
             report_store = self._artifacts.put(
                 canonical_bytes(report.payload()), media_type="application/json"
             )
+            attempt_id = session.scalar(
+                select(ExperimentAttemptModel.id)
+                .where(ExperimentAttemptModel.run_id == run_id)
+                .limit(1)
+            )
+            if attempt_id is None:
+                raise ValueError("RUN_ATTEMPT_NOT_FOUND")
             edge = LineageEdge(
                 source_artifact_hash=factor_store_address,
                 target_artifact_hash=report_store.content_hash,
@@ -649,6 +699,18 @@ class SqlAlchemyExperimentRepository:
                         factor_artifact_hash=factor_store_address,
                         output_hash=report.output_hash,
                         report_payload=report.payload(),
+                        created_at=timestamp,
+                    ),
+                    ExperimentArtifactModel(
+                        id=f"artifact_{validation_id}",
+                        content_hash=report_store.content_hash,
+                        run_id=run_id,
+                        attempt_id=attempt_id,
+                        artifact_type="FactorValidationReport",
+                        schema_version="factor-validation/v1",
+                        size_bytes=report_store.size_bytes,
+                        media_type="application/json",
+                        domain_hash=report.output_hash,
                         created_at=timestamp,
                     ),
                     ExperimentLineageModel(

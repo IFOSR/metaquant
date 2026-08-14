@@ -107,9 +107,7 @@ def build_attribution_report(
         risk_exposures=risk_exposures,
         capacity_utilization=capacity_utilization,
         unfillable_count=unfillable_count,
-        unfillable_ratio=(
-            unfillable_count / total_orders if total_orders else 0.0
-        ),
+        unfillable_ratio=(unfillable_count / total_orders if total_orders else 0.0),
         roll_return=roll_return,
         factor_ablation=factor_ablation,
     )

@@ -1169,6 +1169,30 @@ class SqlAlchemyExperimentRepository:
                 "report": payload,
             }
 
+    def get_independence(
+        self, run_id: str, *, scopes: frozenset[tuple[str, str]]
+    ) -> dict[str, Any] | None:
+        if self.get_run(run_id, scopes=scopes) is None:
+            return None
+        with self._sessions() as session:
+            model = session.scalar(
+                select(IndependenceReportModel)
+                .where(IndependenceReportModel.run_id == run_id)
+                .order_by(IndependenceReportModel.created_at.desc())
+                .limit(1)
+            )
+            if model is None:
+                return None
+            return {
+                "run_id": run_id,
+                "output_hash": model.output_hash,
+                "baseline_ic": model.baseline_ic,
+                "orthogonalized_ic": model.orthogonalized_ic,
+                "max_abs_correlation": model.max_abs_correlation,
+                "replicated_risk_factor": model.replicated_risk_factor,
+                "report": model.report_payload,
+            }
+
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
     ) -> dict[str, Any] | None:

@@ -9,6 +9,8 @@ from quant_platform.execution.runtime import (
     shadow_rebalance,
 )
 from quant_platform.execution.safety import (
+    KillSwitch,
+    KillSwitchState,
     SafetyCheck,
     SafetyLimits,
     check_order_safety,
@@ -17,6 +19,8 @@ from quant_platform.execution.safety import (
 
 __all__ = [
     "ExecutionAdapter",
+    "KillSwitch",
+    "KillSwitchState",
     "OrderInstruction",
     "OrderSuggestion",
     "SafetyCheck",

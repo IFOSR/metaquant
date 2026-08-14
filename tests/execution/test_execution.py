@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
+
+import pytest
 
 from quant_platform.execution.runtime import shadow_rebalance
 from quant_platform.execution.safety import (
+    KillSwitch,
+    KillSwitchState,
     SafetyLimits,
     check_order_safety,
     reconcile,
@@ -100,6 +105,51 @@ def test_reconcile_reports_differences() -> None:
     diff = reconcile(expected, actual)
 
     assert diff == {"A": 10, "B": 50, "C": -10}
+
+
+def armed_switch() -> KillSwitch:
+    return KillSwitch(
+        switch_id="execution-cn-a",
+        state=KillSwitchState.ARMED,
+        tripped_by=None,
+        tripped_at=None,
+        reason=None,
+    )
+
+
+def test_kill_switch_trip_and_reset() -> None:
+    now = datetime(2026, 8, 14, 12, 0, tzinfo=UTC)
+    tripped = armed_switch().trip("risk-officer-1", "data anomaly", now)
+
+    assert tripped.state is KillSwitchState.TRIPPED
+    assert tripped.blocks()
+    assert tripped.tripped_by == "risk-officer-1"
+
+    reset = tripped.reset("risk-officer-2", now)
+    assert reset.state is KillSwitchState.ARMED
+    assert not reset.blocks()
+
+
+def test_kill_switch_requires_reason_to_trip() -> None:
+    now = datetime(2026, 8, 14, 12, 0, tzinfo=UTC)
+
+    with pytest.raises(ValueError, match="reason"):
+        armed_switch().trip("risk-officer-1", "", now)
+
+
+def test_kill_switch_is_content_addressed() -> None:
+    assert armed_switch().content_hash() == armed_switch().content_hash()
+
+
+def test_tripped_kill_switch_requires_audit_fields() -> None:
+    with pytest.raises(ValueError):
+        KillSwitch(
+            switch_id="execution-cn-a",
+            state=KillSwitchState.TRIPPED,
+            tripped_by=None,
+            tripped_at=None,
+            reason=None,
+        )
 
 
 def test_reconcile_empty_when_matched() -> None:

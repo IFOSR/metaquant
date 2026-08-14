@@ -147,6 +147,34 @@
         "cash": "1000.00",
         "cost_basis_per_share": "6.666666666666666666666666667"
       }
+    },
+    {
+      "id": "cn-a-stamp-duty-sell-only-v1",
+      "kind": "transaction_cost",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "notional": "100000.00",
+        "stamp_duty_rate": "0.0005"
+      },
+      "expected": {
+        "buy_stamp_duty": "0.00",
+        "sell_stamp_duty": "50.00"
+      }
+    },
+    {
+      "id": "cn-a-minimum-commission-v1",
+      "kind": "transaction_cost",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "notional": "100.00",
+        "commission_rate": "0.0003",
+        "minimum_commission": "5.00"
+      },
+      "expected": {
+        "commission": "5.00"
+      }
     }
   ]
 }

@@ -107,6 +107,23 @@
         "timestamp": "2026-08-11T02:29:00"
       },
       "expected": {"trade_date": "2026-08-11"}
+    },
+    {
+      "id": "futures-round-trip-fee-v1",
+      "kind": "transaction_cost",
+      "evidence_status": "SYNTHETIC_CONTRACT",
+      "formal_eligible": false,
+      "inputs": {
+        "price": "500",
+        "quantity": 1,
+        "multiplier": "10",
+        "fee_rate": "0.0002",
+        "slippage_bps": "0.0"
+      },
+      "expected": {
+        "single_side_fee": "1.00",
+        "round_trip_fee": "2.00"
+      }
     }
   ]
 }

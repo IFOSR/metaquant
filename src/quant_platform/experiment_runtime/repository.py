@@ -1499,6 +1499,12 @@ class SqlAlchemyExperimentRepository:
             }
 
     @staticmethod
+    def _aware(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+    @staticmethod
     def _workflow_from_model(model: ApprovalWorkflowModel) -> ApprovalWorkflow:
         decisions = tuple(
             ApprovalDecision(
@@ -1507,7 +1513,9 @@ class SqlAlchemyExperimentRepository:
                 actor=str(item["actor"]),
                 decision=Decision(str(item["decision"])),
                 reason=str(item["reason"]),
-                decided_at=datetime.fromisoformat(str(item["decided_at"])),
+                decided_at=SqlAlchemyExperimentRepository._aware(
+                    datetime.fromisoformat(str(item["decided_at"]))
+                ),
             )
             for item in model.decisions
         )
@@ -1517,8 +1525,8 @@ class SqlAlchemyExperimentRepository:
             subject_kind=model.subject_kind,
             required_approvals=model.required_approvals,
             decisions=decisions,
-            created_at=model.created_at,
-            expires_at=model.expires_at,
+            created_at=SqlAlchemyExperimentRepository._aware(model.created_at),
+            expires_at=SqlAlchemyExperimentRepository._aware(model.expires_at),
         )
 
     @staticmethod

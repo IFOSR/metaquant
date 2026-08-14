@@ -74,9 +74,9 @@ def test_equity_round_trip_without_adv() -> None:
 
     cost = model.round_trip_cost(notional)
 
-    expected = model.single_side_cost(
-        OrderSide.BUY, notional
-    ) + model.single_side_cost(OrderSide.SELL, notional)
+    expected = model.single_side_cost(OrderSide.BUY, notional) + model.single_side_cost(
+        OrderSide.SELL, notional
+    )
     assert cost == pytest.approx(expected)
 
 

@@ -4,6 +4,7 @@ import type {
   ExperimentArtifacts,
   ExperimentRun,
   FactorValidationReport,
+  IndependenceSummary,
   PreregisterExperimentInput,
   ResearchBrief,
   ResearchJob,
@@ -200,6 +201,22 @@ export interface ApiFactorValidationReport {
   };
 }
 
+export interface ApiIndependence {
+  run_id: string;
+  output_hash: string;
+  baseline_ic: number | null;
+  orthogonalized_ic: number | null;
+  max_abs_correlation: number | null;
+  replicated_risk_factor: boolean;
+  report: {
+    pairwise: Array<{
+      factor_ir_hash: string;
+      pearson: number | null;
+      spearman: number | null;
+    }>;
+  } | null;
+}
+
 export interface QuantApiClient {
   getSession(): Promise<Session>;
   listResearchJobs(): Promise<ResearchJob[]>;
@@ -215,6 +232,7 @@ export interface QuantApiClient {
   getExperimentRun(id: string): Promise<ExperimentRun>;
   getExperimentArtifacts(id: string): Promise<ExperimentArtifacts>;
   getExperimentValidation(id: string): Promise<FactorValidationReport>;
+  getExperimentIndependence(id: string): Promise<IndependenceSummary>;
 }
 
 export class QuantApiProblem extends Error {
@@ -409,6 +427,13 @@ export class HttpQuantApiClient implements QuantApiClient {
       `/experiment-runs/${id}/validation`,
     );
     return mapFactorValidationReport(result.body);
+  }
+
+  async getExperimentIndependence(id: string) {
+    const result = await this.request<ApiIndependence>(
+      `/experiment-runs/${id}/independence`,
+    );
+    return mapIndependence(result.body);
   }
 
   private commandHeaders(id: string, resourceVersion?: number) {
@@ -628,6 +653,22 @@ export function mapFactorValidationReport(
       topBottomSpread: input.predictive_power.top_bottom_spread,
       monotonic: input.predictive_power.monotonic,
     },
+  };
+}
+
+export function mapIndependence(input: ApiIndependence): IndependenceSummary {
+  return {
+    runId: input.run_id,
+    outputHash: input.output_hash,
+    baselineIc: input.baseline_ic,
+    orthogonalizedIc: input.orthogonalized_ic,
+    maxAbsCorrelation: input.max_abs_correlation,
+    replicatedRiskFactor: input.replicated_risk_factor,
+    pairwise: (input.report?.pairwise ?? []).map((item) => ({
+      factorIrHash: item.factor_ir_hash,
+      pearson: item.pearson,
+      spearman: item.spearman,
+    })),
   };
 }
 

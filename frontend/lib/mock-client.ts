@@ -430,4 +430,18 @@ export const mockClient: QuantApiClient = {
       },
     };
   },
+  async getExperimentIndependence(id: string) {
+    return {
+      runId: id,
+      outputHash: "0".repeat(64),
+      baselineIc: 0.042,
+      orthogonalizedIc: 0.031,
+      maxAbsCorrelation: 0.38,
+      replicatedRiskFactor: false,
+      pairwise: [
+        { factorIrHash: "a".repeat(64), pearson: 0.31, spearman: 0.28 },
+        { factorIrHash: "b".repeat(64), pearson: 0.12, spearman: 0.09 },
+      ],
+    };
+  },
 };

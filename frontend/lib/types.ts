@@ -236,3 +236,17 @@ export interface FactorValidationReport {
     monotonic: boolean | null;
   };
 }
+
+export interface IndependenceSummary {
+  runId: string;
+  outputHash: string;
+  baselineIc: number | null;
+  orthogonalizedIc: number | null;
+  maxAbsCorrelation: number | null;
+  replicatedRiskFactor: boolean;
+  pairwise: Array<{
+    factorIrHash: string;
+    pearson: number | null;
+    spearman: number | null;
+  }>;
+}

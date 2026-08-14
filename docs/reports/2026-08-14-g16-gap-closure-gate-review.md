@@ -85,3 +85,40 @@ Eight commits: `35d2441`..`210de06`.
 - **R5 — Frontend.** Validation/Independence/Promotion panels are implemented
   but not mounted; login/RBAC, lineage (FR-704), strategy/backtest (FR-705),
   and paper/live ops (FR-706) pages remain.
+
+## 5. G16 follow-up closure (second pass)
+
+After the review, a second pass closed the remaining implementable gaps using
+the DeepSeek non-interactive CLI and the open AkShare provider:
+
+- **AkShare vendor adapter** (`data_gateway/akshare_vendor.py`) — borrows the
+  timeout-isolated call and column-validation patterns from the open provider;
+  rows are always `EXPLORATORY` (FR-312) because AkShare exposes
+  current-availability bars, not PIT revisions.
+- **DeepSeek non-interactive agent gateway** (`agent/deepseek_client.py`) —
+  runs `deepseek -p` to produce structured proposals, critiques, and
+  page-locatable paper claims; hard token budget enforcement (FR-006) and
+  structured-output validation keep LLM output out of the deterministic kernel.
+- **Orchestration dispatch** (`orchestration/dispatch.py`) — the Dagster op
+  now issues a real control-plane command through a `urllib`-backed sender
+  instead of returning a placeholder string.
+- **Frontend panel mount** — validation, independence, and promotion evidence
+  panels are mounted on the job detail page (previously dead code).
+
+Final verification after the second pass:
+
+```text
+$ pytest  512 passed, 6 skipped
+$ mypy    Success (183 source files)
+$ ruff    All checks passed
+$ tsc --noEmit / vitest 47 / eslint  (frontend) clean
+```
+
+## 6. Remaining after the second pass
+
+- **Frontend login/RBAC (FR-701).** The control-plane already enforces scopes
+  server-side; the frontend still hard-codes the session and lacks a login
+  surface and client-side role rendering.
+- **Remaining UI pages (FR-704/705/706).** Lineage, strategy/backtest, and
+  paper/live operations pages are not yet built.
+

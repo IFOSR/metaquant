@@ -53,14 +53,18 @@ $ ruff format --check .   146 files already formatted
 $ ruff check .            All checks passed!
 $ mypy                    Success: no issues found in 136 source files
 $ pytest                  360 passed, 6 skipped
+$ tsc --noEmit            (frontend) clean
+$ vitest run              (frontend) 45 passed
+$ eslint .                (frontend) clean
 ```
 
 ## 4. Remaining issues
 
-- **R1 (LOW, carried from G7) — Frontend independence and promotion panels.**
-  The backend read endpoint for independence is ready (`GET
-  /experiment-runs/{run_id}/independence`); the promotion read surface and the
-  corresponding frontend panels remain deferred.
+- **R1 (LOW) — Frontend promotion panel.** The independence panel shipped in
+  G8 (`IndependencePanel` component, `getExperimentIndependence` client method,
+  snake_case→camelCase mapping, and tests). The promotion read surface (a `GET`
+  endpoint over `promotion_records`) and its frontend panel remain deferred to
+  G9.
 
 ## 5. Gate decision
 

@@ -81,4 +81,6 @@ instrument and skipping non-positive ADV, then feeds `run_capacity`.
   (Phase 5).
 - Industry/style/beta-neutral and tracking-error constraints as hard solver
   constraints; these remain future work on top of the G8 optimizer.
-- Frontend independence and promotion panels (R2, carried forward).
+- Frontend promotion panel (R2, carried forward). The independence panel
+  shipped in G8 (`IndependencePanel` component plus its client method and
+  mapping).

@@ -19,6 +19,10 @@ from quant_platform.validation.contracts import (
     LabelSeries,
     assert_label_pit_safe,
 )
+from quant_platform.validation.false_discovery import (
+    FalseDiscoveryReport,
+    run_false_discovery,
+)
 from quant_platform.validation.independence import (
     IndependenceReport,
     PairwiseCorrelation,
@@ -84,6 +88,7 @@ __all__ = [
     "FactorDirection",
     "FactorSeries",
     "FactorValidationReport",
+    "FalseDiscoveryReport",
     "FormalLabelSnapshot",
     "ForwardReturnLabel",
     "ICSign",
@@ -118,6 +123,7 @@ __all__ = [
     "perturb_factor",
     "probability_of_backtest_overfitting",
     "run_capacity",
+    "run_false_discovery",
     "run_negative_controls",
     "run_independence_analysis",
     "run_parameter_neighborhood",

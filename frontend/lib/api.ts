@@ -1,10 +1,15 @@
 import type {
+  AlphaPoolFactor,
+  Capability,
   CreateResearchJobInput,
+  Environment,
+  ExecutionState,
   Experiment,
   ExperimentArtifacts,
   ExperimentRun,
   FactorValidationReport,
   IndependenceSummary,
+  MarketId,
   PreregisterExperimentInput,
   PromotionSummary,
   ResearchBrief,
@@ -238,6 +243,36 @@ export interface ApiPromotion {
   } | null;
 }
 
+export interface ApiAlphaPoolFactor {
+  factor_ir_hash: string;
+  direction: string;
+  market: string;
+  universe: string;
+  horizon: number;
+  policy_id: string;
+  risk_premium: boolean;
+  lifecycle_state: string;
+  oos_ic: number | null;
+}
+
+export interface ApiExecutionState {
+  state_id: string;
+  kill_switch_state: "ARMED" | "TRIPPED";
+  tripped_by: string | null;
+  tripped_at: string | null;
+  reason: string | null;
+  shadow_positions: Record<string, number>;
+  paper_positions: Record<string, number>;
+}
+
+export interface ApiSession {
+  actor: { id: string; displayName: string };
+  roles: string[];
+  capabilities: string[];
+  environments: string[];
+  markets: string[];
+}
+
 export interface QuantApiClient {
   getSession(): Promise<Session>;
   listResearchJobs(): Promise<ResearchJob[]>;
@@ -255,6 +290,10 @@ export interface QuantApiClient {
   getExperimentValidation(id: string): Promise<FactorValidationReport>;
   getExperimentIndependence(id: string): Promise<IndependenceSummary>;
   getExperimentPromotion(id: string): Promise<PromotionSummary>;
+  listAlphaPool(): Promise<AlphaPoolFactor[]>;
+  getExecutionState(): Promise<ExecutionState>;
+  tripKillSwitch(reason: string): Promise<ExecutionState>;
+  resetKillSwitch(): Promise<ExecutionState>;
 }
 
 export class QuantApiProblem extends Error {
@@ -305,7 +344,12 @@ export class HttpQuantApiClient implements QuantApiClient {
   }
 
   async getSession() {
-    return structuredClone(this.session);
+    try {
+      const result = await this.request<ApiSession>("/session");
+      return mapSession(result.body);
+    } catch {
+      return structuredClone(this.session);
+    }
   }
 
   async listResearchJobs() {
@@ -463,6 +507,37 @@ export class HttpQuantApiClient implements QuantApiClient {
       `/experiment-runs/${id}/promotion`,
     );
     return mapPromotion(result.body);
+  }
+
+  async listAlphaPool() {
+    const result = await this.request<{ items: ApiAlphaPoolFactor[] }>(
+      "/alpha-pool",
+    );
+    return result.body.items.map(mapAlphaPoolFactor);
+  }
+
+  async getExecutionState() {
+    const result = await this.request<ApiExecutionState>("/execution/state");
+    return mapExecutionState(result.body);
+  }
+
+  async tripKillSwitch(reason: string) {
+    const result = await this.request<ApiExecutionState>(
+      "/execution/kill-switch:trip",
+      {
+        method: "POST",
+        body: JSON.stringify({ decision: "APPROVE", reason }),
+      },
+    );
+    return mapExecutionState(result.body);
+  }
+
+  async resetKillSwitch() {
+    const result = await this.request<ApiExecutionState>(
+      "/execution/kill-switch:reset",
+      { method: "POST", body: JSON.stringify({}) },
+    );
+    return mapExecutionState(result.body);
   }
 
   private commandHeaders(id: string, resourceVersion?: number) {
@@ -712,6 +787,42 @@ export function mapPromotion(input: ApiPromotion): PromotionSummary {
     gates: input.report?.gates ?? [],
     componentScores: input.report?.component_scores ?? [],
     rationale: input.report?.rationale ?? "",
+  };
+}
+
+export function mapAlphaPoolFactor(input: ApiAlphaPoolFactor): AlphaPoolFactor {
+  return {
+    factorIrHash: input.factor_ir_hash,
+    direction: input.direction,
+    market: input.market as AlphaPoolFactor["market"],
+    universe: input.universe,
+    horizon: input.horizon,
+    policyId: input.policy_id,
+    riskPremium: input.risk_premium,
+    lifecycleState: input.lifecycle_state,
+    oosIc: input.oos_ic,
+  };
+}
+
+export function mapExecutionState(input: ApiExecutionState): ExecutionState {
+  return {
+    stateId: input.state_id,
+    killSwitchState: input.kill_switch_state,
+    trippedBy: input.tripped_by,
+    trippedAt: input.tripped_at,
+    reason: input.reason,
+    shadowPositions: input.shadow_positions,
+    paperPositions: input.paper_positions,
+  };
+}
+
+export function mapSession(input: ApiSession): Session {
+  return {
+    actor: input.actor,
+    roles: input.roles,
+    capabilities: input.capabilities as Capability[],
+    environments: input.environments as Environment[],
+    markets: input.markets as MarketId[],
   };
 }
 

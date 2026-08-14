@@ -11,6 +11,9 @@ const localSession: Session = {
     "research.briefs.write",
     "research.briefs.freeze",
     "research.experiments.read",
+    "strategy.read",
+    "execution.read",
+    "approval.read",
   ],
   environments: ["RESEARCH"],
   markets: ["CN_A", "CN_COMMODITY_FUTURES"],
@@ -37,8 +40,14 @@ function buildClient(): QuantApiClient {
 
   return new HttpQuantApiClient({
     baseUrl: "/api/quant/v1",
+    accessToken: readClientToken() ?? undefined,
     session: localSession,
   });
+}
+
+function readClientToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("quant-access-token");
 }
 
 export const quantApiClient = buildClient();

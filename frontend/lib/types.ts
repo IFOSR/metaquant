@@ -268,3 +268,25 @@ export interface PromotionSummary {
   componentScores: Array<[string, number]>;
   rationale: string;
 }
+
+export interface AlphaPoolFactor {
+  factorIrHash: string;
+  direction: string;
+  market: MarketId;
+  universe: string;
+  horizon: number;
+  policyId: string;
+  riskPremium: boolean;
+  lifecycleState: string;
+  oosIc: number | null;
+}
+
+export interface ExecutionState {
+  stateId: string;
+  killSwitchState: "ARMED" | "TRIPPED";
+  trippedBy: string | null;
+  trippedAt: string | null;
+  reason: string | null;
+  shadowPositions: Record<string, number>;
+  paperPositions: Record<string, number>;
+}

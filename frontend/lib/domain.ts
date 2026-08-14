@@ -35,6 +35,18 @@ export const navigation = [
     required: "research.jobs.write" as Capability,
     marker: "02",
   },
+  {
+    label: "Strategy",
+    href: "/strategy",
+    required: "strategy.read" as Capability,
+    marker: "03",
+  },
+  {
+    label: "Execution",
+    href: "/execution",
+    required: "execution.read" as Capability,
+    marker: "04",
+  },
 ] as const;
 
 export function getVisibleNavigation(capabilities: Capability[]) {

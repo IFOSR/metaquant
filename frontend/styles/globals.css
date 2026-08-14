@@ -114,6 +114,10 @@ h2 { font-size: 1.28rem; letter-spacing: -0.04em; line-height: 1.05; margin: 8px
 .button-secondary { background: transparent; border-color: var(--line-dark); color: var(--ink); }
 .button-small { min-height: 34px; padding: 6px 10px; }
 .signal-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); margin-bottom: 24px; }
+.signal-grid-compact { grid-template-columns: repeat(2, 1fr); margin: 12px 0 0; }
+.kill-switch-form { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+.kill-switch-form input { flex: 1; }
+.button-danger { background: var(--danger, #b3261e); color: #fff; }
 .signal-card { background: rgba(255,255,255,0.6); border: 1px solid var(--line); display: grid; gap: 4px; min-height: 142px; padding: 22px; }
 .signal-card strong { font-family: var(--font-mono); font-size: 2.8rem; letter-spacing: -0.08em; line-height: 1; }
 .signal-card span:last-child { color: var(--muted); font-size: 0.83rem; }
@@ -168,6 +172,10 @@ h2 { font-size: 1.28rem; letter-spacing: -0.04em; line-height: 1.05; margin: 8px
 .detail-grid { grid-template-columns: minmax(0, 1.7fr) minmax(290px, 0.8fr); }
 .evidence-column { display: grid; gap: 18px; align-content: start; }
 .evidence-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
+.lineage-list { list-style: none; display: grid; gap: 8px; margin-top: 12px; }
+.lineage-edge { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--panel-inset); border-radius: 6px; flex-wrap: wrap; }
+.lineage-relation { color: var(--ink-soft); font-size: 0.82rem; }
+.lineage-type { margin-left: auto; color: var(--ink-soft); font-size: 0.8rem; }
 .run-progress { background: var(--panel-inset); padding: 17px; }
 .run-progress-head { font-size: 0.84rem; }
 .gate-track { display: grid; gap: 4px; grid-template-columns: repeat(6, 1fr); margin-top: 18px; }

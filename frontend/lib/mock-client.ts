@@ -463,4 +463,52 @@ export const mockClient: QuantApiClient = {
       rationale: "all hard gates passed",
     };
   },
+  async listAlphaPool() {
+    return [
+      {
+        factorIrHash: "a".repeat(64),
+        direction: "LONG_SHORT",
+        market: "CN_A",
+        universe: "cn-a-000300",
+        horizon: 5,
+        policyId: "policy://cn-a-promotion/v1",
+        riskPremium: false,
+        lifecycleState: "PROMOTED",
+        oosIc: 0.05,
+      },
+    ];
+  },
+  async getExecutionState() {
+    return {
+      stateId: "cn-a",
+      killSwitchState: "ARMED",
+      trippedBy: null,
+      trippedAt: null,
+      reason: null,
+      shadowPositions: { "600000.SSE": 100 },
+      paperPositions: {},
+    };
+  },
+  async tripKillSwitch(reason: string) {
+    return {
+      stateId: "cn-a",
+      killSwitchState: "TRIPPED",
+      trippedBy: "local-researcher",
+      trippedAt: new Date().toISOString(),
+      reason,
+      shadowPositions: {},
+      paperPositions: {},
+    };
+  },
+  async resetKillSwitch() {
+    return {
+      stateId: "cn-a",
+      killSwitchState: "ARMED",
+      trippedBy: null,
+      trippedAt: null,
+      reason: null,
+      shadowPositions: {},
+      paperPositions: {},
+    };
+  },
 };

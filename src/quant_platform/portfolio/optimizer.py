@@ -153,6 +153,8 @@ def _objective(
     prev: list[float],
     weights: list[float],
     spec: OptimizationSpec,
+    benchmark: list[float] | None = None,
+    lambda_tracking_error: float = 0.0,
 ) -> float:
     n = len(weights)
     alpha_term = sum(alpha[i] * weights[i] for i in range(n))
@@ -160,12 +162,41 @@ def _objective(
     risk_term = sum(weights[i] * cov_w[i] for i in range(n))
     turnover_term = sum(abs(weights[i] - prev[i]) for i in range(n))
     concentration_term = sum(weights[i] * weights[i] for i in range(n))
+    tracking_error_term = 0.0
+    if benchmark is not None and lambda_tracking_error > 0.0:
+        diff = [weights[i] - benchmark[i] for i in range(n)]
+        te_cov = _cov_mv(covariance, diff)
+        tracking_error_term = sum(diff[i] * te_cov[i] for i in range(n))
     return (
         -alpha_term
         + spec.lambda_risk * risk_term
         + spec.lambda_turnover * turnover_term
         + spec.lambda_concentration * concentration_term
+        + lambda_tracking_error * tracking_error_term
     )
+
+
+def _project_exposure(
+    weights: list[float],
+    exposures: tuple[tuple[float, ...], ...],
+    targets: tuple[float, ...],
+) -> list[float]:
+    """Project weights onto the affine exposure subspace ``B'w = target``.
+
+    Sequential per-factor projection (Gram-Schmidt style). Exact for orthogonal
+    exposure columns, deterministic for the general case.
+    """
+    n = len(weights)
+    n_factors = len(targets)
+    result = list(weights)
+    for factor in range(n_factors):
+        column = [exposures[i][factor] for i in range(n)]
+        current = sum(column[i] * result[i] for i in range(n))
+        residual = current - targets[factor]
+        norm = sum(value * value for value in column)
+        if norm > 1e-15:
+            result = [result[i] - column[i] * residual / norm for i in range(n)]
+    return result
 
 
 def optimize(
@@ -175,6 +206,10 @@ def optimize(
     *,
     max_single_weight: float = 0.1,
     max_holdings: int | None = None,
+    exposures: tuple[tuple[float, ...], ...] | None = None,
+    exposure_targets: tuple[float, ...] | None = None,
+    benchmark_weights: tuple[float, ...] | None = None,
+    lambda_tracking_error: float = 0.0,
     spec: OptimizationSpec | None = None,
 ) -> OptimizationResult:
     """Run the constrained projected-gradient optimization.
@@ -208,6 +243,25 @@ def optimize(
         raise ValueError("max_single_weight must be within (0, 1]")
     if max_holdings is not None and max_holdings < 1:
         raise ValueError("max_holdings must be positive when provided")
+    if lambda_tracking_error < 0.0:
+        raise ValueError("lambda_tracking_error must be non-negative")
+    if benchmark_weights is not None and len(benchmark_weights) != n:
+        raise ValueError("benchmark_weights must match alpha length")
+
+    resolved_targets: tuple[float, ...] | None = None
+    if exposures is not None:
+        if len(exposures) != n:
+            raise ValueError("exposures must have one row per asset")
+        if n == 0 or not exposures[0]:
+            raise ValueError("exposures must have at least one factor")
+        n_factors = len(exposures[0])
+        if any(len(row) != n_factors for row in exposures):
+            raise ValueError("exposure rows must have equal length")
+        resolved_targets = (
+            exposure_targets if exposure_targets is not None else (0.0,) * n_factors
+        )
+        if len(resolved_targets) != n_factors:
+            raise ValueError("exposure_targets must match exposure factors")
 
     if diagnostics:
         equal = [1.0 / n] * n
@@ -254,9 +308,19 @@ def optimize(
             + 2.0 * spec.lambda_concentration * weights[i]
             for i in range(n)
         ]
+        if benchmark_weights is not None and lambda_tracking_error > 0.0:
+            diff = [weights[i] - benchmark_weights[i] for i in range(n)]
+            te_grad = _cov_mv(covariance, diff)
+            gradient = [
+                gradient[i] + 2.0 * lambda_tracking_error * te_grad[i] for i in range(n)
+            ]
         candidate = [weights[i] - spec.learning_rate * gradient[i] for i in range(n)]
         candidate = [max(value, 0.0) for value in candidate]
         candidate = _project_simplex_box(candidate, max_single_weight)
+        if exposures is not None and resolved_targets is not None:
+            candidate = _project_exposure(candidate, exposures, resolved_targets)
+            candidate = [max(value, 0.0) for value in candidate]
+            candidate = _project_simplex_box(candidate, max_single_weight)
         if max_holdings is not None:
             candidate = _truncate_top_k(candidate, max_holdings)
 
@@ -269,9 +333,18 @@ def optimize(
     if not converged:
         diagnostics.append("NOT_CONVERGED")
 
+    benchmark = list(benchmark_weights) if benchmark_weights is not None else None
     return OptimizationResult(
         weights=tuple(weights),
-        objective=_objective(alpha, covariance, prev, weights, spec),
+        objective=_objective(
+            alpha,
+            covariance,
+            prev,
+            weights,
+            spec,
+            benchmark,
+            lambda_tracking_error,
+        ),
         converged=converged,
         fallback=False,
         diagnostics=tuple(diagnostics),

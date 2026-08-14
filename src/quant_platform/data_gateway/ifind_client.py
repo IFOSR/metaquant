@@ -145,5 +145,64 @@ class IFindClient:
         return payload
 
 
+def parse_date_sequence(
+    payload: dict[str, object],
+) -> dict[str, dict[str, dict[str, object]]]:
+    """Parse a ``date_sequence`` response into ``{code: {date: {indicator: value}}}``.
+
+    The live gateway returns ``tables[].time`` (date strings) and
+    ``tables[].table`` (indicator id to a value list aligned with time).
+    """
+    tables = payload.get("tables")
+    if not isinstance(tables, list):
+        return {}
+    result: dict[str, dict[str, dict[str, object]]] = {}
+    for entry in tables:
+        if not isinstance(entry, dict):
+            continue
+        code = entry.get("thscode")
+        times = entry.get("time")
+        table = entry.get("table")
+        if not isinstance(code, str) or not isinstance(times, list):
+            continue
+        if not isinstance(table, dict):
+            continue
+        series: dict[str, dict[str, object]] = {}
+        for indicator, values in table.items():
+            if not isinstance(values, list):
+                continue
+            for index, date_str in enumerate(times):
+                if index >= len(values):
+                    break
+                if not isinstance(date_str, str):
+                    continue
+                series.setdefault(date_str, {})[indicator] = values[index]
+        result[code] = series
+    return result
+
+
+def fetch_close_series(
+    client: IFindClient,
+    codes: tuple[str, ...],
+    start_date: str,
+    end_date: str,
+    *,
+    close_indicator: str = "ths_close_price_stock",
+) -> dict[str, dict[str, object]]:
+    """Fetch a close-price series per code as ``{code: {date: close}}``."""
+    payload = client.fetch_date_sequence(
+        codes, (close_indicator,), start_date, end_date
+    )
+    parsed = parse_date_sequence(payload)
+    return {
+        code: {
+            date_str: values[close_indicator]
+            for date_str, values in series.items()
+            if close_indicator in values
+        }
+        for code, series in parsed.items()
+    }
+
+
 def load_client_from_env() -> IFindClient:
     return IFindClient()

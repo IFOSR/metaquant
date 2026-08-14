@@ -18,7 +18,9 @@ from quant_platform.data_gateway.gateway import (
 )
 from quant_platform.data_gateway.ifind_client import (
     IFindClient,
+    fetch_close_series,
     load_client_from_env,
+    parse_date_sequence,
 )
 from quant_platform.data_gateway.loader import (
     CrossValidationStatus,
@@ -74,9 +76,11 @@ __all__ = [
     "VendorResponse",
     "VendorSourceClass",
     "exploratory_response",
+    "fetch_close_series",
     "filter_and_resolve",
     "formal_response",
     "guard_exploratory",
     "load_client_from_env",
+    "parse_date_sequence",
     "validate_pit_rows",
 ]

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from quant_platform.data_gateway.ifind_client import HttpPost, IFindClient
+from quant_platform.data_gateway.ifind_client import (
+    HttpPost,
+    IFindClient,
+    fetch_close_series,
+    parse_date_sequence,
+)
 
 
 def fake_post(responses: dict[str, dict[str, object]]) -> HttpPost:
@@ -119,3 +124,44 @@ def test_fetch_date_sequence_builds_request() -> None:
     body = captured["body"]
     assert isinstance(body, dict)
     assert body["startdate"] == "20250101"
+
+
+def test_parse_date_sequence() -> None:
+    payload = {
+        "errorcode": 0,
+        "tables": [
+            {
+                "thscode": "300033.SZ",
+                "time": ["2026-08-10", "2026-08-11"],
+                "table": {"ths_close_price_stock": [238.51, 235.99]},
+            }
+        ],
+    }
+
+    parsed = parse_date_sequence(payload)
+
+    assert parsed["300033.SZ"]["2026-08-10"]["ths_close_price_stock"] == 238.51
+    assert parsed["300033.SZ"]["2026-08-11"]["ths_close_price_stock"] == 235.99
+
+
+def test_fetch_close_series_parses_response() -> None:
+    def post(
+        path: str, body: dict[str, object], headers: dict[str, str]
+    ) -> dict[str, object]:
+        assert path == "/api/v1/date_sequence"
+        return {
+            "errorcode": 0,
+            "tables": [
+                {
+                    "thscode": "300033.SZ",
+                    "time": ["2026-08-10", "2026-08-11"],
+                    "table": {"ths_close_price_stock": [238.51, 235.99]},
+                }
+            ],
+        }
+
+    client = IFindClient(access_token="at-3", post=post)
+    series = fetch_close_series(client, ("300033.SZ",), "20260810", "20260811")
+
+    assert series["300033.SZ"]["2026-08-10"] == 238.51
+    assert series["300033.SZ"]["2026-08-11"] == 235.99

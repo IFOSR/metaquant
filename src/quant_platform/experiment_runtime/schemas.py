@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -94,3 +94,10 @@ class PromoteCommand(BaseModel):
     horizon: int = Field(gt=0)
     risk_premium: bool = False
     evidence: CandidateEvidenceCommand
+
+
+class SignApprovalCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["APPROVE", "REJECT"]
+    reason: str = Field(min_length=1)

@@ -3,11 +3,15 @@
 Approval decisions and waivers are immutable, append-only records bound to the
 target's content hash. A waiver is an approval of a hard-gate failure with a
 mandatory reason and expiry; it is never silent and always traceable.
+
+``ApprovalWorkflow`` (G16-002) enforces the two-person rule: a subject is only
+approved after ``required_approvals`` distinct actors sign, any rejection fails
+it outright, and expiry is terminal.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
 
@@ -34,6 +38,13 @@ def _require_aware(value: datetime, name: str) -> None:
 class Decision(StrEnum):
     APPROVE = "APPROVE"
     REJECT = "REJECT"
+
+
+class WorkflowState(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +75,80 @@ class ApprovalDecision:
             "decision": self.decision.value,
             "reason": self.reason,
             "decided_at": self.decided_at.isoformat(),
+        }
+
+    def content_hash(self) -> str:
+        return canonical_hash(self.payload())
+
+
+@dataclass(frozen=True, slots=True)
+class ApprovalWorkflow:
+    """Two-person approval workflow bound to a content-addressed subject.
+
+    The workflow stays PENDING until ``required_approvals`` distinct actors
+    approve; any rejection fails it outright; a missed expiry expires it. An
+    actor may sign at most once, and every signature must target the workflow
+    subject hash, so signatures cannot be replayed across subjects.
+    """
+
+    workflow_id: str
+    subject_hash: str
+    subject_kind: str
+    required_approvals: int
+    decisions: tuple[ApprovalDecision, ...]
+    created_at: datetime
+    expires_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_identifier(self.workflow_id, "workflow_id")
+        _require_sha256(self.subject_hash, "subject_hash")
+        _require_identifier(self.subject_kind, "subject_kind")
+        if self.required_approvals < 2:
+            raise ValueError("required_approvals must be at least 2")
+        _require_aware(self.created_at, "created_at")
+        _require_aware(self.expires_at, "expires_at")
+        if self.expires_at <= self.created_at:
+            raise ValueError("expires_at must follow created_at")
+        actors = [item.actor for item in self.decisions]
+        if len(set(actors)) != len(actors):
+            raise ValueError("an actor may sign only once")
+        for item in self.decisions:
+            if item.target_hash != self.subject_hash:
+                raise ValueError("decision target must match workflow subject")
+
+    def state(self, now: datetime) -> WorkflowState:
+        _require_aware(now, "now")
+        if any(item.decision is Decision.REJECT for item in self.decisions):
+            return WorkflowState.REJECTED
+        approvals = sum(
+            1 for item in self.decisions if item.decision is Decision.APPROVE
+        )
+        if approvals >= self.required_approvals:
+            return WorkflowState.APPROVED
+        if now >= self.expires_at:
+            return WorkflowState.EXPIRED
+        return WorkflowState.PENDING
+
+    def sign(self, decision: ApprovalDecision, now: datetime) -> ApprovalWorkflow:
+        _require_aware(now, "now")
+        if self.state(now) is not WorkflowState.PENDING:
+            raise ValueError("workflow is not pending")
+        if decision.target_hash != self.subject_hash:
+            raise ValueError("decision target must match workflow subject")
+        if any(item.actor == decision.actor for item in self.decisions):
+            raise ValueError("actor has already signed")
+        return replace(self, decisions=(*self.decisions, decision))
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema_version": "approval-workflow/v1",
+            "workflow_id": self.workflow_id,
+            "subject_hash": self.subject_hash,
+            "subject_kind": self.subject_kind,
+            "required_approvals": self.required_approvals,
+            "decisions": [item.payload() for item in self.decisions],
+            "created_at": self.created_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
         }
 
     def content_hash(self) -> str:

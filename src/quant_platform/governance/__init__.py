@@ -2,8 +2,10 @@
 
 from quant_platform.governance.approval import (
     ApprovalDecision,
+    ApprovalWorkflow,
     Decision,
     Waiver,
+    WorkflowState,
 )
 from quant_platform.governance.lockbox import (
     Lockbox,
@@ -17,11 +19,13 @@ from quant_platform.governance.report import (
 
 __all__ = [
     "ApprovalDecision",
+    "ApprovalWorkflow",
     "Decision",
     "EvidenceRef",
     "Lockbox",
     "ResearchReport",
     "Waiver",
+    "WorkflowState",
     "build_lockbox",
     "key_hash",
 ]

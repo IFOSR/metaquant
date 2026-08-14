@@ -15,6 +15,7 @@ from quant_platform.experiment_runtime.schemas import (
     PreregisterExperimentCommand,
     PromoteCommand,
     RunExperimentCommand,
+    SignApprovalCommand,
     ValidateExperimentCommand,
 )
 from quant_platform.experiments import ResourceBudget
@@ -350,6 +351,35 @@ def build_experiment_router(
         if record is None:
             raise _not_found()
         return record
+
+    @router.get("/approvals/{workflow_id}")
+    def get_approval(
+        workflow_id: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        record = repository.get_approval_workflow(workflow_id)
+        if record is None:
+            raise _not_found()
+        return record
+
+    @router.post("/approvals/{workflow_id}:sign", status_code=202)
+    def sign_approval(
+        workflow_id: str,
+        command: SignApprovalCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        scopes = actor.scopes({"research.governance.approve"})
+        if not scopes:
+            raise _problem(ValueError("INSUFFICIENT_SCOPE"))
+        try:
+            return repository.sign_approval_workflow(
+                workflow_id=workflow_id,
+                actor_id=actor.actor_id,
+                decision=command.decision,
+                reason=command.reason,
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
 
     return router
 

@@ -391,3 +391,19 @@ class CombinationPoolFactorModel(Base):
     promoted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class ApprovalWorkflowModel(Base):
+    __tablename__ = "approval_workflows"
+
+    workflow_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    subject_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    subject_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    required_approvals: Mapped[int] = mapped_column(Integer, nullable=False)
+    decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

@@ -65,3 +65,32 @@ class AssessIndependenceCommand(BaseModel):
     label_snapshot_id: str
     label_snapshot_manifest_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     pool_run_ids: tuple[str, ...] = ()
+
+
+class CandidateEvidenceCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    coverage: float | None
+    observations: int | None
+    oos_ic: float | None
+    expected_direction: str
+    fdr_qvalue: float | None
+    capacity_aum: float | None
+    sharpe: float | None
+    effect_score: float | None
+    stability_score: float | None
+    independence_score: float | None
+    cost_value_score: float | None
+    interpretability_score: float | None
+
+
+class PromoteCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metadata: CommandMetadata
+    policy_id: str
+    direction: str
+    universe: str
+    horizon: int = Field(gt=0)
+    risk_premium: bool = False
+    evidence: CandidateEvidenceCommand

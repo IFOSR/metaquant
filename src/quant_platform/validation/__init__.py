@@ -49,9 +49,11 @@ from quant_platform.validation.policy import (
 from quant_platform.validation.promotion import (
     CandidateEvidence,
     GateResult,
+    InMemoryPromotionPolicyCatalog,
     PromotionDecision,
     PromotionDisposition,
     PromotionPolicy,
+    PromotionPolicyCatalog,
     evaluate_promotion,
 )
 from quant_platform.validation.robustness import (
@@ -109,6 +111,7 @@ __all__ = [
     "ICSign",
     "InMemoryAlphaPoolCatalog",
     "InMemoryLabelSnapshotCatalog",
+    "InMemoryPromotionPolicyCatalog",
     "InMemoryValidationPolicyCatalog",
     "IndependenceReport",
     "JsonLabelSnapshotCatalog",
@@ -127,6 +130,7 @@ __all__ = [
     "PromotionDecision",
     "PromotionDisposition",
     "PromotionPolicy",
+    "PromotionPolicyCatalog",
     "QuantileReturn",
     "RobustnessReport",
     "TrialDisposition",

@@ -13,6 +13,7 @@ from quant_platform.experiment_runtime.schemas import (
     AssessIndependenceCommand,
     AssessRobustnessCommand,
     PreregisterExperimentCommand,
+    PromoteCommand,
     RunExperimentCommand,
     ValidateExperimentCommand,
 )
@@ -22,6 +23,7 @@ from quant_platform.research.api import (
     ResearchPrincipal,
     ResearchPrincipalProvider,
 )
+from quant_platform.validation import CandidateEvidence, ICSign
 
 
 def build_experiment_router(
@@ -211,6 +213,49 @@ def build_experiment_router(
                 label_snapshot_id=command.label_snapshot_id,
                 label_snapshot_manifest_hash=command.label_snapshot_manifest_hash,
                 pool_run_ids=command.pool_run_ids,
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+        return receipt.model_dump(mode="json")
+
+    @router.post("/experiment-runs/{run_id}:promote", status_code=202)
+    def promote(
+        run_id: str,
+        command: PromoteCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+        idempotency_key: str = Header(alias="Idempotency-Key", min_length=16),
+    ) -> dict[str, Any]:
+        evidence = command.evidence
+        try:
+            receipt = repository.promote(
+                actor_id=actor.actor_id,
+                scopes=actor.scopes({"research.experiments.run"}),
+                run_id=run_id,
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(
+                    {"run_id": run_id, **command.model_dump(mode="json")}
+                ),
+                reason=command.metadata.reason,
+                parent_artifact_id=command.metadata.parent_artifact_id,
+                policy_id=command.policy_id,
+                direction=command.direction,
+                universe=command.universe,
+                horizon=command.horizon,
+                risk_premium=command.risk_premium,
+                evidence=CandidateEvidence(
+                    coverage=evidence.coverage,
+                    observations=evidence.observations,
+                    oos_ic=evidence.oos_ic,
+                    expected_direction=ICSign(evidence.expected_direction),
+                    fdr_qvalue=evidence.fdr_qvalue,
+                    capacity_aum=evidence.capacity_aum,
+                    sharpe=evidence.sharpe,
+                    effect_score=evidence.effect_score,
+                    stability_score=evidence.stability_score,
+                    independence_score=evidence.independence_score,
+                    cost_value_score=evidence.cost_value_score,
+                    interpretability_score=evidence.interpretability_score,
+                ),
             )
         except ValueError as exc:
             raise _problem(exc) from exc

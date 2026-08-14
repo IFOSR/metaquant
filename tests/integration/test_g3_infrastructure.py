@@ -19,6 +19,7 @@ from quant_platform.experiment_runtime.repository import (
     SqlAlchemyExperimentRepository,
 )
 from quant_platform.research.models import (
+    CombinationPoolFactorModel,
     ExperimentArtifactModel,
     ExperimentAttemptModel,
     ExperimentCommandReceiptModel,
@@ -26,6 +27,7 @@ from quant_platform.research.models import (
     ExperimentRunModel,
     FactorValidationModel,
     IndependenceReportModel,
+    PromotionRecordModel,
     TrialLedgerModel,
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
@@ -34,8 +36,10 @@ from quant_platform.validation import (
     ForwardReturnLabel,
     ICSign,
     InMemoryLabelSnapshotCatalog,
+    InMemoryPromotionPolicyCatalog,
     InMemoryValidationPolicyCatalog,
     LabelSnapshotRow,
+    PromotionPolicy,
     ValidationPolicy,
 )
 from tests.experiment_support import (
@@ -230,6 +234,19 @@ def _validation_repository(engine: Engine) -> SqlAlchemyExperimentRepository:
         ),
         policy_catalog=InMemoryValidationPolicyCatalog((policy,)),
         label_snapshot_catalog=InMemoryLabelSnapshotCatalog((label_snapshot(),)),
+        promotion_policy_catalog=InMemoryPromotionPolicyCatalog(
+            (
+                PromotionPolicy(
+                    policy_id="policy://cn-a-promotion/v1",
+                    market="CN_A",
+                    min_coverage=0.0,
+                    min_observations=1,
+                    min_oos_ic=0.0,
+                    fdr_bound=1.0,
+                    min_capacity=0.0,
+                ),
+            )
+        ),
     )
 
 
@@ -452,3 +469,89 @@ def test_postgres_assess_independence_stores_report_and_ledger() -> None:
     assert ledger_after == ledger_before + 1
     assert lineage_after == lineage_before + 1
     assert independence_after == independence_before + 1
+
+
+def test_postgres_promote_stores_decision_and_pool() -> None:
+    engine = create_engine(_database_url(), pool_pre_ping=True)
+    experiments = _validation_repository(engine)
+    app = create_app(
+        readiness_probe=lambda: {"postgres": True, "minio": True},
+        research_repository=experiments._research,
+        experiment_repository=experiments,
+        research_principal_provider=provider,
+    )
+    with TestClient(app) as client:
+        job_id, brief_id = create_frozen_brief(client)
+        registered = client.post(
+            "/v1/experiments:preregister",
+            headers=headers("g3-pg-promote-preregister-0001"),
+            json=preregister_command(job_id, brief_id),
+        )
+        registered.raise_for_status()
+        experiment_id = registered.json()["resource_id"]
+        run_response = client.post(
+            f"/v1/experiments/{experiment_id}:run",
+            headers=headers("g3-pg-promote-run-0001", '"1"'),
+            json=run_command(),
+        )
+        run_response.raise_for_status()
+        run_id = run_response.json()["resource_id"]
+
+        with engine.connect() as connection:
+            promotion_before = (
+                connection.scalar(
+                    select(func.count()).select_from(PromotionRecordModel)
+                )
+                or 0
+            )
+            pool_before = (
+                connection.scalar(
+                    select(func.count()).select_from(CombinationPoolFactorModel)
+                )
+                or 0
+            )
+
+        promoted = client.post(
+            f"/v1/experiment-runs/{run_id}:promote",
+            headers=headers("g3-pg-promote-0001"),
+            json={
+                "metadata": metadata("Promote factor"),
+                "policy_id": "policy://cn-a-promotion/v1",
+                "direction": "LONG_SHORT",
+                "universe": "cn-a-000300",
+                "horizon": 5,
+                "risk_premium": False,
+                "evidence": {
+                    "coverage": 0.9,
+                    "observations": 100,
+                    "oos_ic": 0.05,
+                    "expected_direction": "POSITIVE",
+                    "fdr_qvalue": 0.03,
+                    "capacity_aum": 1000000.0,
+                    "sharpe": 1.0,
+                    "effect_score": 0.8,
+                    "stability_score": 0.7,
+                    "independence_score": 0.9,
+                    "cost_value_score": 0.6,
+                    "interpretability_score": 0.5,
+                },
+            },
+        )
+        promoted.raise_for_status()
+
+        with engine.connect() as connection:
+            promotion_after = (
+                connection.scalar(
+                    select(func.count()).select_from(PromotionRecordModel)
+                )
+                or 0
+            )
+            pool_after = (
+                connection.scalar(
+                    select(func.count()).select_from(CombinationPoolFactorModel)
+                )
+                or 0
+            )
+
+    assert promotion_after == promotion_before + 1
+    assert pool_after == pool_before + 1

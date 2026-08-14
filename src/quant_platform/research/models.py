@@ -359,3 +359,35 @@ class IndependenceReportModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class PromotionRecordModel(Base):
+    __tablename__ = "promotion_records"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("experiment_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    factor_ir_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    total_score: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    output_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    report_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class CombinationPoolFactorModel(Base):
+    __tablename__ = "combination_pool_factors"
+
+    factor_ir_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    market: Mapped[str] = mapped_column(String(32), nullable=False)
+    direction: Mapped[str] = mapped_column(String(32), nullable=False)
+    promotion_evidence_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    promoted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

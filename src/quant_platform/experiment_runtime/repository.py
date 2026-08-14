@@ -50,7 +50,9 @@ from quant_platform.experiments import (
 from quant_platform.factor_executor import FactorInputRow, FactorTable, execute_factor
 from quant_platform.factor_ir import compile_factor_ir
 from quant_platform.research.models import (
+    AlphaPoolFactorModel,
     AuditEventModel,
+    CombinationPoolFactorModel,
     ExperimentArtifactModel,
     ExperimentAttemptModel,
     ExperimentCommandReceiptModel,
@@ -60,18 +62,24 @@ from quant_platform.research.models import (
     FactorValidationModel,
     IndependenceReportModel,
     OutboxEventModel,
+    PromotionRecordModel,
     TrialLedgerModel,
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import CommandReceipt
 from quant_platform.validation import (
+    CandidateEvidence,
     InMemoryLabelSnapshotCatalog,
+    InMemoryPromotionPolicyCatalog,
     InMemoryValidationPolicyCatalog,
     LabelSnapshotCatalog,
+    PromotionDisposition,
+    PromotionPolicyCatalog,
     TrialDisposition,
     TrialLedger,
     TrialLedgerEntry,
     ValidationPolicyCatalog,
+    evaluate_promotion,
     run_independence_analysis,
     run_robustness,
     validate_factor,
@@ -100,6 +108,7 @@ class SqlAlchemyExperimentRepository:
         before_commit: Callable[[], None] | None = None,
         policy_catalog: ValidationPolicyCatalog | None = None,
         label_snapshot_catalog: LabelSnapshotCatalog | None = None,
+        promotion_policy_catalog: PromotionPolicyCatalog | None = None,
     ) -> None:
         self._engine = engine
         self._sessions = sessionmaker(engine, expire_on_commit=False)
@@ -111,6 +120,9 @@ class SqlAlchemyExperimentRepository:
         self._policy_catalog = policy_catalog or InMemoryValidationPolicyCatalog(())
         self._label_snapshot_catalog = (
             label_snapshot_catalog or InMemoryLabelSnapshotCatalog(())
+        )
+        self._promotion_policy_catalog = (
+            promotion_policy_catalog or InMemoryPromotionPolicyCatalog(())
         )
 
     def preregister(
@@ -1052,6 +1064,177 @@ class SqlAlchemyExperimentRepository:
                     ),
                 ]
             )
+            self._run_before_commit()
+        return receipt
+
+    def promote(
+        self,
+        *,
+        actor_id: str,
+        scopes: frozenset[tuple[str, str]],
+        run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        reason: str,
+        parent_artifact_id: str | None,
+        policy_id: str,
+        direction: str,
+        universe: str,
+        horizon: int,
+        risk_premium: bool,
+        evidence: CandidateEvidence,
+    ) -> CommandReceipt:
+        policy = self._promotion_policy_catalog.resolve(policy_id)
+
+        with self._sessions.begin() as session:
+            self._lock_key(session, actor_id, idempotency_key)
+            stored_receipt = session.get(
+                ExperimentCommandReceiptModel, (actor_id, idempotency_key)
+            )
+            if stored_receipt is not None:
+                if stored_receipt.request_hash != request_hash:
+                    raise ValueError("IDEMPOTENCY_KEY_REUSE")
+                return CommandReceipt.model_validate(stored_receipt.response)
+
+            run = session.get(ExperimentRunModel, run_id)
+            if run is None or (run.project_id, run.market) not in scopes:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            if run.state != "SUCCEEDED":
+                raise ValueError("RUN_NOT_SUCCEEDED")
+            if run.market != policy.market:
+                raise ValueError("MARKET_MISMATCH")
+
+            factor, factor_store_address = self._load_factor_artifact(session, run_id)
+            decision_time = self._decision_time(session, run.experiment_id)
+            decision = evaluate_promotion(evidence, policy)
+
+            report_store = self._artifacts.put(
+                canonical_bytes(decision.payload()), media_type="application/json"
+            )
+            attempt_id = session.scalar(
+                select(ExperimentAttemptModel.id)
+                .where(ExperimentAttemptModel.run_id == run_id)
+                .limit(1)
+            )
+            if attempt_id is None:
+                raise ValueError("RUN_ATTEMPT_NOT_FOUND")
+            edge = LineageEdge(
+                source_artifact_hash=factor_store_address,
+                target_artifact_hash=report_store.content_hash,
+                relation=LineageRelation.VALIDATED_BY,
+            )
+            entry = TrialLedgerEntry(
+                entry_id=f"trial_{uuid4().hex}",
+                factor_ir_hash=factor.factor_ir_hash,
+                policy_id=policy.policy_id,
+                decision_time=decision_time,
+                result_hash=decision.content_hash(),
+                disposition=(
+                    TrialDisposition.ACCEPTED
+                    if decision.disposition is PromotionDisposition.PROMOTE
+                    else TrialDisposition.REJECTED
+                ),
+            )
+            receipt = CommandReceipt(
+                command_id=f"cmd_{uuid4().hex}",
+                resource_id=entry.entry_id,
+                submitted_at=_now(),
+            )
+            timestamp = _now()
+            add_list: list[object] = [
+                PromotionRecordModel(
+                    id=f"promotion_{entry.entry_id}",
+                    run_id=run_id,
+                    factor_ir_hash=factor.factor_ir_hash,
+                    policy_id=policy.policy_id,
+                    disposition=decision.disposition.value,
+                    total_score=decision.total_score,
+                    output_hash=decision.content_hash(),
+                    report_payload=decision.payload(),
+                    created_at=timestamp,
+                ),
+                ExperimentArtifactModel(
+                    id=f"artifact_{entry.entry_id}",
+                    content_hash=report_store.content_hash,
+                    run_id=run_id,
+                    attempt_id=attempt_id,
+                    artifact_type="PromotionDecision",
+                    schema_version="promotion-decision/v1",
+                    size_bytes=report_store.size_bytes,
+                    media_type="application/json",
+                    domain_hash=decision.content_hash(),
+                    created_at=timestamp,
+                ),
+                ExperimentLineageModel(
+                    edge_hash=edge.edge_hash,
+                    run_id=run_id,
+                    source_artifact_hash=edge.source_artifact_hash,
+                    target_artifact_hash=edge.target_artifact_hash,
+                    relation=edge.relation.value,
+                ),
+                ExperimentCommandReceiptModel(
+                    actor_id=actor_id,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    response=receipt.model_dump(mode="json"),
+                    created_at=timestamp,
+                ),
+                TrialLedgerModel(
+                    id=entry.entry_id,
+                    run_id=run_id,
+                    factor_ir_hash=entry.factor_ir_hash,
+                    policy_id=entry.policy_id,
+                    decision_time=entry.decision_time,
+                    result_hash=entry.result_hash,
+                    disposition=entry.disposition.value,
+                    created_at=timestamp,
+                ),
+                _audit(
+                    actor_id,
+                    "experiment.promotion.evaluated",
+                    run_id,
+                    reason,
+                    parent_artifact_id,
+                    receipt.command_id,
+                    decision.content_hash(),
+                ),
+                _outbox(
+                    "PromotionEvaluated",
+                    "ExperimentRun",
+                    run_id,
+                    receipt.command_id,
+                    {
+                        "run_id": run_id,
+                        "disposition": decision.disposition.value,
+                        "output_hash": decision.content_hash(),
+                    },
+                ),
+            ]
+            if decision.disposition is PromotionDisposition.PROMOTE:
+                add_list.append(
+                    CombinationPoolFactorModel(
+                        factor_ir_hash=factor.factor_ir_hash,
+                        market=run.market,
+                        direction=direction,
+                        promotion_evidence_hash=decision.content_hash(),
+                        promoted_at=timestamp,
+                    )
+                )
+                add_list.append(
+                    AlphaPoolFactorModel(
+                        factor_ir_hash=factor.factor_ir_hash,
+                        direction=direction,
+                        market=run.market,
+                        universe=universe,
+                        horizon=horizon,
+                        policy_id=policy.policy_id,
+                        risk_premium=risk_premium,
+                        lifecycle_state="PROMOTED",
+                        oos_ic=evidence.oos_ic,
+                        created_at=timestamp,
+                    )
+                )
+            session.add_all(add_list)
             self._run_before_commit()
         return receipt
 

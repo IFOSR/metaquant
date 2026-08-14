@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol
 
 from quant_platform.experiments import canonical_hash
 from quant_platform.validation.policy import ICSign
@@ -115,6 +116,23 @@ class PromotionPolicy:
         return canonical_hash(self.payload())
 
 
+class PromotionPolicyCatalog(Protocol):
+    def resolve(self, policy_id: str) -> PromotionPolicy: ...
+
+
+class InMemoryPromotionPolicyCatalog:
+    def __init__(self, policies: tuple[PromotionPolicy, ...]) -> None:
+        self._policies = {str(item.policy_id): item for item in policies}
+        if len(self._policies) != len(policies):
+            raise ValueError("promotion policy ids must be unique")
+
+    def resolve(self, policy_id: str) -> PromotionPolicy:
+        try:
+            return self._policies[policy_id]
+        except KeyError as exc:
+            raise ValueError("PROMOTION_POLICY_NOT_REGISTERED") from exc
+
+
 @dataclass(frozen=True, slots=True)
 class CandidateEvidence:
     coverage: float | None
@@ -151,7 +169,9 @@ class PromotionDecision:
 
     def __post_init__(self) -> None:
         if not isinstance(self.disposition, PromotionDisposition):
-            object.__setattr__(self, "disposition", PromotionDisposition(self.disposition))
+            object.__setattr__(
+                self, "disposition", PromotionDisposition(self.disposition)
+            )
         if not self.rationale:
             raise ValueError("rationale must not be empty")
 
@@ -185,7 +205,9 @@ def _gate(
     threshold: float | None,
     note: str | None = None,
 ) -> GateResult:
-    return GateResult(name=name, passed=passed, observed=observed, threshold=threshold, note=note)
+    return GateResult(
+        name=name, passed=passed, observed=observed, threshold=threshold, note=note
+    )
 
 
 def _direction_consistent(oos_ic: float | None, expected: ICSign) -> bool:
@@ -307,7 +329,8 @@ def evaluate_promotion(
         total_score=total,
         rationale=(
             "all hard gates passed; scorecard "
-            f"{total:.4f} {'meets' if disposition is PromotionDisposition.PROMOTE else 'below'} "
+            f"{total:.4f} "
+            f"{'meets' if disposition is PromotionDisposition.PROMOTE else 'below'} "
             f"pass line {policy.pass_line:.4f}"
         ),
     )

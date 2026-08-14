@@ -325,3 +325,46 @@ def test_run_requires_matching_if_match_and_rejects_client_execution_identity() 
     assert stale.status_code == 412
     assert stale.json()["code"] == "RESOURCE_VERSION_MISMATCH"
     assert injected.status_code == 422
+
+
+def test_run_fails_closed_when_ir_references_sentinel_field() -> None:
+    client = make_client()
+    job_id, brief_id = create_frozen_brief(client)
+    preregistration = preregister_command(job_id, brief_id)
+    # Point the IR at the injected sentinel field; the invariance check must
+    # fail the run instead of merely recording the violation.
+    factor_ir = preregistration["factor_ir"]
+    assert isinstance(factor_ir, dict)
+    factor_ir["inputs"] = [
+        {
+            "alias": "sentinel",
+            "field_ref": "future_sentinel",
+            "data_type": "ScalarSeries",
+            "unit": "1",
+            "available_time_rule": "T_CLOSE+20m",
+        }
+    ]
+    factor_ir["expression"] = {
+        "op": "returns",
+        "args": [{"ref": "sentinel"}],
+        "params": {"periods": 1},
+    }
+    preregistered = client.post(
+        "/v1/experiments:preregister",
+        headers=headers("preregister-sentinel-reference"),
+        json=preregistration,
+    )
+    assert preregistered.status_code == 202
+    experiment_id = preregistered.json()["resource_id"]
+
+    run = client.post(
+        f"/v1/experiments/{experiment_id}:run",
+        headers=headers("run-sentinel-reference", '"1"'),
+        json=run_command(),
+    )
+    assert run.status_code == 202
+    run_id = run.json()["resource_id"]
+
+    body = client.get(f"/v1/experiment-runs/{run_id}", headers=headers()).json()
+    assert body["state"] == "FAILED"
+    assert body["invariance"]["sentinel_isolation_passed"] is False

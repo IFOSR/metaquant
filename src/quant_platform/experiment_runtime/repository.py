@@ -510,13 +510,18 @@ class SqlAlchemyExperimentRepository:
                 self._run_before_commit()
                 return replay
             timestamp = _now()
+            invariance_passed = (
+                invariance.future_truncation_passed
+                and invariance.sentinel_isolation_passed
+            )
+            run_state = "SUCCEEDED" if invariance_passed else "FAILED"
             session.add(
                 ExperimentRunModel(
                     id=run_id,
                     experiment_id=experiment_id,
                     project_id=model.project_id,
                     market=model.market,
-                    state="SUCCEEDED",
+                    state=run_state,
                     run_fingerprint=fingerprint,
                     attempt_count=1,
                     validation_summary=_json(summary),
@@ -531,7 +536,7 @@ class SqlAlchemyExperimentRepository:
                     id=attempt_id,
                     run_id=run_id,
                     ordinal=1,
-                    state="SUCCEEDED",
+                    state=run_state,
                     created_at=timestamp,
                     updated_at=timestamp,
                 )

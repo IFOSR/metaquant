@@ -13,6 +13,10 @@ from quant_platform.validation.capacity import (
     NameCapacity,
     run_capacity,
 )
+from quant_platform.validation.combination_pool import (
+    CombinationPool,
+    PromotedFactor,
+)
 from quant_platform.validation.contracts import (
     ForwardReturnLabel,
     LabelObservation,
@@ -41,6 +45,14 @@ from quant_platform.validation.policy import (
     JsonValidationPolicyCatalog,
     ValidationPolicy,
     ValidationPolicyCatalog,
+)
+from quant_platform.validation.promotion import (
+    CandidateEvidence,
+    GateResult,
+    PromotionDecision,
+    PromotionDisposition,
+    PromotionPolicy,
+    evaluate_promotion,
 )
 from quant_platform.validation.robustness import (
     NegativeControlReport,
@@ -77,13 +89,15 @@ from quant_platform.validation.validator import (
 )
 
 __all__ = [
-    "CrossSection",
     "AlphaPool",
     "AlphaPoolCatalog",
     "AlphaPoolFactor",
     "AumPoint",
+    "CandidateEvidence",
     "CapacityModel",
     "CapacityReport",
+    "CombinationPool",
+    "CrossSection",
     "DataQualityReport",
     "FactorDirection",
     "FactorSeries",
@@ -91,6 +105,7 @@ __all__ = [
     "FalseDiscoveryReport",
     "FormalLabelSnapshot",
     "ForwardReturnLabel",
+    "GateResult",
     "ICSign",
     "InMemoryAlphaPoolCatalog",
     "InMemoryLabelSnapshotCatalog",
@@ -103,11 +118,15 @@ __all__ = [
     "LabelSnapshotCatalog",
     "LabelSnapshotRow",
     "LifecycleState",
-    "NegativeControlReport",
     "NameCapacity",
-    "ParameterNeighborhoodReport",
+    "NegativeControlReport",
     "PairwiseCorrelation",
+    "ParameterNeighborhoodReport",
     "PredictivePowerReport",
+    "PromotedFactor",
+    "PromotionDecision",
+    "PromotionDisposition",
+    "PromotionPolicy",
     "QuantileReturn",
     "RobustnessReport",
     "TrialDisposition",
@@ -120,12 +139,13 @@ __all__ = [
     "assert_label_pit_safe",
     "benjamini_hochberg",
     "deflated_sharpe_ratio",
+    "evaluate_promotion",
     "perturb_factor",
     "probability_of_backtest_overfitting",
     "run_capacity",
     "run_false_discovery",
-    "run_negative_controls",
     "run_independence_analysis",
+    "run_negative_controls",
     "run_parameter_neighborhood",
     "run_robustness",
     "run_turnover",

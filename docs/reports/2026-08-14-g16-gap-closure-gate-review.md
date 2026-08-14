@@ -122,3 +122,28 @@ $ tsc --noEmit / vitest 47 / eslint  (frontend) clean
 - **Remaining UI pages (FR-704/705/706).** Lineage, strategy/backtest, and
   paper/live operations pages are not yet built.
 
+## 7. G17 final closure
+
+The remaining frontend surfaces and their supporting endpoints were delivered:
+
+- **FR-701 session endpoint and login.** `GET /session` returns the principal's
+  capabilities and markets; the client derives the session from the token
+  instead of a hard-coded session, and a login page stores the access token.
+- **FR-704 lineage panel.** Mounted on the job detail page using the existing
+  `list_artifacts` lineage data.
+- **FR-705 strategy surface.** `GET /alpha-pool` reads the Alpha Pool; the
+  strategy page lists promoted factors and the combination/risk/backtest
+  contract.
+- **FR-706 paper/live operations.** `execution_states` table, kill-switch
+  trip/reset endpoints, and an execution page with a persistent kill switch.
+
+Final verification:
+
+```text
+$ pytest  514 passed, 6 skipped
+$ mypy    Success (184 source files)
+$ ruff    All checks passed
+$ tsc --noEmit / vitest 53 / eslint  (frontend) clean
+```
+
+The PRD functional surface (FR-701..FR-708) is now implemented end-to-end.

@@ -6,6 +6,11 @@ from quant_platform.validation.alpha_pool import (
     InMemoryAlphaPoolCatalog,
     LifecycleState,
 )
+from quant_platform.validation.attribution import (
+    AttributionReport,
+    CostBreakdown,
+    build_attribution_report,
+)
 from quant_platform.validation.capacity import (
     AumPoint,
     CapacityModel,
@@ -95,12 +100,14 @@ __all__ = [
     "AlphaPool",
     "AlphaPoolCatalog",
     "AlphaPoolFactor",
+    "AttributionReport",
     "AumPoint",
     "CandidateEvidence",
     "cross_check_evidence",
     "CapacityModel",
     "CapacityReport",
     "CombinationPool",
+    "CostBreakdown",
     "CrossSection",
     "DataQualityReport",
     "FactorDirection",
@@ -144,6 +151,7 @@ __all__ = [
     "align_cross_sections",
     "assert_label_pit_safe",
     "benjamini_hochberg",
+    "build_attribution_report",
     "deflated_sharpe_ratio",
     "evaluate_promotion",
     "perturb_factor",

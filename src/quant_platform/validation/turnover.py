@@ -12,7 +12,11 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 
-from quant_platform.experiments import FactorComputationArtifact, canonical_hash
+from quant_platform.experiments import (
+    FactorComputationArtifact,
+    FactorObservation,
+    canonical_hash,
+)
 
 
 def _section_time(cross_section: FactorComputationArtifact) -> datetime:
@@ -176,3 +180,33 @@ def run_turnover(series: FactorSeries, *, buffer: float = 0.1) -> TurnoverReport
         signal_half_life=half_life,
         period_count=len(cross_sections),
     )
+
+
+def build_factor_series(factor: FactorComputationArtifact) -> FactorSeries:
+    """Split a multi-period factor artifact into time-ordered cross-sections.
+
+    This is the historical ``FactorSeries`` execution path: a single sealed
+    computation artifact whose observations span multiple event times is split
+    into one single-period artifact per event time, then wrapped as a strictly
+    time-ordered ``FactorSeries`` ready for ``run_turnover``.
+    """
+    by_time: dict[datetime, list[FactorObservation]] = {}
+    for observation in factor.observations:
+        by_time.setdefault(observation.event_time, []).append(observation)
+
+    sections: list[FactorComputationArtifact] = []
+    for index, (_, observations) in enumerate(sorted(by_time.items())):
+        sections.append(
+            FactorComputationArtifact.create(
+                artifact_id=f"{factor.artifact_id}-t{index}",
+                run_id=factor.run_id,
+                attempt_id=factor.attempt_id,
+                experiment_spec_hash=factor.experiment_spec_hash,
+                factor_ir_hash=factor.factor_ir_hash,
+                snapshot_id=factor.snapshot_id,
+                snapshot_manifest_hash=factor.snapshot_manifest_hash,
+                input_hash=factor.input_hash,
+                observations=tuple(observations),
+            )
+        )
+    return FactorSeries(cross_sections=tuple(sections))

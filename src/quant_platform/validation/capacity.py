@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import datetime
 
+from quant_platform.data_gateway.models import FrozenSnapshot
 from quant_platform.experiments import canonical_hash
 
 _VALID_MARKETS = frozenset({"CN_A", "CN_COMMODITY_FUTURES"})
+_ADV_FIELD = "market.eod.adv"
+_TRADABLE_FIELD = "market.eod.tradable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,3 +165,50 @@ def run_capacity(
         total_capacity=total_capacity,
         tradable_count=tradable_count,
     )
+
+
+def _to_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes"}
+    if isinstance(value, int | float):
+        return value != 0
+    return bool(value)
+
+
+def extract_tradability(
+    snapshot: FrozenSnapshot,
+    *,
+    adv_field: str = _ADV_FIELD,
+    tradable_field: str = _TRADABLE_FIELD,
+) -> tuple[dict[str, float], dict[str, bool]]:
+    """Extract per-instrument ADV and tradability from a frozen snapshot.
+
+    These are the market-data inputs to ``run_capacity``. The latest (highest
+    event time) observation wins per instrument; non-numeric or non-positive ADV
+    values are skipped so capacity only considers known, liquid names.
+    """
+    adv: dict[str, float] = {}
+    adv_time: dict[str, datetime] = {}
+    tradable: dict[str, bool] = {}
+    tradable_time: dict[str, datetime] = {}
+
+    for row in snapshot.rows:
+        if row.field == adv_field:
+            if isinstance(row.value, bool) or not isinstance(row.value, int | float):
+                continue
+            value = float(row.value)
+            if not math.isfinite(value) or value <= 0.0:
+                continue
+            current = adv_time.get(row.instrument_id)
+            if current is None or row.event_time >= current:
+                adv[row.instrument_id] = value
+                adv_time[row.instrument_id] = row.event_time
+        elif row.field == tradable_field:
+            current = tradable_time.get(row.instrument_id)
+            if current is None or row.event_time >= current:
+                tradable[row.instrument_id] = _to_bool(row.value)
+                tradable_time[row.instrument_id] = row.event_time
+
+    return adv, tradable

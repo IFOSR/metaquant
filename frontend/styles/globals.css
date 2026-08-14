@@ -167,6 +167,7 @@ h2 { font-size: 1.28rem; letter-spacing: -0.04em; line-height: 1.05; margin: 8px
 .freshness-banner span { color: var(--ink-soft); font-size: 0.84rem; }
 .detail-grid { grid-template-columns: minmax(0, 1.7fr) minmax(290px, 0.8fr); }
 .evidence-column { display: grid; gap: 18px; align-content: start; }
+.evidence-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
 .run-progress { background: var(--panel-inset); padding: 17px; }
 .run-progress-head { font-size: 0.84rem; }
 .gate-track { display: grid; gap: 4px; grid-template-columns: repeat(6, 1fr); margin-top: 18px; }

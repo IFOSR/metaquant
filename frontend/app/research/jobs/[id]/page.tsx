@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import { ExperimentMonitor } from "../../../../components/experiment-monitor";
+import { FactorValidationReportPanel } from "../../../../components/factor-validation-report";
+import { IndependencePanel } from "../../../../components/independence-panel";
+import { PromotionPanel } from "../../../../components/promotion-panel";
 import { ResearchJobSnapshot } from "../../../../components/research-job-snapshot";
 import { StatusChip } from "../../../../components/status-chip";
 import { MARKET_LABELS } from "../../../../lib/domain";
@@ -23,6 +26,15 @@ export default async function ResearchJobDetailPage({
     : null;
   const artifacts = run
     ? await quantApiClient.getExperimentArtifacts(run.id)
+    : null;
+  const validation = run
+    ? await quantApiClient.getExperimentValidation(run.id).catch(() => null)
+    : null;
+  const independence = run
+    ? await quantApiClient.getExperimentIndependence(run.id).catch(() => null)
+    : null;
+  const promotion = run
+    ? await quantApiClient.getExperimentPromotion(run.id).catch(() => null)
     : null;
   const isStale = job.freshness?.isStale ?? false;
   return (
@@ -92,6 +104,13 @@ export default async function ResearchJobDetailPage({
         run={run}
         artifacts={artifacts}
       />
+      {run ? (
+        <div className="evidence-grid">
+          <FactorValidationReportPanel report={validation} />
+          <IndependencePanel report={independence} />
+          <PromotionPanel report={promotion} />
+        </div>
+      ) : null}
     </div>
   );
 }

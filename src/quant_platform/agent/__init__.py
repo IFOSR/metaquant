@@ -7,6 +7,11 @@ from quant_platform.agent.contracts import (
     ResearchProposal,
     Uncertainty,
 )
+from quant_platform.agent.deepseek_client import (
+    BudgetExceededError,
+    DeepSeekAgentGateway,
+    DeepSeekRunner,
+)
 from quant_platform.agent.gateway import (
     AgentGateway,
     AgentRole,
@@ -19,8 +24,11 @@ __all__ = [
     "AgentGateway",
     "AgentRole",
     "AgentTrace",
+    "BudgetExceededError",
     "CandidateFactor",
     "DataRequest",
+    "DeepSeekAgentGateway",
+    "DeepSeekRunner",
     "FalsificationTest",
     "ResearchProposal",
     "Uncertainty",

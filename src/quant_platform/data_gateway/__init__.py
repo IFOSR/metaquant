@@ -10,6 +10,7 @@ from quant_platform.data_gateway.adapters import (
     FuturesContractChainAdapter,
     SecurityStatusUnavailableError,
 )
+from quant_platform.data_gateway.akshare_vendor import AkShareVendorAdapter
 from quant_platform.data_gateway.gateway import (
     InMemorySnapshotStore,
     PITDataGateway,
@@ -46,6 +47,7 @@ from quant_platform.data_gateway.vendor import (
 __all__ = [
     "ASharePITAdapter",
     "ActualFuturesContract",
+    "AkShareVendorAdapter",
     "ArtifactClass",
     "CrossValidationStatus",
     "DatasetContract",

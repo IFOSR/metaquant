@@ -6,6 +6,7 @@ import type {
   FactorValidationReport,
   IndependenceSummary,
   PreregisterExperimentInput,
+  PromotionSummary,
   ResearchBrief,
   ResearchJob,
   Session,
@@ -217,6 +218,26 @@ export interface ApiIndependence {
   } | null;
 }
 
+export interface ApiPromotion {
+  run_id: string;
+  output_hash: string;
+  factor_ir_hash: string;
+  policy_id: string;
+  disposition: string;
+  total_score: number | null;
+  report: {
+    gates: Array<{
+      name: string;
+      passed: boolean;
+      observed: number | null;
+      threshold: number | null;
+      note: string | null;
+    }>;
+    component_scores: Array<[string, number]>;
+    rationale: string;
+  } | null;
+}
+
 export interface QuantApiClient {
   getSession(): Promise<Session>;
   listResearchJobs(): Promise<ResearchJob[]>;
@@ -233,6 +254,7 @@ export interface QuantApiClient {
   getExperimentArtifacts(id: string): Promise<ExperimentArtifacts>;
   getExperimentValidation(id: string): Promise<FactorValidationReport>;
   getExperimentIndependence(id: string): Promise<IndependenceSummary>;
+  getExperimentPromotion(id: string): Promise<PromotionSummary>;
 }
 
 export class QuantApiProblem extends Error {
@@ -434,6 +456,13 @@ export class HttpQuantApiClient implements QuantApiClient {
       `/experiment-runs/${id}/independence`,
     );
     return mapIndependence(result.body);
+  }
+
+  async getExperimentPromotion(id: string) {
+    const result = await this.request<ApiPromotion>(
+      `/experiment-runs/${id}/promotion`,
+    );
+    return mapPromotion(result.body);
   }
 
   private commandHeaders(id: string, resourceVersion?: number) {
@@ -669,6 +698,20 @@ export function mapIndependence(input: ApiIndependence): IndependenceSummary {
       pearson: item.pearson,
       spearman: item.spearman,
     })),
+  };
+}
+
+export function mapPromotion(input: ApiPromotion): PromotionSummary {
+  return {
+    runId: input.run_id,
+    outputHash: input.output_hash,
+    factorIrHash: input.factor_ir_hash,
+    policyId: input.policy_id,
+    disposition: input.disposition as PromotionSummary["disposition"],
+    totalScore: input.total_score,
+    gates: input.report?.gates ?? [],
+    componentScores: input.report?.component_scores ?? [],
+    rationale: input.report?.rationale ?? "",
   };
 }
 

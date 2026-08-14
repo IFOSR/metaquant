@@ -250,3 +250,21 @@ export interface IndependenceSummary {
     spearman: number | null;
   }>;
 }
+
+export interface PromotionSummary {
+  runId: string;
+  outputHash: string;
+  factorIrHash: string;
+  policyId: string;
+  disposition: "PROMOTE" | "REJECT" | "QUARANTINE";
+  totalScore: number | null;
+  gates: Array<{
+    name: string;
+    passed: boolean;
+    observed: number | null;
+    threshold: number | null;
+    note: string | null;
+  }>;
+  componentScores: Array<[string, number]>;
+  rationale: string;
+}

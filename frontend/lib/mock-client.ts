@@ -444,4 +444,23 @@ export const mockClient: QuantApiClient = {
       ],
     };
   },
+  async getExperimentPromotion(id: string) {
+    return {
+      runId: id,
+      outputHash: "0".repeat(64),
+      factorIrHash: "a".repeat(64),
+      policyId: "policy://cn-a-promotion/v1",
+      disposition: "PROMOTE",
+      totalScore: 0.72,
+      gates: [
+        { name: "data_quality.coverage", passed: true, observed: 0.95, threshold: 0.8, note: null },
+        { name: "oos.direction", passed: true, observed: 0.05, threshold: 0.02, note: null },
+      ],
+      componentScores: [
+        ["effect", 0.8],
+        ["stability", 0.7],
+      ],
+      rationale: "all hard gates passed",
+    };
+  },
 };

@@ -26,6 +26,7 @@ from quant_platform.data_gateway import (
     SnapshotQuery,
     SourceClass,
 )
+from quant_platform.execution.safety import KillSwitch, KillSwitchState
 from quant_platform.experiment_runtime.catalog import (
     ExecutionIdentity,
     FormalSnapshotCatalog,
@@ -60,6 +61,7 @@ from quant_platform.research.models import (
     ApprovalWorkflowModel,
     AuditEventModel,
     CombinationPoolFactorModel,
+    ExecutionStateModel,
     ExperimentArtifactModel,
     ExperimentAttemptModel,
     ExperimentCommandReceiptModel,
@@ -1554,6 +1556,115 @@ class SqlAlchemyExperimentRepository:
         alpha = session.get(AlphaPoolFactorModel, pool.factor_ir_hash)
         if alpha is not None:
             alpha.lifecycle_state = "REJECTED"
+
+    def list_alpha_pool(
+        self, *, scopes: frozenset[tuple[str, str]]
+    ) -> list[dict[str, Any]]:
+        """List promoted Alpha Pool factors visible to the given scopes (FR-705)."""
+        if not scopes:
+            return []
+        markets = {market for _, market in scopes}
+        with self._sessions() as session:
+            models = session.scalars(
+                select(AlphaPoolFactorModel).where(
+                    AlphaPoolFactorModel.market.in_(markets)
+                )
+            ).all()
+            return [
+                {
+                    "factor_ir_hash": model.factor_ir_hash,
+                    "direction": model.direction,
+                    "market": model.market,
+                    "universe": model.universe,
+                    "horizon": model.horizon,
+                    "policy_id": model.policy_id,
+                    "risk_premium": model.risk_premium,
+                    "lifecycle_state": model.lifecycle_state,
+                    "oos_ic": model.oos_ic,
+                }
+                for model in models
+            ]
+
+    def get_execution_state(self) -> dict[str, Any]:
+        with self._sessions() as session:
+            model = session.get(ExecutionStateModel, "cn-a")
+            if model is None:
+                return {
+                    "state_id": "cn-a",
+                    "kill_switch_state": "ARMED",
+                    "tripped_by": None,
+                    "tripped_at": None,
+                    "reason": None,
+                    "shadow_positions": {},
+                    "paper_positions": {},
+                }
+            return self._execution_state_payload(model)
+
+    def trip_kill_switch(self, *, actor_id: str, reason: str) -> dict[str, Any]:
+        with self._sessions.begin() as session:
+            model = self._ensure_execution_state(session)
+            switch = self._kill_switch_from_model(model)
+            updated = switch.trip(actor_id, reason, _now())
+            self._apply_kill_switch(model, updated)
+            return self._execution_state_payload(model)
+
+    def reset_kill_switch(self, *, actor_id: str) -> dict[str, Any]:
+        with self._sessions.begin() as session:
+            model = self._ensure_execution_state(session)
+            switch = self._kill_switch_from_model(model)
+            updated = switch.reset(actor_id, _now())
+            self._apply_kill_switch(model, updated)
+            return self._execution_state_payload(model)
+
+    @staticmethod
+    def _ensure_execution_state(session: Session) -> ExecutionStateModel:
+        model = session.get(ExecutionStateModel, "cn-a")
+        if model is None:
+            model = ExecutionStateModel(
+                state_id="cn-a",
+                kill_switch_state="ARMED",
+                tripped_by=None,
+                tripped_at=None,
+                reason=None,
+                shadow_positions={},
+                paper_positions={},
+                updated_at=_now(),
+            )
+            session.add(model)
+        return model
+
+    @staticmethod
+    def _kill_switch_from_model(model: ExecutionStateModel) -> KillSwitch:
+        tripped_at = model.tripped_at
+        if tripped_at is not None and tripped_at.tzinfo is None:
+            tripped_at = tripped_at.replace(tzinfo=UTC)
+        return KillSwitch(
+            switch_id=model.state_id,
+            state=KillSwitchState(model.kill_switch_state),
+            tripped_by=model.tripped_by,
+            tripped_at=tripped_at,
+            reason=model.reason,
+        )
+
+    @staticmethod
+    def _apply_kill_switch(model: ExecutionStateModel, switch: KillSwitch) -> None:
+        model.kill_switch_state = switch.state.value
+        model.tripped_by = switch.tripped_by
+        model.tripped_at = switch.tripped_at
+        model.reason = switch.reason
+        model.updated_at = _now()
+
+    @staticmethod
+    def _execution_state_payload(model: ExecutionStateModel) -> dict[str, Any]:
+        return {
+            "state_id": model.state_id,
+            "kill_switch_state": model.kill_switch_state,
+            "tripped_by": model.tripped_by,
+            "tripped_at": model.tripped_at.isoformat() if model.tripped_at else None,
+            "reason": model.reason,
+            "shadow_positions": model.shadow_positions,
+            "paper_positions": model.paper_positions,
+        }
 
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]

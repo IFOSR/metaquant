@@ -381,6 +381,64 @@ def build_experiment_router(
         except ValueError as exc:
             raise _problem(exc) from exc
 
+    @router.get("/session")
+    def get_session(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        capabilities = sorted({grant.capability for grant in actor.grants})
+        markets = sorted({grant.market for grant in actor.grants})
+        return {
+            "actor": {"id": actor.actor_id, "displayName": actor.actor_id},
+            "roles": ["Researcher"],
+            "capabilities": capabilities,
+            "environments": ["RESEARCH"],
+            "markets": markets,
+        }
+
+    @router.get("/alpha-pool")
+    def list_alpha_pool(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        factors = repository.list_alpha_pool(
+            scopes=actor.scopes(
+                {"research.experiments.read", "research.strategy.read"}
+            ),
+        )
+        return {"items": factors}
+
+    @router.get("/execution/state")
+    def get_execution_state(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        return repository.get_execution_state()
+
+    @router.post("/execution/kill-switch:trip", status_code=202)
+    def trip_kill_switch(
+        command: SignApprovalCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        scopes = actor.scopes({"research.governance.approve"})
+        if not scopes:
+            raise _problem(ValueError("INSUFFICIENT_SCOPE"))
+        try:
+            return repository.trip_kill_switch(
+                actor_id=actor.actor_id, reason=command.reason
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+
+    @router.post("/execution/kill-switch:reset", status_code=202)
+    def reset_kill_switch(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        scopes = actor.scopes({"research.governance.approve"})
+        if not scopes:
+            raise _problem(ValueError("INSUFFICIENT_SCOPE"))
+        try:
+            return repository.reset_kill_switch(actor_id=actor.actor_id)
+        except ValueError as exc:
+            raise _problem(exc) from exc
+
     return router
 
 

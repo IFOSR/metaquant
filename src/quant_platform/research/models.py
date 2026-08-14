@@ -407,3 +407,20 @@ class ApprovalWorkflowModel(Base):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class ExecutionStateModel(Base):
+    __tablename__ = "execution_states"
+
+    state_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kill_switch_state: Mapped[str] = mapped_column(String(16), nullable=False)
+    tripped_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tripped_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    shadow_positions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    paper_positions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

@@ -7,6 +7,7 @@ from quant_platform.validation.promotion import (
     CandidateEvidence,
     PromotionDisposition,
     PromotionPolicy,
+    cross_check_evidence,
     evaluate_promotion,
 )
 
@@ -163,3 +164,88 @@ def test_decision_is_deterministic() -> None:
 
     assert first == second
     assert first.content_hash() == second.content_hash()
+
+
+def stored_report_payload() -> dict[str, object]:
+    return {
+        "schema_version": "factor-validation/v1",
+        "data_quality": {
+            "observation_count": 300,
+            "finite_count": 290,
+            "coverage_ratio": 0.95,
+            "constant_ratio": 0.1,
+        },
+    }
+
+
+def test_cross_check_accepts_matching_evidence() -> None:
+    evidence = strong_evidence()
+    checked = cross_check_evidence(evidence, stored_report_payload())
+
+    # server-side values win; caller values match so no rejection
+    assert checked.coverage == pytest.approx(0.95)
+    assert checked.observations == 300
+
+
+def test_cross_check_rejects_coverage_mismatch() -> None:
+    evidence = CandidateEvidence(
+        coverage=0.99,  # caller inflates coverage
+        observations=300,
+        oos_ic=0.05,
+        expected_direction=ICSign.POSITIVE,
+        fdr_qvalue=0.03,
+        capacity_aum=5_000_000.0,
+        sharpe=1.2,
+        effect_score=0.8,
+        stability_score=0.7,
+        independence_score=0.9,
+        cost_value_score=0.6,
+        interpretability_score=0.5,
+    )
+    with pytest.raises(ValueError, match="EVIDENCE_MISMATCH"):
+        cross_check_evidence(evidence, stored_report_payload())
+
+
+def test_cross_check_rejects_observations_mismatch() -> None:
+    evidence = CandidateEvidence(
+        coverage=0.95,
+        observations=50_000,  # caller inflates observations
+        oos_ic=0.05,
+        expected_direction=ICSign.POSITIVE,
+        fdr_qvalue=0.03,
+        capacity_aum=5_000_000.0,
+        sharpe=1.2,
+        effect_score=0.8,
+        stability_score=0.7,
+        independence_score=0.9,
+        cost_value_score=0.6,
+        interpretability_score=0.5,
+    )
+    with pytest.raises(ValueError, match="EVIDENCE_MISMATCH"):
+        cross_check_evidence(evidence, stored_report_payload())
+
+
+def test_cross_check_fills_absent_caller_values() -> None:
+    evidence = CandidateEvidence(
+        coverage=None,
+        observations=None,
+        oos_ic=0.05,
+        expected_direction=ICSign.POSITIVE,
+        fdr_qvalue=0.03,
+        capacity_aum=5_000_000.0,
+        sharpe=1.2,
+        effect_score=0.8,
+        stability_score=0.7,
+        independence_score=0.9,
+        cost_value_score=0.6,
+        interpretability_score=0.5,
+    )
+    checked = cross_check_evidence(evidence, stored_report_payload())
+
+    assert checked.coverage == pytest.approx(0.95)
+    assert checked.observations == 300
+
+
+def test_cross_check_rejects_incomplete_report() -> None:
+    with pytest.raises(ValueError, match="VALIDATION_REPORT_INCOMPLETE"):
+        cross_check_evidence(strong_evidence(), {"data_quality": {}})

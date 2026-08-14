@@ -7,7 +7,7 @@ results; the weighted scorecard decides promotion only after both clear.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Protocol
 
@@ -157,6 +157,41 @@ class CandidateEvidence:
             score = getattr(self, f"{name}_score")
             if score is not None and not 0.0 <= score <= 1.0:
                 raise ValueError(f"{name}_score must be within [0, 1]")
+
+
+def cross_check_evidence(
+    evidence: CandidateEvidence, report_payload: dict[str, object]
+) -> CandidateEvidence:
+    """Cross-check caller evidence against a stored validation report payload.
+
+    The stored report is the authority for ``coverage`` and ``observations``.
+    Caller values that disagree raise ``ValueError``, and the returned evidence
+    carries the stored values so gates evaluate server-side numbers.
+    """
+    quality_raw = report_payload.get("data_quality")
+    if not isinstance(quality_raw, dict):
+        raise ValueError("VALIDATION_REPORT_INCOMPLETE")
+    server_coverage = quality_raw.get("coverage_ratio")
+    server_observations = quality_raw.get("observation_count")
+    if not isinstance(server_coverage, int | float) or not isinstance(
+        server_observations, int | float
+    ):
+        raise ValueError("VALIDATION_REPORT_INCOMPLETE")
+    if (
+        evidence.coverage is not None
+        and abs(evidence.coverage - float(server_coverage)) > 1e-9
+    ):
+        raise ValueError("EVIDENCE_MISMATCH:coverage")
+    if evidence.observations is not None and evidence.observations != int(
+        server_observations
+    ):
+        raise ValueError("EVIDENCE_MISMATCH:observations")
+
+    return replace(
+        evidence,
+        coverage=float(server_coverage),
+        observations=int(server_observations),
+    )
 
 
 @dataclass(frozen=True, slots=True)

@@ -79,6 +79,7 @@ from quant_platform.validation import (
     TrialLedger,
     TrialLedgerEntry,
     ValidationPolicyCatalog,
+    cross_check_evidence,
     evaluate_promotion,
     run_independence_analysis,
     run_robustness,
@@ -1106,6 +1107,7 @@ class SqlAlchemyExperimentRepository:
 
             factor, factor_store_address = self._load_factor_artifact(session, run_id)
             decision_time = self._decision_time(session, run.experiment_id)
+            evidence = self._cross_check_evidence(session, run_id, evidence)
             decision = evaluate_promotion(evidence, policy)
 
             report_store = self._artifacts.put(
@@ -1282,6 +1284,26 @@ class SqlAlchemyExperimentRepository:
             manifest=manifest,
         )
         return factor, model.content_hash
+
+    def _cross_check_evidence(
+        self, session: Session, run_id: str, evidence: CandidateEvidence
+    ) -> CandidateEvidence:
+        """Cross-check caller-supplied promotion evidence against the stored report.
+
+        The stored ``FactorValidationReport`` is the authority for coverage and
+        observations. Caller values that disagree are rejected, and the evidence
+        evaluated by the promotion gate is rebuilt from the stored report so
+        callers cannot self-report favourable data-quality numbers.
+        """
+        model = session.scalar(
+            select(FactorValidationModel)
+            .where(FactorValidationModel.run_id == run_id)
+            .order_by(FactorValidationModel.created_at.desc())
+            .limit(1)
+        )
+        if model is None:
+            raise ValueError("VALIDATION_REPORT_NOT_FOUND")
+        return cross_check_evidence(evidence, model.report_payload)
 
     def _decision_time(self, session: Session, experiment_id: str) -> datetime:
         spec = session.get(ExperimentSpecModel, experiment_id)

@@ -54,6 +54,7 @@ from quant_platform.validation.promotion import (
     PromotionDisposition,
     PromotionPolicy,
     PromotionPolicyCatalog,
+    cross_check_evidence,
     evaluate_promotion,
 )
 from quant_platform.validation.robustness import (
@@ -96,6 +97,7 @@ __all__ = [
     "AlphaPoolFactor",
     "AumPoint",
     "CandidateEvidence",
+    "cross_check_evidence",
     "CapacityModel",
     "CapacityReport",
     "CombinationPool",

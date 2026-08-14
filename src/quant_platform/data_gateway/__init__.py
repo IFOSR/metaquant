@@ -16,6 +16,10 @@ from quant_platform.data_gateway.gateway import (
     PITDataGateway,
     SnapshotStore,
 )
+from quant_platform.data_gateway.ifind_client import (
+    IFindClient,
+    load_client_from_env,
+)
 from quant_platform.data_gateway.loader import (
     CrossValidationStatus,
     MarketDataSource,
@@ -54,6 +58,7 @@ __all__ = [
     "FieldContract",
     "FrozenSnapshot",
     "FuturesContractChainAdapter",
+    "IFindClient",
     "InMemorySnapshotStore",
     "MarketDataSource",
     "PITDataGateway",
@@ -72,5 +77,6 @@ __all__ = [
     "filter_and_resolve",
     "formal_response",
     "guard_exploratory",
+    "load_client_from_env",
     "validate_pit_rows",
 ]

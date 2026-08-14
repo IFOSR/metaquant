@@ -21,6 +21,8 @@ from quant_platform.markets.cn_a import (
     membership_as_of,
     security_status_as_of,
 )
+from quant_platform.markets.contracts import MarketId
+from quant_platform.markets.cost import EquityCostModel
 
 from .conftest import GOLDEN_ROOT, load_golden_cases, sha256_file
 
@@ -135,6 +137,27 @@ def test_cn_a_representative_golden_cases(case: dict[str, object]) -> None:
             "cash": str(result.cash),
             "cost_basis_per_share": str(result.cost_basis_per_share),
         } == expected
+    elif case["kind"] == "transaction_cost":
+        model = EquityCostModel(
+            model_id="cost://golden/v1",
+            market=MarketId.CN_A,
+            commission_rate=float(inputs["commission_rate"]),
+            minimum_commission=float(inputs["minimum_commission"]),
+            stamp_duty_rate=float(inputs["stamp_duty_rate"]),
+            transfer_fee_rate=float(inputs["transfer_fee_rate"]),
+            slippage_bps=0.0,
+            impact_bps_per_adv=0.0,
+            funding_rate_daily=0.0,
+            borrow_rate_daily=0.0,
+        )
+        notional = Decimal(str(inputs["notional"]))
+        buy_cost = Decimal(str(model.single_side_cost(OrderSide.BUY, float(notional))))
+        assert buy_cost == Decimal(str(expected["buy_cost"]))
+        if "sell_cost" in expected:
+            sell_cost = Decimal(
+                str(model.single_side_cost(OrderSide.SELL, float(notional)))
+            )
+            assert sell_cost == Decimal(str(expected["sell_cost"]))
     else:
         raise AssertionError(f"unsupported golden case kind: {case['kind']}")
 

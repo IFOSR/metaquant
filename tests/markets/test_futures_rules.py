@@ -10,6 +10,8 @@ from quant_platform.markets.clocks import (
     CommodityFuturesClock,
     FuturesSessionTemplate,
 )
+from quant_platform.markets.contracts import MarketId
+from quant_platform.markets.cost import FuturesCostModel
 from quant_platform.markets.futures import (
     CloseOffset,
     DeliveryPolicy,
@@ -158,6 +160,25 @@ def test_futures_representative_golden_cases(case: dict[str, object]) -> None:
             clock.trade_date(AsiaShanghaiClock.localize(timestamp)).isoformat()
             == (expected["trade_date"])
         )
+    elif case["kind"] == "transaction_cost":
+        model = FuturesCostModel(
+            model_id="cost://golden/v1",
+            market=MarketId.CN_COMMODITY_FUTURES,
+            fee_rate=float(inputs["fee_rate"]),
+            slippage_bps=0.0,
+            impact_bps_per_adv=0.0,
+            margin_rate=0.1,
+            funding_rate_daily=0.0,
+        )
+        notional = (
+            Decimal(str(inputs["price"]))
+            * int(inputs["quantity"])
+            * Decimal(str(inputs["multiplier"]))
+        )
+        single = Decimal(str(model.single_side_cost(float(notional))))
+        assert single == Decimal(str(expected["single_side_fee"]))
+        round_trip = Decimal(str(model.round_trip_cost(float(notional))))
+        assert round_trip == Decimal(str(expected["round_trip_fee"]))
     else:
         raise AssertionError(f"unsupported golden case kind: {case['kind']}")
 

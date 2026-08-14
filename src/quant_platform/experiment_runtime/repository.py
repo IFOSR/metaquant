@@ -1376,6 +1376,30 @@ class SqlAlchemyExperimentRepository:
                 "report": model.report_payload,
             }
 
+    def get_promotion(
+        self, run_id: str, *, scopes: frozenset[tuple[str, str]]
+    ) -> dict[str, Any] | None:
+        if self.get_run(run_id, scopes=scopes) is None:
+            return None
+        with self._sessions() as session:
+            model = session.scalar(
+                select(PromotionRecordModel)
+                .where(PromotionRecordModel.run_id == run_id)
+                .order_by(PromotionRecordModel.created_at.desc())
+                .limit(1)
+            )
+            if model is None:
+                return None
+            return {
+                "run_id": run_id,
+                "output_hash": model.output_hash,
+                "factor_ir_hash": model.factor_ir_hash,
+                "policy_id": model.policy_id,
+                "disposition": model.disposition,
+                "total_score": model.total_score,
+                "report": model.report_payload,
+            }
+
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
     ) -> dict[str, Any] | None:

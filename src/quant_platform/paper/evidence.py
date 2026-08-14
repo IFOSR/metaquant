@@ -43,9 +43,7 @@ class PaperClaim:
             or self.bbox[2] < self.bbox[0]
             or self.bbox[3] < self.bbox[1]
         ):
-            raise ValueError(
-                "bbox must be (x0, y0, x1, y1) with x1 >= x0 and y1 >= y0"
-            )
+            raise ValueError("bbox must be (x0, y0, x1, y1) with x1 >= x0 and y1 >= y0")
 
     def payload(self) -> dict[str, object]:
         return {

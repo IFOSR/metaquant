@@ -58,6 +58,7 @@ from quant_platform.research.models import (
     ExperimentRunModel,
     ExperimentSpecModel,
     FactorValidationModel,
+    IndependenceReportModel,
     OutboxEventModel,
     TrialLedgerModel,
 )
@@ -71,6 +72,7 @@ from quant_platform.validation import (
     TrialLedger,
     TrialLedgerEntry,
     ValidationPolicyCatalog,
+    run_independence_analysis,
     run_robustness,
     validate_factor,
 )
@@ -891,6 +893,162 @@ class SqlAlchemyExperimentRepository:
                         run_id,
                         receipt.command_id,
                         {"run_id": run_id, "output_hash": report.content_hash()},
+                    ),
+                ]
+            )
+            self._run_before_commit()
+        return receipt
+
+    def assess_independence(
+        self,
+        *,
+        actor_id: str,
+        scopes: frozenset[tuple[str, str]],
+        run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        reason: str,
+        parent_artifact_id: str | None,
+        policy_id: str,
+        label_snapshot_id: str,
+        label_snapshot_manifest_hash: str,
+        pool_run_ids: tuple[str, ...] = (),
+    ) -> CommandReceipt:
+        policy = self._policy_catalog.resolve(policy_id)
+        label_snapshot = self._label_snapshot_catalog.resolve(
+            label_snapshot_id, label_snapshot_manifest_hash
+        )
+        label = label_snapshot.to_label_series()
+
+        with self._sessions.begin() as session:
+            self._lock_key(session, actor_id, idempotency_key)
+            stored_receipt = session.get(
+                ExperimentCommandReceiptModel, (actor_id, idempotency_key)
+            )
+            if stored_receipt is not None:
+                if stored_receipt.request_hash != request_hash:
+                    raise ValueError("IDEMPOTENCY_KEY_REUSE")
+                return CommandReceipt.model_validate(stored_receipt.response)
+
+            run = session.get(ExperimentRunModel, run_id)
+            if run is None or (run.project_id, run.market) not in scopes:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            if run.state != "SUCCEEDED":
+                raise ValueError("RUN_NOT_SUCCEEDED")
+            if run.market != label.label.market or run.market != policy.market:
+                raise ValueError("MARKET_MISMATCH")
+
+            factor, factor_store_address = self._load_factor_artifact(session, run_id)
+            decision_time = self._decision_time(session, run.experiment_id)
+            label_snapshot.assert_pit_safe(decision_time)
+
+            pool_factors = tuple(
+                self._load_factor_artifact(session, pool_run_id)[0]
+                for pool_run_id in pool_run_ids
+            )
+            report = run_independence_analysis(factor, pool_factors, label, policy)
+
+            report_store = self._artifacts.put(
+                canonical_bytes(report.payload()), media_type="application/json"
+            )
+            attempt_id = session.scalar(
+                select(ExperimentAttemptModel.id)
+                .where(ExperimentAttemptModel.run_id == run_id)
+                .limit(1)
+            )
+            if attempt_id is None:
+                raise ValueError("RUN_ATTEMPT_NOT_FOUND")
+            edge = LineageEdge(
+                source_artifact_hash=factor_store_address,
+                target_artifact_hash=report_store.content_hash,
+                relation=LineageRelation.VALIDATED_BY,
+            )
+            disposition = (
+                TrialDisposition.REJECTED
+                if report.replicated_risk_factor
+                else TrialDisposition.ACCEPTED
+            )
+            entry = TrialLedgerEntry(
+                entry_id=f"trial_{uuid4().hex}",
+                factor_ir_hash=factor.factor_ir_hash,
+                policy_id=policy.policy_id,
+                decision_time=decision_time,
+                result_hash=report.content_hash(),
+                disposition=disposition,
+            )
+            receipt = CommandReceipt(
+                command_id=f"cmd_{uuid4().hex}",
+                resource_id=entry.entry_id,
+                submitted_at=_now(),
+            )
+            timestamp = _now()
+            session.add_all(
+                [
+                    IndependenceReportModel(
+                        id=f"report_{entry.entry_id}",
+                        run_id=run_id,
+                        baseline_ic=report.baseline_ic,
+                        orthogonalized_ic=report.orthogonalized_ic,
+                        max_abs_correlation=report.max_abs_correlation,
+                        replicated_risk_factor=report.replicated_risk_factor,
+                        output_hash=report.content_hash(),
+                        report_payload=report.payload(),
+                        created_at=timestamp,
+                    ),
+                    TrialLedgerModel(
+                        id=entry.entry_id,
+                        run_id=run_id,
+                        factor_ir_hash=entry.factor_ir_hash,
+                        policy_id=entry.policy_id,
+                        decision_time=entry.decision_time,
+                        result_hash=entry.result_hash,
+                        disposition=entry.disposition.value,
+                        created_at=timestamp,
+                    ),
+                    ExperimentArtifactModel(
+                        id=f"artifact_{entry.entry_id}",
+                        content_hash=report_store.content_hash,
+                        run_id=run_id,
+                        attempt_id=attempt_id,
+                        artifact_type="IndependenceReport",
+                        schema_version="independence/v1",
+                        size_bytes=report_store.size_bytes,
+                        media_type="application/json",
+                        domain_hash=report.content_hash(),
+                        created_at=timestamp,
+                    ),
+                    ExperimentLineageModel(
+                        edge_hash=edge.edge_hash,
+                        run_id=run_id,
+                        source_artifact_hash=edge.source_artifact_hash,
+                        target_artifact_hash=edge.target_artifact_hash,
+                        relation=edge.relation.value,
+                    ),
+                    ExperimentCommandReceiptModel(
+                        actor_id=actor_id,
+                        idempotency_key=idempotency_key,
+                        request_hash=request_hash,
+                        response=receipt.model_dump(mode="json"),
+                        created_at=timestamp,
+                    ),
+                    _audit(
+                        actor_id,
+                        "experiment.independence.succeeded",
+                        run_id,
+                        reason,
+                        parent_artifact_id,
+                        receipt.command_id,
+                        report.content_hash(),
+                    ),
+                    _outbox(
+                        "IndependenceAssessed",
+                        "ExperimentRun",
+                        run_id,
+                        receipt.command_id,
+                        {
+                            "run_id": run_id,
+                            "output_hash": report.content_hash(),
+                        },
                     ),
                 ]
             )

@@ -55,3 +55,13 @@ class AssessRobustnessCommand(BaseModel):
     label_snapshot_manifest_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     n_shuffles: int = Field(default=20, gt=0)
     seed: int = Field(default=0, ge=0)
+
+
+class AssessIndependenceCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metadata: CommandMetadata
+    policy_id: str
+    label_snapshot_id: str
+    label_snapshot_manifest_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    pool_run_ids: tuple[str, ...] = ()

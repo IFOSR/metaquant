@@ -7,6 +7,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -318,6 +319,43 @@ class TrialLedgerModel(Base):
     )
     result_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class AlphaPoolFactorModel(Base):
+    __tablename__ = "alpha_pool_factors"
+
+    factor_ir_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    direction: Mapped[str] = mapped_column(String(32), nullable=False)
+    market: Mapped[str] = mapped_column(String(32), nullable=False)
+    universe: Mapped[str] = mapped_column(String(255), nullable=False)
+    horizon: Mapped[int] = mapped_column(Integer(), nullable=False)
+    policy_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    risk_premium: Mapped[bool] = mapped_column(Boolean(), nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    oos_ic: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class IndependenceReportModel(Base):
+    __tablename__ = "independence_reports"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("experiment_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    baseline_ic: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    orthogonalized_ic: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    max_abs_correlation: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    replicated_risk_factor: Mapped[bool] = mapped_column(Boolean(), nullable=False)
+    output_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    report_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

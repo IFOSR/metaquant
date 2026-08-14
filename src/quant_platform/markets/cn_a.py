@@ -81,6 +81,13 @@ class PriceLimitRule:
         return (ticks * self.tick_size).quantize(self.tick_size)
 
 
+class SecurityStatus(StrEnum):
+    NORMAL = "NORMAL"
+    ST = "ST"
+    SUSPENDED = "SUSPENDED"
+    DELISTED = "DELISTED"
+
+
 @dataclass(frozen=True, slots=True)
 class AShareDailyState:
     halted: bool
@@ -90,6 +97,7 @@ class AShareDailyState:
     upper_limit: Decimal
     lower_limit: Decimal
     intraday_limit_opened: bool = False
+    security_status: SecurityStatus = SecurityStatus.NORMAL
 
     def __post_init__(self) -> None:
         if self.volume < 0:
@@ -98,10 +106,19 @@ class AShareDailyState:
             raise ValueError("high must not be below low")
         if self.upper_limit <= self.lower_limit:
             raise ValueError("upper_limit must exceed lower_limit")
+        if not isinstance(self.security_status, SecurityStatus):
+            object.__setattr__(
+                self, "security_status", SecurityStatus(self.security_status)
+            )
 
     def assess(self, side: OrderSide) -> TradabilityAssessment:
         if self.halted:
             return TradabilityAssessment(FillCertainty.BLOCKED, "trading_halt")
+        if self.security_status is SecurityStatus.ST and side is OrderSide.BUY:
+            return TradabilityAssessment(
+                FillCertainty.BLOCKED,
+                "st_buy_restriction",
+            )
         if self.volume == 0:
             return TradabilityAssessment(FillCertainty.BLOCKED, "no_volume")
         if (
@@ -123,13 +140,6 @@ class AShareDailyState:
                 "locked_lower_limit",
             )
         return TradabilityAssessment(FillCertainty.ELIGIBLE, "tradable")
-
-
-class SecurityStatus(StrEnum):
-    NORMAL = "NORMAL"
-    ST = "ST"
-    SUSPENDED = "SUSPENDED"
-    DELISTED = "DELISTED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,6 +276,77 @@ class CorporateActionLedger:
             quantity=quantity,
             cost_basis_per_share=self.cost_basis_per_share / action.ratio,
         )
+
+
+def check_price_collar(
+    order_price: Decimal,
+    reference_price: Decimal,
+    side: OrderSide,
+    collar_rate: Decimal = Decimal("0.02"),
+) -> bool:
+    """Return whether an order price is inside the price collar (FR-505).
+
+    On the main boards a buy order may not exceed 102% of the reference price
+    and a sell order may not fall below 98%; orders outside the collar are
+    rejected by the exchange rather than filled.
+    """
+    if order_price <= 0 or reference_price <= 0:
+        raise ValueError("order and reference prices must be positive")
+    if not Decimal("0") < collar_rate < Decimal("1"):
+        raise ValueError("collar_rate must be within (0, 1)")
+    if side is OrderSide.BUY:
+        return order_price <= reference_price * (Decimal("1") + collar_rate)
+    return order_price >= reference_price * (Decimal("1") - collar_rate)
+
+
+@dataclass(frozen=True, slots=True)
+class CallAuctionResult:
+    match_price: Decimal | None
+    matched_quantity: int
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "match_price": str(self.match_price) if self.match_price else None,
+            "matched_quantity": self.matched_quantity,
+        }
+
+
+def match_call_auction(
+    buy_orders: tuple[tuple[Decimal, int], ...],
+    sell_orders: tuple[tuple[Decimal, int], ...],
+) -> CallAuctionResult:
+    """Match the opening call auction (FR-505).
+
+    Orders are (limit_price, quantity). The match price is the price that
+    maximizes matched volume; ties are broken by proximity to the reference
+    (midpoint of the last buy and sell prices), then by the higher price.
+    """
+    if not buy_orders or not sell_orders:
+        return CallAuctionResult(match_price=None, matched_quantity=0)
+    for price, quantity in (*buy_orders, *sell_orders):
+        if price <= 0 or quantity <= 0:
+            raise ValueError("auction prices and quantities must be positive")
+
+    candidates = sorted({price for price, _ in (*buy_orders, *sell_orders)})
+    reference = (
+        (buy_orders[-1][0] + sell_orders[0][0]) / 2 if candidates else Decimal("0")
+    )
+
+    best: CallAuctionResult = CallAuctionResult(match_price=None, matched_quantity=0)
+    for price in candidates:
+        bid_volume = sum(quantity for limit, quantity in buy_orders if limit >= price)
+        ask_volume = sum(quantity for limit, quantity in sell_orders if limit <= price)
+        matched = min(bid_volume, ask_volume)
+        if matched == 0:
+            continue
+        if matched > best.matched_quantity:
+            best = CallAuctionResult(match_price=price, matched_quantity=matched)
+        elif matched == best.matched_quantity and best.match_price is not None:
+            current_distance = abs(price - reference)
+            best_distance = abs(best.match_price - reference)
+            if current_distance < best_distance:
+                best = CallAuctionResult(match_price=price, matched_quantity=matched)
+    return best
 
 
 def _require_aware(value: datetime, label: str) -> None:

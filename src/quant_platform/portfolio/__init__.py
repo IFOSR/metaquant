@@ -18,6 +18,11 @@ from quant_platform.portfolio.combination import (
     marginal_contributions,
     mvp_combine,
 )
+from quant_platform.portfolio.optimizer import (
+    OptimizationResult,
+    OptimizationSpec,
+    optimize,
+)
 
 __all__ = [
     "AblationResult",
@@ -25,8 +30,11 @@ __all__ = [
     "CombinationSpec",
     "CombinationWeights",
     "FactorSignal",
+    "OptimizationResult",
+    "OptimizationSpec",
     "equal_weight",
     "factor_ablation",
     "marginal_contributions",
     "mvp_combine",
+    "optimize",
 ]

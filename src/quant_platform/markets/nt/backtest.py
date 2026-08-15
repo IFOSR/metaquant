@@ -14,7 +14,7 @@ from nautilus_trader.model.currencies import CNY
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.enums import AccountType, OmsType
 from nautilus_trader.model.identifiers import Venue
-from nautilus_trader.model.instruments import Equity
+from nautilus_trader.model.instruments import Equity, FuturesContract
 from nautilus_trader.model.objects import Money
 
 
@@ -44,3 +44,21 @@ def run_engine(
     """喂数据并跑回测。"""
     engine.add_data(bars)
     engine.run()
+
+
+def build_futures_engine(
+    *,
+    instrument: FuturesContract,
+    initial_cash: Decimal,
+    venue: str = "SHFE",
+) -> BacktestEngine:
+    """装配商品期货保证金账户回测引擎（NETTING + MARGIN）。"""
+    engine = BacktestEngine()
+    engine.add_venue(
+        venue=Venue(venue),
+        oms_type=OmsType.NETTING,
+        account_type=AccountType.MARGIN,
+        starting_balances=[Money(initial_cash, CNY)],
+    )
+    engine.add_instrument(instrument)
+    return engine

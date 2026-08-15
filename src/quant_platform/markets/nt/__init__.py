@@ -4,7 +4,11 @@
 Instrument / 数据 / 回测 / 执行。
 """
 
-from quant_platform.markets.nt.backtest import build_equity_engine, run_engine
+from quant_platform.markets.nt.backtest import (
+    build_equity_engine,
+    build_futures_engine,
+    run_engine,
+)
 from quant_platform.markets.nt.data import (
     day_bar_spec,
     minute_bar_spec,
@@ -65,6 +69,7 @@ __all__ = [
     "TradingSession",
     "TargetPositionStrategy",
     "build_equity_engine",
+    "build_futures_engine",
     "build_roll_transitions",
     "check_margin_call",
     "close_offset_fee",

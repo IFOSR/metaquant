@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from types import MappingProxyType
 from typing import Protocol
 
@@ -26,6 +26,7 @@ class Bar:
     close: float
     volume: float
     extra: Mapping[str, float] = MappingProxyType({})
+    trading_date: date | None = None
 
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
@@ -35,6 +36,8 @@ class Bar:
                 raise ValueError("bar fields must be non-negative")
         if self.high < self.low:
             raise ValueError("high must not be below low")
+        if self.trading_date is not None and self.trading_date < self.timestamp.date():
+            raise ValueError("trading_date must not precede timestamp date")
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,4 +181,35 @@ def _aggregate_bucket(bucket: list[Bar]) -> Bar:
         close=last.close,
         volume=sum(bar.volume for bar in bucket),
         extra=extra,
+        trading_date=last.trading_date,
     )
+
+
+def assign_trading_dates(
+    bars: tuple[Bar, ...],
+    trading_dates: tuple[date, ...],
+) -> tuple[Bar, ...]:
+    """为每根 bar 标注归属交易日（期货夜盘 >=20:00 归属下一交易日）。
+
+    ``trading_dates`` 是交易日历（升序、去重）。夜盘 bar 的 ``timestamp`` 仍
+    是当日晚上，但其 ``trading_date`` 是日历里紧随其后的交易日，保证日频
+    聚合/结算把夜盘成交正确归属。
+    """
+    if not bars:
+        return ()
+    if not trading_dates:
+        raise ValueError("trading_dates must not be empty")
+    calendar = sorted(set(trading_dates))
+    return tuple(
+        replace(bar, trading_date=_trading_date_for(bar.timestamp, calendar))
+        for bar in bars
+    )
+
+
+def _trading_date_for(timestamp: datetime, calendar: list[date]) -> date:
+    if timestamp.hour >= 20:
+        for candidate in calendar:
+            if candidate > timestamp.date():
+                return candidate
+        return timestamp.date() + timedelta(days=1)
+    return timestamp.date()

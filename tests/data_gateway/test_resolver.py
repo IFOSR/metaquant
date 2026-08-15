@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -11,6 +11,7 @@ from quant_platform.data_gateway.resolver import (
     BarSeries,
     DataSourceExhausted,
     MarketDataSourceResolver,
+    assign_trading_dates,
     resample_bars,
 )
 
@@ -190,3 +191,70 @@ def test_resample_preserves_extra_fields() -> None:
 
     assert len(resampled) == 1
     assert resampled[0].extra["hold"] == 200.0  # 末根 bar 的 hold
+
+
+def night_bar(hour: int) -> Bar:
+    return Bar(
+        timestamp=datetime(2026, 8, 14, hour, 0, tzinfo=SHANGHAI),
+        open=1.0,
+        high=2.0,
+        low=0.5,
+        close=1.5,
+        volume=10.0,
+    )
+
+
+def test_assign_day_session_bar_to_same_day() -> None:
+    calendar = (date(2026, 8, 14), date(2026, 8, 17), date(2026, 8, 18))
+
+    assigned = assign_trading_dates((night_bar(14),), calendar)
+
+    assert assigned[0].trading_date == date(2026, 8, 14)
+
+
+def test_assign_night_session_bar_to_next_trading_day() -> None:
+    calendar = (date(2026, 8, 14), date(2026, 8, 17), date(2026, 8, 18))
+
+    assigned = assign_trading_dates((night_bar(21),), calendar)
+
+    assert assigned[0].trading_date == date(2026, 8, 17)
+
+
+def test_assign_night_session_skips_weekend() -> None:
+    # 周五 21:00 夜盘，下一个交易日是周一（跳过周末）
+    calendar = (date(2026, 8, 14), date(2026, 8, 17))
+
+    assigned = assign_trading_dates((night_bar(21),), calendar)
+
+    assert assigned[0].trading_date == date(2026, 8, 17)
+
+
+def test_resample_preserves_trading_date() -> None:
+    calendar = (date(2026, 8, 14), date(2026, 8, 17))
+    bar1 = Bar(
+        timestamp=datetime(2026, 8, 14, 20, 59, tzinfo=SHANGHAI),
+        open=1.0,
+        high=2.0,
+        low=0.5,
+        close=1.5,
+        volume=10.0,
+    )
+    bar2 = Bar(
+        timestamp=datetime(2026, 8, 14, 21, 0, tzinfo=SHANGHAI),
+        open=1.0,
+        high=2.0,
+        low=0.5,
+        close=1.5,
+        volume=10.0,
+    )
+    night_bars = assign_trading_dates((bar1, bar2), calendar)
+
+    resampled = resample_bars(night_bars, minutes=5)
+
+    assert len(resampled) == 1
+    assert resampled[0].trading_date == date(2026, 8, 17)
+
+
+def test_assign_requires_calendar() -> None:
+    with pytest.raises(ValueError, match="trading_dates"):
+        assign_trading_dates((night_bar(14),), ())

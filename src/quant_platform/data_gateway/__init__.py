@@ -52,6 +52,7 @@ from quant_platform.data_gateway.resolver import (
     DataSourceExhausted,
     MarketDataProvider,
     MarketDataSourceResolver,
+    assign_trading_dates,
     default_provider_chain,
     resample_bars,
 )
@@ -67,6 +68,7 @@ from quant_platform.data_gateway.vendor import (
 __all__ = [
     "ASharePITAdapter",
     "ActualFuturesContract",
+    "assign_trading_dates",
     "AkShareVendorAdapter",
     "AkShareMarketDataProvider",
     "ArtifactClass",

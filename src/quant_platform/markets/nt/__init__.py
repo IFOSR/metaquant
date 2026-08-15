@@ -11,6 +11,10 @@ from quant_platform.markets.nt.data import (
     to_nautilus_bar,
     to_nautilus_bars,
 )
+from quant_platform.markets.nt.execution_client import (
+    NautilusOrderGateway,
+    SubmitResult,
+)
 from quant_platform.markets.nt.fees import AShareFeeModel
 from quant_platform.markets.nt.fills import PriceLimitFillModel
 from quant_platform.markets.nt.instruments import (
@@ -31,6 +35,8 @@ __all__ = [
     "AShareFeeModel",
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
+    "NautilusOrderGateway",
+    "SubmitResult",
     "TradingSession",
     "PriceLimitFillModel",
     "build_equity_engine",

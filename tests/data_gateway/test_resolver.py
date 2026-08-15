@@ -11,6 +11,7 @@ from quant_platform.data_gateway.resolver import (
     BarSeries,
     DataSourceExhausted,
     MarketDataSourceResolver,
+    resample_bars,
 )
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
@@ -120,3 +121,72 @@ def test_bar_request_validation() -> None:
             start=datetime(2026, 8, 14, tzinfo=SHANGHAI),
             end=datetime(2026, 8, 15, tzinfo=SHANGHAI),
         )
+
+
+def minute_bars() -> tuple[Bar, ...]:
+    # 09:31..09:42，12 根 1 分钟 bar
+    bars: list[Bar] = []
+    for offset in range(12):
+        minute = 31 + offset
+        bars.append(
+            Bar(
+                timestamp=datetime(2026, 8, 14, 9, minute, tzinfo=SHANGHAI),
+                open=float(offset),
+                high=float(offset + 10),
+                low=float(offset),
+                close=float(offset + 1),
+                volume=float(100 + offset),
+            )
+        )
+    return tuple(bars)
+
+
+def test_resample_5m_bars_aggregates_ohlcv() -> None:
+    resampled = resample_bars(minute_bars(), minutes=5)
+
+    # 12 根 1 分钟 → 3 桶（09:31-09:35、09:36-09:40、09:41-09:42）
+    assert len(resampled) == 3
+    first = resampled[0]
+    assert first.timestamp.minute == 35
+    assert first.open == 0.0
+    assert first.close == 5.0
+    assert first.high == 14.0  # max(offset+10) for offset 0..4
+    assert first.low == 0.0  # min(offset)
+    assert first.volume == 510.0  # sum(100..104)
+
+
+def test_resample_empty_bars() -> None:
+    assert resample_bars((), minutes=5) == ()
+
+
+def test_resample_rejects_nonpositive_minutes() -> None:
+    with pytest.raises(ValueError, match="minutes"):
+        resample_bars(minute_bars(), minutes=0)
+
+
+def test_resample_preserves_extra_fields() -> None:
+    bars = (
+        Bar(
+            timestamp=datetime(2026, 8, 14, 9, 31, tzinfo=SHANGHAI),
+            open=1.0,
+            high=2.0,
+            low=0.5,
+            close=1.5,
+            volume=10.0,
+            extra={"hold": 100.0},
+        ),
+        Bar(
+            timestamp=datetime(2026, 8, 14, 9, 32, tzinfo=SHANGHAI),
+            open=1.5,
+            high=2.5,
+            low=1.0,
+            close=2.0,
+            volume=20.0,
+            extra={"hold": 200.0},
+        ),
+    )
+
+    resampled = resample_bars(bars, minutes=5)
+
+    assert len(resampled) == 1
+    assert resampled[0].extra["hold"] == 200.0  # 末根 bar 的 hold

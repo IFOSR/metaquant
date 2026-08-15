@@ -136,3 +136,46 @@ def default_provider_chain(
         assert isinstance(ifind_client, IFindClient)
         providers.append(IFindMarketDataProvider(client=ifind_client))
     return MarketDataSourceResolver(tuple(providers))
+
+
+def resample_bars(bars: tuple[Bar, ...], *, minutes: int) -> tuple[Bar, ...]:
+    """将细粒度 bar 合成为 ``minutes`` 分钟 bar（OHLCV 聚合）。
+
+    这是平台的标准能力：策略通常从 1 分钟量价合成 5/10/15 分钟 bar 再决策，
+    而不是逐分钟决策。合成规则：open 取桶内首根 bar、high/low 取桶内极值、
+    close 取桶内末根 bar、volume 求和、时间戳取桶内末根 bar 的时间。
+    """
+    if not bars:
+        return ()
+    if minutes < 1:
+        raise ValueError("minutes must be positive")
+    ordered = sorted(bars, key=lambda bar: bar.timestamp)
+    buckets: list[list[Bar]] = []
+    current_key: int | None = None
+    for bar in ordered:
+        # bar 时间戳是终点；分钟向上取整到 minutes 的倍数（跨小时安全）。
+        key = (bar.timestamp.hour * 60 + bar.timestamp.minute + minutes - 1) // minutes
+        if current_key is None or key != current_key:
+            buckets.append([])
+            current_key = key
+        buckets[-1].append(bar)
+    return tuple(_aggregate_bucket(bucket) for bucket in buckets)
+
+
+def _aggregate_bucket(bucket: list[Bar]) -> Bar:
+    first = bucket[0]
+    last = bucket[-1]
+    extra: dict[str, float] = {}
+    for key in ("hold", "settle", "amount"):
+        values = [bar.extra[key] for bar in bucket if key in bar.extra]
+        if values:
+            extra[key] = values[-1]
+    return Bar(
+        timestamp=last.timestamp,
+        open=first.open,
+        high=max(bar.high for bar in bucket),
+        low=min(bar.low for bar in bucket),
+        close=last.close,
+        volume=sum(bar.volume for bar in bucket),
+        extra=extra,
+    )

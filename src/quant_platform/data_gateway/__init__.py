@@ -53,6 +53,7 @@ from quant_platform.data_gateway.resolver import (
     MarketDataProvider,
     MarketDataSourceResolver,
     default_provider_chain,
+    resample_bars,
 )
 from quant_platform.data_gateway.vendor import (
     VendorAdapter,
@@ -104,5 +105,6 @@ __all__ = [
     "guard_exploratory",
     "load_client_from_env",
     "parse_date_sequence",
+    "resample_bars",
     "validate_pit_rows",
 ]

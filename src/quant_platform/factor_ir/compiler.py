@@ -29,9 +29,10 @@ from .operators import (
 _IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 _CLOCK = re.compile(
-    r"^T(?:_CLOSE|_OPEN)?(?:(?P<sign>[+-])(?P<count>\d+)(?P<unit>m|h))?$"
+    r"^T(?:_CLOSE|_OPEN|_BAR)?(?:(?P<sign>[+-])(?P<count>\d+)(?P<unit>m|h))?$"
 )
 _NEXT_DAY_CLOCK = re.compile(r"^T\+\d+_(?:OPEN|CLOSE)(?:\+\d+(?:m|h))?$")
+_FREQUENCIES = frozenset({"1d", "1m", "5m", "15m", "30m", "60m"})
 _FUTURES_EXCHANGES = frozenset({"SHFE", "INE", "DCE", "CZCE", "GFEX"})
 _MARKETS = frozenset({"CN_A", "CN_COMMODITY_FUTURES"})
 _POSTPROCESS_OPERATORS = frozenset({"winsorize", "zscore", "cs_rank"})
@@ -219,10 +220,10 @@ def _validate_market_scope(scope: dict[str, Any]) -> None:
             "$.market_scope.market",
         )
     frequency = _string(scope, "frequency", "$.market_scope")
-    if frequency != "1d":
+    if frequency not in _FREQUENCIES:
         _fail(
             "IR_UNSUPPORTED_FREQUENCY",
-            "Factor IR v1 only supports 1d",
+            f"frequency {frequency!r} is not supported by Factor IR v1",
             "$.market_scope.frequency",
         )
     _string(scope, "universe_ref", "$.market_scope")

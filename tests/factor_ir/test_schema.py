@@ -21,7 +21,14 @@ def test_published_factor_ir_v1_schema_encodes_closed_contract() -> None:
         "CN_A",
         "CN_COMMODITY_FUTURES",
     ]
-    assert schema["$defs"]["marketScope"]["properties"]["frequency"]["const"] == "1d"
+    assert schema["$defs"]["marketScope"]["properties"]["frequency"]["enum"] == [
+        "1d",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "60m",
+    ]
     futures_rule = schema["$defs"]["marketScope"]["allOf"][0]
     assert futures_rule["then"]["required"] == [
         "exchange_scope",

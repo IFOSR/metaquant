@@ -388,9 +388,29 @@ def test_rejects_unsupported_market_or_frequency() -> None:
     spec = equity_spec()
     market_scope = spec["market_scope"]
     assert isinstance(market_scope, dict)
-    market_scope["frequency"] = "5m"
+    market_scope["frequency"] = "1w"
 
     assert compile_error(spec).diagnostics[0].code == "IR_UNSUPPORTED_FREQUENCY"
+
+
+def test_accepts_minute_frequency_with_bar_clock() -> None:
+    spec = equity_spec()
+    market_scope = spec["market_scope"]
+    assert isinstance(market_scope, dict)
+    market_scope["frequency"] = "5m"
+    clock = spec["decision_clock"]
+    assert isinstance(clock, dict)
+    clock["signal_time"] = "T_BAR+1m"
+    clock["earliest_trade_time"] = "T_BAR+2m"
+    inputs = spec["inputs"]
+    assert isinstance(inputs, list)
+    first_input = inputs[0]
+    assert isinstance(first_input, dict)
+    first_input["available_time_rule"] = "T_BAR+1m"
+
+    compiled = compile_factor_ir(spec)
+
+    assert compiled.factor_id == "price.momentum_20d"
 
 
 @pytest.mark.parametrize(

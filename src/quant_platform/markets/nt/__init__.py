@@ -17,6 +17,11 @@ from quant_platform.markets.nt.execution_client import (
 )
 from quant_platform.markets.nt.fees import AShareFeeModel
 from quant_platform.markets.nt.fills import PriceLimitFillModel
+from quant_platform.markets.nt.futures_fee import (
+    FuturesFeeModel,
+    close_offset_fee,
+    offset_from_order,
+)
 from quant_platform.markets.nt.instruments import (
     equity_instrument,
     futures_contract,
@@ -29,6 +34,11 @@ from quant_platform.markets.nt.sessions import (
     in_sessions,
     is_night_session,
 )
+from quant_platform.markets.nt.settlement import (
+    DailySettlement,
+    SettlementLeg,
+    settle_daily,
+)
 from quant_platform.markets.nt.strategy_adapter import (
     RebalancePlan,
     StrategyAdapter,
@@ -39,20 +49,26 @@ __all__ = [
     "AShareFeeModel",
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
+    "FuturesFeeModel",
+    "DailySettlement",
     "NautilusOrderGateway",
     "RebalancePlan",
     "StrategyAdapter",
     "SubmitResult",
+    "SettlementLeg",
     "TradingSession",
     "PriceLimitFillModel",
     "build_equity_engine",
+    "close_offset_fee",
     "day_bar_spec",
     "equity_instrument",
     "futures_contract",
     "in_sessions",
     "is_night_session",
     "minute_bar_spec",
+    "offset_from_order",
     "run_engine",
+    "settle_daily",
     "to_nautilus_bar",
     "to_nautilus_bars",
 ]

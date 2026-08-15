@@ -26,6 +26,8 @@ from quant_platform.markets.nt.instruments import (
     equity_instrument,
     futures_contract,
 )
+from quant_platform.markets.nt.liquidation import LiquidationResult, check_margin_call
+from quant_platform.markets.nt.roll import RollTransition, build_roll_transitions
 from quant_platform.markets.nt.sessions import (
     A_SHARE_SESSIONS,
     FUTURES_DAY_SESSIONS,
@@ -47,18 +49,22 @@ from quant_platform.markets.nt.strategy_adapter import (
 __all__ = [
     "A_SHARE_SESSIONS",
     "AShareFeeModel",
+    "DailySettlement",
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
     "FuturesFeeModel",
-    "DailySettlement",
+    "LiquidationResult",
     "NautilusOrderGateway",
+    "PriceLimitFillModel",
     "RebalancePlan",
+    "RollTransition",
+    "SettlementLeg",
     "StrategyAdapter",
     "SubmitResult",
-    "SettlementLeg",
     "TradingSession",
-    "PriceLimitFillModel",
     "build_equity_engine",
+    "build_roll_transitions",
+    "check_margin_call",
     "close_offset_fee",
     "day_bar_spec",
     "equity_instrument",

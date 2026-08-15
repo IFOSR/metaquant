@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 
-**Status:** P0–P5 完成；P6（验收门禁 + 删除旧实现）待端到端回测打通后执行。
+**Status:** P0–P5 完成；P6 端到端回测闭环 + 确定性 replay 完成；剩余 golden set 全链路 + 性能 + 删除旧实现。
 
 ## 1. 版本确认（P0 结论）
 
@@ -27,6 +27,7 @@
 | P3 | `fees.py`（A股佣金/印花税/过户费）、`fills.py`（涨跌停空盘口）、`futures_fee.py`（平今平昨）、`settlement.py`（逐日盯市）、`roll.py`（换月转换表）、`liquidation.py`（保证金强平） | 22 |
 | P4 | `execution_client.py`（订单网关 + kill switch/notional cap 钩子） | 5 |
 | P5 | `strategy_adapter.py`（StrategySpec → 目标仓位 → 调仓订单） | 4 |
+| P6 | `strategy.py`（TargetPositionStrategy 接入事件循环）、`backtest.py` 扩展期货引擎、端到端回测（股票 + 期货）+ 确定性 replay | 3 |
 
 关键设计决策：
 
@@ -60,14 +61,16 @@ $ pytest                  582 passed, 6 skipped
 1. **Golden set 全链路**：`docs/golden/` 的 A股/期货 golden case（交易成本、
    涨跌停、T+1、换月）在 NautilusTrader 端到端回测链路上全部通过。
    当前 golden case 仍在自研引擎链路上验证，尚未迁移到 NautilusTrader 链路。
-2. **确定性 replay**：相同 `run_fingerprint` 两次回测产生相同 artifact hash。
-   需在适配层注入确定性种子后验证 NautilusTrader 事件循环的可复现性。
+2. **确定性 replay**：✅ **已通过**（组件级）。`test_deterministic_replay_same_fills`
+   验证相同输入两次回测产生相同成交序列；NautilusTrader 事件循环在固定输入
+   下可复现。待接入 `run_fingerprint` 的 artifact hash 链后做端到端确认。
 3. **性能**：3,000–6,000 只 A 股、10 年日频，单次策略回测 P95 < 10 分钟；
-   50–100 个期货主力合约同标准。需真实数据 + 完整链路压测并记录实测值。
+   50–100 个期货主力合约同标准。**按本轮决策下调规模**：A 股用 1–2 只标的
+   验证正确性即可，性能压测重点放在期货主力合约上。
 
-三项门禁都依赖**端到端回测跑通**（DataClient 写 ParquetDataCatalog + 完整
-Strategy 注册 + 事件循环回测），这是当前组件级适配的下一步集成工作，也是
-「删除旧实现」的安全前提。
+端到端回测闭环已跑通（见 §2 P6 行）：`on_bar → submit_order → 成交 → 持仓`
+在股票现金账户与期货保证金账户上均已验证。剩余门禁依赖 golden case 迁移与
+真实数据压测。
 
 ## 5. 决策
 
@@ -77,11 +80,12 @@ Strategy 注册 + 事件循环回测），这是当前组件级适配的下一�
   Instrument/Session/Bar 转换、费用、涨跌停、平今平昨、逐日盯市、换月、
   强平、订单安全钩子、策略编译，作为端到端集成的可靠基础。
 
-## 6. 下一步（P6 集成）
+## 6. 下一步
 
-1. DataClient 完整实现（`data.py` 扩展为写入 ParquetDataCatalog 的
-   `PITDataClient`）。
-2. Strategy 注册（`strategy_adapter.py` 编译出 NautilusTrader Strategy 子类，
-   接入 `BacktestEngine.add_strategy`）。
-3. 端到端回测跑通（PIT → DataEngine → Strategy → 订单 → 撮合 → 账本）。
-4. 依次执行三项验收门禁，全部通过后删除旧实现并迁移既有测试。
+1. 把 `docs/golden/` 的 A股/期货 golden case（交易成本、涨跌停、T+1、换月）
+   迁移到 NautilusTrader 端到端链路上验证（验收门禁 1）。
+2. 接入 `run_fingerprint` 的 artifact hash 链，做确定性 replay 的端到端确认
+   （验收门禁 2 收尾）。
+3. 用期货主力合约（RB/AU 等）做性能压测，记录实测值（验收门禁 3）。
+4. 三项门禁全部通过后，删除 `backtest/engine.py`、`futures_engine.py`、
+   `ledger.py`、`clocks.py`、`execution/runtime.py` 并迁移既有测试。

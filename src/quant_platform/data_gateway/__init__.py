@@ -10,7 +10,10 @@ from quant_platform.data_gateway.adapters import (
     FuturesContractChainAdapter,
     SecurityStatusUnavailableError,
 )
-from quant_platform.data_gateway.akshare_vendor import AkShareVendorAdapter
+from quant_platform.data_gateway.akshare_vendor import (
+    AkShareMarketDataProvider,
+    AkShareVendorAdapter,
+)
 from quant_platform.data_gateway.gateway import (
     InMemorySnapshotStore,
     PITDataGateway,
@@ -18,6 +21,7 @@ from quant_platform.data_gateway.gateway import (
 )
 from quant_platform.data_gateway.ifind_client import (
     IFindClient,
+    IFindMarketDataProvider,
     fetch_close_series,
     load_client_from_env,
     parse_date_sequence,
@@ -41,6 +45,15 @@ from quant_platform.data_gateway.models import (
     SnapshotSlice,
     SourceClass,
 )
+from quant_platform.data_gateway.resolver import (
+    Bar,
+    BarRequest,
+    BarSeries,
+    DataSourceExhausted,
+    MarketDataProvider,
+    MarketDataSourceResolver,
+    default_provider_chain,
+)
 from quant_platform.data_gateway.vendor import (
     VendorAdapter,
     VendorResponse,
@@ -54,15 +67,23 @@ __all__ = [
     "ASharePITAdapter",
     "ActualFuturesContract",
     "AkShareVendorAdapter",
+    "AkShareMarketDataProvider",
     "ArtifactClass",
+    "Bar",
+    "BarRequest",
+    "BarSeries",
     "CrossValidationStatus",
+    "DataSourceExhausted",
     "DatasetContract",
     "FieldContract",
     "FrozenSnapshot",
     "FuturesContractChainAdapter",
     "IFindClient",
+    "IFindMarketDataProvider",
     "InMemorySnapshotStore",
     "MarketDataSource",
+    "MarketDataProvider",
+    "MarketDataSourceResolver",
     "PITDataGateway",
     "PITRow",
     "QueryPurpose",
@@ -76,6 +97,7 @@ __all__ = [
     "VendorResponse",
     "VendorSourceClass",
     "exploratory_response",
+    "default_provider_chain",
     "fetch_close_series",
     "filter_and_resolve",
     "formal_response",

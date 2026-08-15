@@ -19,8 +19,15 @@ import os
 import urllib.error
 import urllib.request
 from collections.abc import Callable
+from datetime import datetime
+from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from quant_platform.data_gateway.resolver import BarRequest, BarSeries
 
 BASE_URL = "https://quantapi.51ifind.com"
+SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 HttpPost = Callable[[str, dict[str, object], dict[str, str]], dict[str, object]]
 
@@ -206,3 +213,60 @@ def fetch_close_series(
 
 def load_client_from_env() -> IFindClient:
     return IFindClient()
+
+
+class IFindMarketDataProvider:
+    """iFinD-backed provider for the unified bar contract (fallback source).
+
+    Daily bars use ``date_sequence``; minute bars are not yet wired (the
+    ``high_frequency`` endpoint exists but its parameter contract still needs
+    to be confirmed against the live gateway).
+    """
+
+    source_id = "ifind"
+
+    def __init__(self, *, client: IFindClient | None = None) -> None:
+        self.client = client or IFindClient()
+
+    def fetch(self, request: BarRequest) -> BarSeries | None:
+        from quant_platform.data_gateway.resolver import Bar, BarSeries
+
+        if request.timeframe != "1d":
+            return None
+        indicator = (
+            "ths_close_price_future"
+            if request.asset_type == "futures"
+            else "ths_close_price_stock"
+        )
+        try:
+            series = fetch_close_series(
+                self.client,
+                (request.symbol,),
+                request.start.strftime("%Y%m%d"),
+                request.end.strftime("%Y%m%d"),
+                close_indicator=indicator,
+            )
+        except Exception:
+            return None
+        per_code = series.get(request.symbol, {})
+        bars: list[Bar] = []
+        for date_str, close in sorted(per_code.items()):
+            if not isinstance(close, int | float):
+                continue
+            timestamp = datetime.fromisoformat(date_str).replace(
+                hour=15, minute=0, tzinfo=SHANGHAI
+            )
+            value = float(close)
+            bars.append(
+                Bar(
+                    timestamp=timestamp,
+                    open=value,
+                    high=value,
+                    low=value,
+                    close=value,
+                    volume=0.0,
+                )
+            )
+        if not bars:
+            return None
+        return BarSeries(request=request, bars=tuple(bars), source_id=self.source_id)

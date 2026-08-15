@@ -4,6 +4,12 @@
 Instrument / 数据 / 回测 / 执行。
 """
 
+from quant_platform.markets.nt.data import (
+    day_bar_spec,
+    minute_bar_spec,
+    to_nautilus_bar,
+    to_nautilus_bars,
+)
 from quant_platform.markets.nt.instruments import (
     equity_instrument,
     futures_contract,
@@ -22,8 +28,12 @@ __all__ = [
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
     "TradingSession",
+    "day_bar_spec",
     "equity_instrument",
     "futures_contract",
     "in_sessions",
     "is_night_session",
+    "minute_bar_spec",
+    "to_nautilus_bar",
+    "to_nautilus_bars",
 ]

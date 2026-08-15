@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 from nautilus_trader.model.enums import AssetClass
-from nautilus_trader.model.identifiers import InstrumentId, Venue
+from nautilus_trader.model.identifiers import InstrumentId, Symbol, Venue
 from nautilus_trader.model.instruments import Equity, FuturesContract
-from nautilus_trader.model.objects import Currency, Price, Quantity, Symbol
+from nautilus_trader.model.objects import Currency, Price, Quantity
 
 
 def equity_instrument(

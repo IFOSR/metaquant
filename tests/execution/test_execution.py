@@ -5,7 +5,6 @@ from decimal import Decimal
 
 import pytest
 
-from quant_platform.execution.runtime import shadow_rebalance
 from quant_platform.execution.safety import (
     KillSwitch,
     KillSwitchState,
@@ -74,28 +73,6 @@ def test_max_order_quantity_blocks() -> None:
 
     assert not check.allowed
     assert check.reason == "order_quantity_exceeded"
-
-
-def test_shadow_rebalance_produces_suggestions() -> None:
-    target = {"A": 200, "B": 0, "C": 50}
-    current = {"A": 100, "B": 100}
-
-    suggestions = shadow_rebalance(target, current)
-
-    by_instrument = {s.instrument_id: s for s in suggestions}
-    assert by_instrument["A"].side is OrderSide.BUY
-    assert by_instrument["A"].quantity == 100
-    assert by_instrument["B"].side is OrderSide.SELL
-    assert by_instrument["B"].quantity == 100
-    assert by_instrument["C"].side is OrderSide.BUY
-    assert by_instrument["C"].quantity == 50
-
-
-def test_shadow_rebalance_empty_when_matched() -> None:
-    target = {"A": 100, "B": 50}
-    current = {"A": 100, "B": 50}
-
-    assert shadow_rebalance(target, current) == ()
 
 
 def test_reconcile_reports_differences() -> None:

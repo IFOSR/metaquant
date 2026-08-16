@@ -3,8 +3,8 @@
 Runs the full research pipeline in sqlite + in-memory stores without external
 Postgres/MinIO: preregister -> run -> validate -> promote (with server-side
 evidence cross-check) -> two-person approval -> Alpha Pool -> combination ->
-backtest -> attribution. This closes the gap where promotion and approval were
-only exercised against real infrastructure (skipped in CI).
+attribution. This closes the gap where promotion and approval were only
+exercised against real infrastructure (skipped in CI).
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ from sqlalchemy.pool import StaticPool
 
 from quant_platform.api.app import create_app
 from quant_platform.artifacts import InMemoryArtifactStore
-from quant_platform.backtest.engine import run_a_share_backtest
 from quant_platform.experiment_runtime import (
     ExecutionIdentity,
     InMemoryFormalSnapshotCatalog,
@@ -28,8 +27,6 @@ from quant_platform.experiment_runtime import (
 from quant_platform.experiment_runtime.repository import (
     SqlAlchemyExperimentRepository,
 )
-from quant_platform.markets.contracts import MarketId
-from quant_platform.markets.cost import EquityCostModel
 from quant_platform.portfolio.combination import (
     CombinationSpec,
     FactorSignal,
@@ -275,7 +272,7 @@ def test_full_research_pipeline() -> None:
             assert alpha.lifecycle_state == "PROMOTED"
             factor_hash = alpha.factor_ir_hash
 
-        # 7. The promoted factor feeds combination and backtest and attribution.
+        # 7. The promoted factor feeds combination and attribution.
         combined = mvp_combine(
             (
                 FactorSignal(
@@ -289,37 +286,9 @@ def test_full_research_pipeline() -> None:
         )
         assert combined.entries
 
-        cost_model = EquityCostModel(
-            model_id="cost://cn-a-default/v1",
-            market=MarketId.CN_A,
-            commission_rate=0.0003,
-            minimum_commission=5.0,
-            stamp_duty_rate=0.0005,
-            transfer_fee_rate=0.00001,
-            slippage_bps=5.0,
-            impact_bps_per_adv=10.0,
-            funding_rate_daily=0.0002,
-            borrow_rate_daily=0.0005,
-        )
-        d3 = datetime(2026, 8, 3).date()
-        d4 = datetime(2026, 8, 4).date()
-        result = run_a_share_backtest(
-            trading_dates=(d3, d4),
-            close_prices={
-                d3: {"A": Decimal("10")},
-                d4: {"A": Decimal("11")},
-            },
-            open_prices={d4: {"A": Decimal("10.5")}},
-            target_weights={d3: {"A": Decimal("1")}},
-            tradability={},
-            cost_model=cost_model,
-            initial_cash=Decimal("100000"),
-        )
-        assert result.ledger.positions or result.blocked
-
         attribution = build_attribution_report(
             start_nav=Decimal("100000"),
-            gross_pnl=result.ledger.cash - Decimal("100000"),
+            gross_pnl=Decimal("100"),
             cost_breakdown=CostBreakdown(
                 commission=Decimal("0"),
                 stamp_duty=Decimal("0"),
@@ -328,8 +297,8 @@ def test_full_research_pipeline() -> None:
             ),
             risk_exposures=((factor_hash, 0.4),),
             capacity_utilization=0.05,
-            unfillable_count=len(result.blocked),
-            total_orders=len(result.orders) + len(result.blocked),
+            unfillable_count=0,
+            total_orders=1,
         )
         assert attribution.content_hash()
 

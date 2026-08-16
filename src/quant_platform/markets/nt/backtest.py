@@ -17,6 +17,8 @@ from nautilus_trader.model.identifiers import Venue
 from nautilus_trader.model.instruments import Equity, FuturesContract
 from nautilus_trader.model.objects import Money
 
+from quant_platform.experiments import canonical_hash
+
 
 def build_equity_engine(
     *,
@@ -34,6 +36,44 @@ def build_equity_engine(
     )
     engine.add_instrument(instrument)
     return engine
+
+
+def backtest_hash(engine: BacktestEngine) -> str:
+    """回测结果的内容寻址 hash（验收门禁 2 确定性 replay）。
+
+    只投影确定性的业务字段，排除 NautilusTrader 内部每次运行随机生成的
+    UUID（``init_id``/``venue_order_id``）与时间戳，使相同输入的两次回测
+    产生相同 hash。
+    """
+    fills = engine.trader.generate_order_fills_report()
+    positions = engine.trader.generate_positions_report()
+    fill_records = [
+        {
+            "instrument_id": row["instrument_id"],
+            "side": row["side"],
+            "quantity": str(row["quantity"]),
+            "filled_qty": str(row["filled_qty"]),
+            "avg_px": float(row["avg_px"]),
+            "commissions": list(row["commissions"]),
+        }
+        for _, row in fills.iterrows()
+    ]
+    position_records = [
+        {
+            "instrument_id": row["instrument_id"],
+            "entry": row["entry"],
+            "side": row["side"],
+            "quantity": str(row["quantity"]),
+            "avg_px_open": float(row["avg_px_open"]),
+            "realized_pnl": str(row["realized_pnl"]),
+        }
+        for _, row in positions.iterrows()
+    ]
+    payload: dict[str, object] = {
+        "fills": fill_records,
+        "positions": position_records,
+    }
+    return canonical_hash(payload)
 
 
 def run_engine(

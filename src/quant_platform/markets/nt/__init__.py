@@ -5,6 +5,7 @@ Instrument / 数据 / 回测 / 执行。
 """
 
 from quant_platform.markets.nt.backtest import (
+    backtest_hash,
     build_equity_engine,
     build_futures_engine,
     run_engine,
@@ -76,6 +77,7 @@ __all__ = [
     "SubmitResult",
     "TradingSession",
     "TargetPositionStrategy",
+    "backtest_hash",
     "build_equity_engine",
     "build_futures_engine",
     "build_roll_from_main",

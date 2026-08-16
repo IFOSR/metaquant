@@ -8,7 +8,11 @@ from nautilus_trader.config import StrategyConfig
 from nautilus_trader.model.instruments import FuturesContract
 
 from quant_platform.data_gateway.resolver import Bar
-from quant_platform.markets.nt.backtest import build_equity_engine, build_futures_engine
+from quant_platform.markets.nt.backtest import (
+    backtest_hash,
+    build_equity_engine,
+    build_futures_engine,
+)
 from quant_platform.markets.nt.data import minute_bar_spec, to_nautilus_bar
 from quant_platform.markets.nt.instruments import equity_instrument, futures_contract
 from quant_platform.markets.nt.strategy import TargetPositionStrategy
@@ -120,7 +124,7 @@ def test_futures_end_to_end_opens_position() -> None:
 
 
 def test_deterministic_replay_same_fills() -> None:
-    def run_once() -> int:
+    def run_once() -> str:
         instrument = equity_instrument(symbol="600000")
         engine = build_equity_engine(
             instrument=instrument, initial_cash=Decimal("100000")
@@ -149,6 +153,6 @@ def test_deterministic_replay_same_fills() -> None:
         ]
         engine.add_data(bars)
         engine.run()
-        return len(engine.trader.generate_order_fills_report())
+        return backtest_hash(engine)
 
     assert run_once() == run_once()

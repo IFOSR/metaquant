@@ -19,9 +19,11 @@ import os
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
+
+from quant_platform.data_gateway.loader import RawPITRow
 
 if TYPE_CHECKING:
     from quant_platform.data_gateway.resolver import BarRequest, BarSeries
@@ -213,6 +215,82 @@ def fetch_close_series(
 
 def load_client_from_env() -> IFindClient:
     return IFindClient()
+
+
+def close_series_to_pit_rows(
+    series: dict[str, dict[str, object]],
+    *,
+    source_id: str,
+    ingested_at: datetime,
+    field: str = "market.eod.close",
+) -> tuple[RawPITRow, ...]:
+    """把 iFinD 不复权收盘价序列转成 FORMAL PIT 行（FR-303）。
+
+    iFinD 的 ``ths_close_price_stock`` 是时点稳定的不复权原始价，可作为
+    正式价格数据源进入 PIT 快照。available_time 取收盘后 20 分钟
+    （T_CLOSE+20m 的近似）。
+    """
+    revision = f"{source_id}-{ingested_at.strftime('%Y%m%dT%H%M%S')}"
+    rows: list[RawPITRow] = []
+    for code, dates in series.items():
+        for date_str, close in sorted(dates.items()):
+            if not isinstance(close, int | float):
+                continue
+            event_time = datetime.fromisoformat(date_str).replace(
+                hour=15, minute=0, tzinfo=SHANGHAI
+            )
+            rows.append(
+                RawPITRow(
+                    source_id=source_id,
+                    dataset_id="market-eod",
+                    field=field,
+                    instrument_id=code,
+                    event_time=event_time,
+                    available_time=event_time.replace(minute=20),
+                    ingested_at=ingested_at,
+                    revision_id=revision,
+                    license_tag="formal",
+                    value_type="decimal",
+                    value=str(close),
+                )
+            )
+    return tuple(rows)
+
+
+class IFindPITAdapter:
+    """iFinD 原始价 PIT adapter：拉收盘价序列并转 FORMAL PIT 行。"""
+
+    source_id = "ifind-cn"
+
+    def __init__(
+        self,
+        client: IFindClient | None = None,
+        *,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self.client = client or IFindClient()
+        self.clock = clock or (lambda: datetime.now(UTC))
+
+    def fetch(
+        self,
+        instruments: tuple[str, ...],
+        start: date,
+        end: date,
+        *,
+        close_indicator: str = "ths_close_price_stock",
+    ) -> tuple[RawPITRow, ...]:
+        series = fetch_close_series(
+            self.client,
+            instruments,
+            start.strftime("%Y%m%d"),
+            end.strftime("%Y%m%d"),
+            close_indicator=close_indicator,
+        )
+        return close_series_to_pit_rows(
+            series,
+            source_id=self.source_id,
+            ingested_at=self.clock(),
+        )
 
 
 class IFindMarketDataProvider:

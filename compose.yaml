@@ -93,7 +93,7 @@ services:
       context: .
     environment: *app-environment
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8091}:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully

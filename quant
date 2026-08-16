@@ -53,6 +53,15 @@ start_backend() {
 }
 
 start_frontend() {
+  # 幂等：前端已在运行就直接复用
+  if curl -sf -o /dev/null "http://localhost:${FRONTEND_PORT}" 2>/dev/null; then
+    echo "==> 前端已在运行: http://localhost:${FRONTEND_PORT}"
+    return 0
+  fi
+  if lsof -nP -iTCP:"${FRONTEND_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "==> 端口 ${FRONTEND_PORT} 被其他进程占用，请释放后重试"
+    return 1
+  fi
   echo "==> 检查前端依赖..."
   if [ ! -d frontend/node_modules ]; then
     echo "    安装前端依赖（首次需几分钟）..."

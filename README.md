@@ -14,22 +14,35 @@ PostgreSQL。
 
 ## 启动
 
+进项目目录后，一条命令启动全部（Docker 检查 → 后端 → 前端）：
+
+```bash
+./quant
+```
+
+子命令：`up`（默认，全部）、`backend`（只后端）、`frontend`（只前端）、
+`down`（停止后端，保留数据）、`reset`（删除数据）、`status`、`logs`。
+
+等价的手动方式：
+
 ```bash
 make bootstrap
 make up
-docker compose ps
-curl --fail http://localhost:8000/health/live
-curl --fail http://localhost:8000/health/ready
+curl --fail http://localhost:8091/health/live
+curl --fail http://localhost:8091/health/ready
 ```
 
 默认端口：
 
 | 服务 | 地址 |
 |---|---|
-| API/OpenAPI | `http://localhost:8000/docs` |
+| 前端 UI | `http://localhost:3090` |
+| API/OpenAPI | `http://localhost:8091/docs` |
 | MinIO API | `http://localhost:9000` |
 | MinIO Console | `http://localhost:9001` |
 | PostgreSQL | `localhost:55432` |
+
+后端访问令牌（本地开发）：`local-researcher`。
 
 `.env.example` 中的密码仅用于本地开发。执行 `make bootstrap` 后可在未跟踪的
 `.env` 中修改。

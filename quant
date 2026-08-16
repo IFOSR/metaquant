@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+# 从 .env 读取 API 端口（默认 8091）
+API_PORT="8091"
+if [ -f .env ]; then
+  value="$(grep -E '^API_PORT=' .env | tail -1 | cut -d= -f2 || true)"
+  [ -n "$value" ] && API_PORT="$value"
+fi
+FRONTEND_PORT="3090"
+ACCESS_TOKEN="local-researcher"
+
+wait_backend() {
+  local ready=0
+  for _ in $(seq 1 45); do
+    if curl -sf "http://localhost:${API_PORT}/health/ready" >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 2
+  done
+  [ "$ready" = "1" ]
+}
+
+ensure_docker() {
+  if docker info >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "    Docker 未运行，尝试启动 Docker Desktop（可能需要 1-2 分钟）..."
+  open -a Docker 2>/dev/null || true
+  for _ in $(seq 1 45); do
+    docker info >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  echo "    Docker 启动失败，请手动启动 Docker Desktop 后重试"
+  return 1
+}
+
+start_backend() {
+  ensure_docker || exit 1
+  echo "==> 启动后端（PostgreSQL + MinIO + API，首次会构建镜像）..."
+  docker compose up -d --build
+  echo "==> 等待后端健康..."
+  if wait_backend; then
+    echo "    后端就绪: http://localhost:${API_PORT}  （API 文档 /docs）"
+  else
+    echo "    后端未就绪，查看日志: ./quant logs"
+    exit 1
+  fi
+}
+
+start_frontend() {
+  echo "==> 检查前端依赖..."
+  if [ ! -d frontend/node_modules ]; then
+    echo "    安装前端依赖（首次需几分钟）..."
+    (cd frontend && npm install)
+  fi
+  echo "==> 启动前端: http://localhost:${FRONTEND_PORT}"
+  echo "    （Ctrl+C 停止前端；后端仍在 Docker 后台运行，用 ./quant down 停止）"
+  echo ""
+  cd frontend
+  NEXT_PUBLIC_QUANT_API_MODE=http \
+    QUANT_API_UPSTREAM_URL="http://localhost:${API_PORT}" \
+    QUANT_API_ACCESS_TOKEN="${ACCESS_TOKEN}" \
+    exec npm run dev
+}
+
+case "${1:-up}" in
+  up|start)
+    start_backend
+    start_frontend
+    ;;
+  backend)
+    start_backend
+    ;;
+  frontend)
+    start_frontend
+    ;;
+  down|stop)
+    docker compose down
+    echo "后端已停止（数据保留）。"
+    ;;
+  reset)
+    docker compose down --volumes --remove-orphans
+    echo "后端已停止并删除数据卷。"
+    ;;
+  status|ps)
+    docker compose ps
+    ;;
+  logs)
+    docker compose logs --follow api postgres minio
+    ;;
+  *)
+    echo "用法: ./quant [up|backend|frontend|down|reset|status|logs]"
+    echo "  up        启动全部（后端 + 前端），默认命令"
+    echo "  backend   只启动后端（API :${API_PORT}）"
+    echo "  frontend  只启动前端（:${FRONTEND_PORT}）"
+    echo "  down      停止后端（保留数据）"
+    echo "  reset     停止并删除数据"
+    echo "  status    查看服务状态"
+    echo "  logs      跟踪后端日志"
+    ;;
+esac

@@ -26,6 +26,13 @@ from quant_platform.markets.nt.futures_fee import (
     close_offset_fee,
     offset_from_order,
 )
+from quant_platform.markets.nt.golden import (
+    GoldenVerdict,
+    build_roll_from_main,
+    verify_cn_a_case,
+    verify_futures_case,
+    verify_golden_cases,
+)
 from quant_platform.markets.nt.instruments import (
     equity_instrument,
     futures_contract,
@@ -58,6 +65,7 @@ __all__ = [
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
     "FuturesFeeModel",
+    "GoldenVerdict",
     "LiquidationResult",
     "NautilusOrderGateway",
     "PriceLimitFillModel",
@@ -70,6 +78,7 @@ __all__ = [
     "TargetPositionStrategy",
     "build_equity_engine",
     "build_futures_engine",
+    "build_roll_from_main",
     "build_roll_transitions",
     "check_margin_call",
     "close_offset_fee",
@@ -84,4 +93,7 @@ __all__ = [
     "settle_daily",
     "to_nautilus_bar",
     "to_nautilus_bars",
+    "verify_cn_a_case",
+    "verify_futures_case",
+    "verify_golden_cases",
 ]

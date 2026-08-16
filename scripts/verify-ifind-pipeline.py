@@ -8,11 +8,13 @@ refresh_token 从环境变量 ``IFIND_REFRESH_TOKEN`` 读取。
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 
 from quant_platform.data_gateway.ifind_client import (
     IFindClient,
     IFindPITAdapter,
+    fetch_futures_daily,
+    futures_daily_to_pit_rows,
 )
 from quant_platform.data_gateway.loader import validate_pit_rows
 
@@ -39,15 +41,23 @@ def main() -> None:
             f"available={row.available_time.time()}"
         )
 
-    # 期货（RB2610 螺纹钢）原始价
+    # 期货（RB2610 螺纹钢）完整量价：OHLC + 成交量 + 持仓量 + 结算价
     try:
-        future_rows = adapter.fetch(
-            ("RB2610.SHF",), start, end, close_indicator="ths_close_price_future"
+        market_data = fetch_futures_daily(
+            client, ("RB2610.SHF",), start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
+        )
+        future_rows = futures_daily_to_pit_rows(
+            market_data,
+            source_id="ifind-cn",
+            ingested_at=datetime.now(UTC),
         )
         validate_pit_rows(future_rows)
-        print(f"[期货] RB2610.SHF 拉取 {len(future_rows)} 条 FORMAL PIT 行")
-        for row in future_rows[-3:]:
-            print(f"  {row.event_time.date()} close={row.value}")
+        print(
+            f"[期货] RB2610.SHF 拉取 {len(future_rows)} 条 FORMAL PIT 行"
+            "（含 OHLC/量/持仓/结算）"
+        )
+        latest = sorted(market_data.get("RB2610.SHF", {}).items())[-1]
+        print(f"  最新 {latest[0]}: {latest[1]}")
     except Exception as exc:  # noqa: BLE001
         print(f"[期货] 拉取失败: {type(exc).__name__} {str(exc)[:120]}")
 

@@ -236,6 +236,9 @@ def close_series_to_pit_rows(
         for date_str, close in sorted(dates.items()):
             if not isinstance(close, int | float):
                 continue
+            if float(close) < 0:
+                # iFinD 用 -1 标记缺失（Fill=-1）
+                continue
             event_time = datetime.fromisoformat(date_str).replace(
                 hour=15, minute=0, tzinfo=SHANGHAI
             )
@@ -291,6 +294,86 @@ class IFindPITAdapter:
             source_id=self.source_id,
             ingested_at=self.clock(),
         )
+
+
+FUTURES_MARKET_INDICATORS: dict[str, str] = {
+    "open": "ths_open_price_future",
+    "high": "ths_high_price_future",
+    "low": "ths_low_future",
+    "close": "ths_close_price_future",
+    "volume": "ths_vol_future",
+    "open_interest": "ths_open_interest_future",
+    "settlement": "ths_settle_future",
+}
+
+
+def fetch_futures_daily(
+    client: IFindClient,
+    codes: tuple[str, ...],
+    start_date: str,
+    end_date: str,
+) -> dict[str, dict[str, dict[str, object]]]:
+    """拉期货日频 OHLC + 成交量 + 持仓量 + 结算价（FR-306）。
+
+    返回 ``{code: {date: {field: value}}}``，field 是 ``open/high/low/close/
+    volume/open_interest/settlement``。
+    """
+    payload = client.fetch_date_sequence(
+        codes, tuple(FUTURES_MARKET_INDICATORS.values()), start_date, end_date
+    )
+    parsed = parse_date_sequence(payload)
+    by_indicator = {field: ind for field, ind in FUTURES_MARKET_INDICATORS.items()}
+    result: dict[str, dict[str, dict[str, object]]] = {}
+    for code, dates in parsed.items():
+        per_code: dict[str, dict[str, object]] = {}
+        for date_str, values in dates.items():
+            mapped = {
+                field: values[indicator]
+                for field, indicator in by_indicator.items()
+                if indicator in values
+            }
+            if mapped:
+                per_code[date_str] = mapped
+        result[code] = per_code
+    return result
+
+
+def futures_daily_to_pit_rows(
+    market_data: dict[str, dict[str, dict[str, object]]],
+    *,
+    source_id: str,
+    ingested_at: datetime,
+) -> tuple[RawPITRow, ...]:
+    """把期货日频量价转成 FORMAL PIT 行，每字段一条。"""
+    revision = f"{source_id}-{ingested_at.strftime('%Y%m%dT%H%M%S')}"
+    rows: list[RawPITRow] = []
+    for code, dates in market_data.items():
+        for date_str, fields in sorted(dates.items()):
+            event_time = datetime.fromisoformat(date_str).replace(
+                hour=15, minute=0, tzinfo=SHANGHAI
+            )
+            for field, value in fields.items():
+                if not isinstance(value, int | float):
+                    continue
+                if float(value) < 0:
+                    # iFinD 用 -1 标记缺失（Fill=-1），负值不进 FORMAL 快照
+                    continue
+                rows.append(
+                    RawPITRow(
+                        source_id=source_id,
+                        dataset_id="market-eod",
+                        field=f"market.eod.{field}",
+                        instrument_id=code,
+                        event_time=event_time,
+                        available_time=event_time.replace(minute=20),
+                        ingested_at=ingested_at,
+                        revision_id=revision,
+                        license_tag="formal",
+                        value_type="decimal",
+                        value=str(value),
+                    )
+                )
+    return tuple(rows)
 
 
 class IFindMarketDataProvider:

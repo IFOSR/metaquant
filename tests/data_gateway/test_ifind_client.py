@@ -5,11 +5,14 @@ from datetime import UTC, date, datetime
 import pytest
 
 from quant_platform.data_gateway.ifind_client import (
+    FUTURES_MARKET_INDICATORS,
     HttpPost,
     IFindClient,
     IFindPITAdapter,
     close_series_to_pit_rows,
     fetch_close_series,
+    fetch_futures_daily,
+    futures_daily_to_pit_rows,
     parse_date_sequence,
 )
 
@@ -218,3 +221,64 @@ def test_ifind_pit_adapter_fetches() -> None:
     assert len(rows) == 1
     assert rows[0].license_tag == "formal"
     assert rows[0].value == "9.29"
+
+
+def test_fetch_futures_daily_maps_fields() -> None:
+    def post(
+        path: str, body: dict[str, object], headers: dict[str, str]
+    ) -> dict[str, object]:
+        assert path == "/api/v1/date_sequence"
+        table = {
+            "ths_open_price_future": [3010.0],
+            "ths_high_price_future": [3019.0],
+            "ths_low_future": [2993.0],
+            "ths_close_price_future": [3002.0],
+            "ths_vol_future": [742347.0],
+            "ths_open_interest_future": [2213769.0],
+            "ths_settle_future": [3002.0],
+        }
+        return {
+            "errorcode": 0,
+            "tables": [
+                {"thscode": "RB2610.SHF", "time": ["2026-08-13"], "table": table}
+            ],
+        }
+
+    client = IFindClient(access_token="at-4", post=post)
+    result = fetch_futures_daily(client, ("RB2610.SHF",), "20260813", "20260813")
+
+    fields = result["RB2610.SHF"]["2026-08-13"]
+    assert fields["open"] == 3010.0
+    assert fields["close"] == 3002.0
+    assert fields["volume"] == 742347.0
+    assert fields["open_interest"] == 2213769.0
+    assert fields["settlement"] == 3002.0
+    assert set(fields) == set(FUTURES_MARKET_INDICATORS)
+
+
+def test_futures_daily_to_pit_rows_formal() -> None:
+    market_data: dict[str, dict[str, dict[str, object]]] = {
+        "RB2610.SHF": {
+            "2026-08-13": {
+                "open": 3010.0,
+                "close": 3002.0,
+                "settlement": 3002.0,
+                "volume": -1.0,  # iFinD 缺失标记，应被过滤
+            }
+        }
+    }
+
+    rows = futures_daily_to_pit_rows(
+        market_data,
+        source_id="ifind-cn",
+        ingested_at=datetime(2026, 8, 15, tzinfo=UTC),
+    )
+
+    assert len(rows) == 3  # open / close / settlement 三条；volume=-1 被过滤
+    fields = {row.field for row in rows}
+    assert fields == {
+        "market.eod.open",
+        "market.eod.close",
+        "market.eod.settlement",
+    }
+    assert all(row.license_tag == "formal" for row in rows)

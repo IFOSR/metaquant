@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 
-**Status:** P0–P6 完成；三项验收门禁（golden set + 确定性 replay + 性能）全部通过；剩余删除旧实现 + 迁移既有测试。
+**Status:** 全部完成：P0–P6 + 三项验收门禁（golden set + 确定性 replay + 性能）+ 删除旧实现 + 迁移测试。
 
 ## 1. 版本确认（P0 结论）
 
@@ -85,10 +85,12 @@ $ pytest                  582 passed, 6 skipped
   涨跌停、平今平昨、逐日盯市、换月、强平、订单安全钩子、策略编译、端到端
   回测、golden case、确定性 replay，作为删除旧引擎的等价替代。
 
-## 6. 下一步（删除旧实现）
+## 6. 删除旧实现（已完成）
 
-三项门禁已通过，删除 `backtest/engine.py`、`backtest/futures_engine.py`、
-`backtest/ledger.py`、`backtest/clocks.py`、`execution/runtime.py`，并迁移
-依赖旧引擎的既有测试（`tests/backtest/`、`test_end_to_end_pipeline.py` 的
-回测部分）到 NautilusTrader 链路或移除（其语义已由 golden case + 适配层
-测试覆盖）。
+已删除 `backtest/` 包（engine.py、futures_engine.py、ledger.py、clocks.py、
+__init__.py）、`execution/runtime.py`、`tests/backtest/`（4 个测试文件）与
+`scripts/verify-futures-minute-backtest.py`；`execution/__init__.py` 移除
+runtime 导出；`tests/execution/test_execution.py` 与
+`tests/api/experiments/test_end_to_end_pipeline.py` 迁移到 NautilusTrader 链路
+（shadow 语义由 `NautilusOrderGateway` 覆盖，回测语义由 golden case + 适配层
+测试覆盖）。删除后全量 550 passed。

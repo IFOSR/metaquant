@@ -10,7 +10,7 @@ export type ResearchJobState =
   | "FAILED"
   | "CANCELLED"
   | "ARCHIVED";
-export type FrequencyId = "1d" | "5m";
+export type FrequencyId = "1d" | "1m" | "5m" | "15m" | "30m" | "60m";
 export type ExperimentSpecState = "DRAFT" | "PREREGISTERED";
 export type ExperimentRunState =
   | "QUEUED"
@@ -114,6 +114,7 @@ export interface ResearchBrief {
 
 export interface CreateResearchJobInput {
   market: MarketId;
+  environment: Environment;
   universeRef: string;
   frequency: FrequencyId;
   decisionClock: string;
@@ -142,6 +143,29 @@ export interface PreregisterExperimentInput {
   factorIr: Record<string, unknown>;
   snapshotId: string;
   snapshotManifestHash: string;
+}
+
+export interface BriefDraftInput {
+  hypothesis: string;
+  economicMechanism: string;
+  expectedDirection: "POSITIVE" | "NEGATIVE" | "NON_MONOTONIC" | "UNKNOWN";
+  falsificationConditions: string[];
+  allowedDataDomains: string[];
+  forbiddenDataDomains: string[];
+  constraints: string[];
+  evidenceRefIds: string[];
+  uncertainties: string[];
+}
+
+export interface FormalSnapshotInfo {
+  snapshotId: string;
+  manifestHash: string;
+  market: string | null;
+  universeRef: string | null;
+  frequency: string | null;
+  decisionClock: string | null;
+  tradeClock: string | null;
+  frozenAt: string | null;
 }
 
 export interface Experiment {

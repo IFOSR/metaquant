@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { ExecutionState } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 interface KillSwitchProps {
   initialState: ExecutionState;
@@ -11,6 +12,7 @@ interface KillSwitchProps {
 }
 
 export function KillSwitch({ initialState, onTrip, onReset }: KillSwitchProps) {
+  const { t } = useI18n();
   const [state, setState] = useState(initialState);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,26 +42,26 @@ export function KillSwitch({ initialState, onTrip, onReset }: KillSwitchProps) {
   return (
     <section
       className={`panel ${tripped ? "panel-warning" : ""}`}
-      aria-label="Kill switch"
+      aria-label={t("kill.ariaLabel")}
     >
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">FR-706 / Execution safety</span>
-          <h2>Kill switch</h2>
+          <span className="eyebrow">{t("kill.eyebrow")}</span>
+          <h2>{t("kill.title")}</h2>
         </div>
         <span
           className={`mono ${tripped ? "" : "muted"}`}
           data-testid="kill-switch-state"
         >
-          {state.killSwitchState}
+          {t(state.killSwitchState === "TRIPPED" ? "killState.TRIPPED" : "killState.ARMED")}
         </span>
       </div>
 
       {tripped ? (
         <div className="freshness-banner" role="alert">
-          <strong>Orders blocked.</strong>
+          <strong>{t("kill.ordersBlocked")}</strong>
           <span>
-            {state.trippedBy ?? "unknown"} · {state.reason ?? "no reason recorded"}
+            {state.trippedBy ?? t("kill.unknown")} · {state.reason ?? t("kill.noReason")}
           </span>
           <button
             className="button button-small"
@@ -67,7 +69,7 @@ export function KillSwitch({ initialState, onTrip, onReset }: KillSwitchProps) {
             onClick={reset}
             disabled={busy}
           >
-            Reset kill switch
+            {t("kill.reset")}
           </button>
         </div>
       ) : (
@@ -76,8 +78,8 @@ export function KillSwitch({ initialState, onTrip, onReset }: KillSwitchProps) {
             type="text"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Reason for tripping the kill switch"
-            aria-label="Kill switch reason"
+            placeholder={t("kill.reasonPlaceholder")}
+            aria-label={t("kill.reasonAria")}
           />
           <button
             className="button button-small button-danger"
@@ -85,18 +87,18 @@ export function KillSwitch({ initialState, onTrip, onReset }: KillSwitchProps) {
             onClick={trip}
             disabled={busy || !reason.trim()}
           >
-            Trip kill switch
+            {t("kill.trip")}
           </button>
         </div>
       )}
 
       <div className="signal-grid signal-grid-compact">
         <div className="signal-card">
-          <span className="eyebrow">Shadow positions</span>
+          <span className="eyebrow">{t("kill.shadowPositions")}</span>
           <strong>{Object.keys(state.shadowPositions).length}</strong>
         </div>
         <div className="signal-card">
-          <span className="eyebrow">Paper positions</span>
+          <span className="eyebrow">{t("kill.paperPositions")}</span>
           <strong>{Object.keys(state.paperPositions).length}</strong>
         </div>
       </div>

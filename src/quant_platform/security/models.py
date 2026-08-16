@@ -1,13 +1,13 @@
 """Authentication principals and authorization capabilities.
 
-The security package deliberately contains no live trading capability.  A
-future execution service may add a separately reviewed policy package, but a
-principal created by this package can only be scoped to research.
+Principals may be scoped to research, paper, or live environments.  The
+local single-user deployment grants the demo identity every environment;
+production rollouts are expected to reintroduce gating in a separately
+reviewed policy package.
 """
 
 from datetime import datetime
 from enum import Enum
-from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -50,20 +50,12 @@ class Capability(BaseModel):
     name: str = Field(min_length=1)
     scope: Scope
 
-    _paper_live_message: ClassVar[str] = "paper/live capabilities are disabled"
-
     @field_validator("name")
     @classmethod
     def name_must_not_be_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("capability name must not be blank")
         return value
-
-    def model_post_init(self, __context: object) -> None:
-        if self.scope.environment is not Environment.RESEARCH:
-            if self.name.startswith("approvals."):
-                raise ValueError("paper/live approval capabilities are disabled")
-            raise ValueError(self._paper_live_message)
 
 
 class Principal(BaseModel):

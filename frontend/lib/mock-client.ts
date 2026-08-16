@@ -1,4 +1,5 @@
 import type {
+  BriefDraftInput,
   CreateResearchJobInput,
   Experiment,
   ExperimentArtifacts,
@@ -303,6 +304,22 @@ export const mockClient: QuantApiClient = {
   async getBrief(id: string) {
     return structuredClone(briefs.find((brief) => brief.id === id) ?? briefs[0]);
   },
+  async createBrief(jobId: string, draft: BriefDraftInput) {
+    const brief: ResearchBrief = {
+      ...briefs[0],
+      ...structuredClone(draft),
+      id: `rbv_local_${Date.now()}`,
+      jobId,
+      version: briefs.filter((item) => item.jobId === jobId).length + 1,
+      resourceVersion: 1,
+      status: "DRAFT",
+      contentHash: null,
+      createdAt: new Date().toISOString(),
+      frozenAt: null,
+    };
+    briefs.unshift(brief);
+    return structuredClone(brief);
+  },
   async updateBrief(id: string, patch: Partial<ResearchBrief>) {
     const brief = briefs.find((item) => item.id === id) ?? briefs[0];
     Object.assign(brief, patch, { resourceVersion: brief.resourceVersion + 1 });
@@ -325,6 +342,7 @@ export const mockClient: QuantApiClient = {
       id,
       title: input.market === "CN_A" ? "新建 A 股研究任务" : "新建期货研究任务",
       market: input.market,
+      environment: input.environment,
       state: "READY" as const,
       currentStage: "BRIEF_FROZEN",
       version: "1",
@@ -475,6 +493,20 @@ export const mockClient: QuantApiClient = {
         riskPremium: false,
         lifecycleState: "PROMOTED",
         oosIc: 0.05,
+      },
+    ];
+  },
+  async listFormalSnapshots() {
+    return [
+      {
+        snapshotId: "snapshot-cn-a-001",
+        manifestHash: "b".repeat(64),
+        market: "CN_A",
+        universeRef: "universe://csi300-pit/v1",
+        frequency: "1d",
+        decisionClock: "T_CLOSE+30m",
+        tradeClock: "T+1_OPEN",
+        frozenAt: "2026-08-12T15:00:00+00:00",
       },
     ];
   },

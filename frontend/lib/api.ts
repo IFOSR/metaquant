@@ -1,5 +1,6 @@
 import type {
   AlphaPoolFactor,
+  BriefDraftInput,
   Capability,
   CreateResearchJobInput,
   Environment,
@@ -8,6 +9,7 @@ import type {
   ExperimentArtifacts,
   ExperimentRun,
   FactorValidationReport,
+  FormalSnapshotInfo,
   IndependenceSummary,
   MarketId,
   PreregisterExperimentInput,
@@ -29,6 +31,17 @@ interface ApiCommandReceipt {
   status: "ACCEPTED";
   resource_id: string;
   submitted_at: string;
+}
+
+interface ApiFormalSnapshot {
+  snapshot_id: string;
+  manifest_hash: string;
+  market?: string | null;
+  universe_ref?: string | null;
+  frequency?: string | null;
+  decision_clock?: string | null;
+  trade_clock?: string | null;
+  frozen_at?: string | null;
 }
 
 interface ApiBudget {
@@ -279,6 +292,11 @@ export interface QuantApiClient {
   getResearchJob(id: string): Promise<ResearchJob>;
   listBriefVersions(jobId: string): Promise<ResearchBrief[]>;
   getBrief(id: string): Promise<ResearchBrief>;
+  createBrief(
+    jobId: string,
+    draft: BriefDraftInput,
+    jobResourceVersion?: number,
+  ): Promise<ResearchBrief>;
   updateBrief(id: string, brief: ResearchBrief): Promise<ResearchBrief>;
   freezeBrief(id: string, resourceVersion?: number): Promise<ResearchBrief>;
   createResearchJob(input: CreateResearchJobInput): Promise<ResearchJob>;
@@ -291,6 +309,7 @@ export interface QuantApiClient {
   getExperimentIndependence(id: string): Promise<IndependenceSummary>;
   getExperimentPromotion(id: string): Promise<PromotionSummary>;
   listAlphaPool(): Promise<AlphaPoolFactor[]>;
+  listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
@@ -339,7 +358,8 @@ export class HttpQuantApiClient implements QuantApiClient {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
     this.accessToken = options.accessToken;
     this.session = structuredClone(options.session);
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher =
+      options.fetcher ?? ((input, init) => fetch(input, init));
     this.idempotencyKey = options.idempotencyKey ?? (() => crypto.randomUUID());
   }
 
@@ -378,6 +398,25 @@ export class HttpQuantApiClient implements QuantApiClient {
     return mapResearchBrief(result.body);
   }
 
+  async createBrief(
+    jobId: string,
+    draft: BriefDraftInput,
+    jobResourceVersion?: number,
+  ) {
+    const receipt = await this.request<ApiCommandReceipt>(
+      `/research-jobs/${jobId}/brief-versions`,
+      {
+        method: "POST",
+        headers: this.commandHeaders(jobId, jobResourceVersion),
+        body: JSON.stringify({
+          metadata: commandMetadata("Create a research brief draft"),
+          brief: briefCommand(draft),
+        }),
+      },
+    );
+    return this.getBrief(receipt.body.resource_id);
+  }
+
   async updateBrief(id: string, brief: ResearchBrief) {
     await this.request<ApiCommandReceipt>(`/research-brief-versions/${id}`, {
       method: "PATCH",
@@ -409,6 +448,7 @@ export class HttpQuantApiClient implements QuantApiClient {
       body: JSON.stringify({
         metadata: commandMetadata("Create a preregistered research workspace"),
         market: input.market,
+        environment: input.environment,
         universe_ref: input.universeRef,
         frequency: input.frequency,
         decision_clock: input.decisionClock,
@@ -514,6 +554,24 @@ export class HttpQuantApiClient implements QuantApiClient {
       "/alpha-pool",
     );
     return result.body.items.map(mapAlphaPoolFactor);
+  }
+
+  async listFormalSnapshots() {
+    const result = await this.request<ApiList<ApiFormalSnapshot>>(
+      "/formal-snapshots",
+    );
+    return result.body.items.map(
+      (item): FormalSnapshotInfo => ({
+        snapshotId: item.snapshot_id,
+        manifestHash: item.manifest_hash,
+        market: item.market ?? null,
+        universeRef: item.universe_ref ?? null,
+        frequency: item.frequency ?? null,
+        decisionClock: item.decision_clock ?? null,
+        tradeClock: item.trade_clock ?? null,
+        frozenAt: item.frozen_at ?? null,
+      }),
+    );
   }
 
   async getExecutionState() {
@@ -863,7 +921,7 @@ function commandMetadata(reason: string) {
   };
 }
 
-function briefCommand(brief: ResearchBrief) {
+function briefCommand(brief: BriefDraftInput) {
   return {
     hypothesis: brief.hypothesis,
     economic_mechanism: brief.economicMechanism,

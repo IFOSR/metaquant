@@ -79,15 +79,33 @@ async function proxy(request: NextRequest, path: string[]) {
     if (value) headers.set(name, value);
   }
   const target = buildProxyTarget(upstream, path, request.nextUrl.search);
-  const response = await fetch(target, {
-    method: request.method,
-    headers,
-    body:
-      request.method === "GET" || request.method === "HEAD"
-        ? undefined
-        : await request.arrayBuffer(),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(target, {
+      method: request.method,
+      headers,
+      body:
+        request.method === "GET" || request.method === "HEAD"
+          ? undefined
+          : await request.arrayBuffer(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return Response.json(
+      {
+        type: "about:blank",
+        title: "Quant API upstream unavailable",
+        status: 504,
+        detail: "The upstream Quant API did not respond in time.",
+        code: "QUANT_API_UPSTREAM_UNAVAILABLE",
+      },
+      {
+        status: 504,
+        headers: { "Content-Type": "application/problem+json" },
+      },
+    );
+  }
   const responseHeaders = new Headers();
   for (const name of FORWARDED_RESPONSE_HEADERS) {
     const value = response.headers.get(name);

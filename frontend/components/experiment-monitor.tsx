@@ -1,8 +1,15 @@
+"use client";
+
+import {
+  EXPERIMENT_RUN_STATE_KEYS,
+  EXPERIMENT_SPEC_STATE_KEYS,
+} from "../lib/domain";
 import type {
   Experiment,
   ExperimentArtifacts,
   ExperimentRun,
 } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 interface ExperimentMonitorProps {
   experiment: Experiment | null;
@@ -23,12 +30,13 @@ function EvidenceResult({
   label: string;
   passed: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="invariance-check">
       <span className={`evidence-dot ${passed ? "is-pass" : "is-fail"}`} />
       <div>
         <strong>{label}</strong>
-        <span>{passed ? "MATCHED" : "MISMATCH"}</span>
+        <span>{passed ? t("exp.matched") : t("exp.mismatch")}</span>
       </div>
     </div>
   );
@@ -39,13 +47,14 @@ export function ExperimentMonitor({
   run,
   artifacts,
 }: ExperimentMonitorProps) {
+  const { t } = useI18n();
   if (!experiment) {
     return (
       <section className="panel experiment-monitor">
-        <span className="eyebrow">Experiment / server record</span>
-        <h2>No preregistered experiment</h2>
+        <span className="eyebrow">{t("exp.emptyEyebrow")}</span>
+        <h2>{t("exp.emptyTitle")}</h2>
         <p className="experiment-empty">
-          No experiment resource was returned for this ResearchJob.
+          {t("exp.emptyDetail")}
         </p>
       </section>
     );
@@ -58,35 +67,37 @@ export function ExperimentMonitor({
     <section className="panel experiment-monitor" aria-labelledby="experiment-title">
       <div className="experiment-heading">
         <div>
-          <span className="eyebrow">Experiment / server authoritative</span>
-          <h2 id="experiment-title">Experiment record</h2>
+          <span className="eyebrow">{t("exp.eyebrow")}</span>
+          <h2 id="experiment-title">{t("exp.title")}</h2>
         </div>
         <div className="experiment-state-pair">
           <span>
-            <b>SPEC</b>
-            <strong>{experiment.state}</strong>
+            <b>{t("exp.specLabel")}</b>
+            <strong>{t(EXPERIMENT_SPEC_STATE_KEYS[experiment.state])}</strong>
           </span>
           <span>
-            <b>RUN</b>
-            <strong>{run?.state ?? "NOT_STARTED"}</strong>
+            <b>{t("exp.runLabel")}</b>
+            <strong>
+              {run ? t(EXPERIMENT_RUN_STATE_KEYS[run.state]) : t("exp.notStarted")}
+            </strong>
           </span>
         </div>
       </div>
 
       <div className="experiment-identity">
         <div>
-          <span className="eyebrow">Experiment</span>
+          <span className="eyebrow">{t("exp.expEyebrow")}</span>
           <strong className="mono">{experiment.id}</strong>
         </div>
         {run ? (
           <>
             <div>
-              <span className="eyebrow">Run / attempts</span>
+              <span className="eyebrow">{t("exp.runAttempts")}</span>
               <strong className="mono">{run.id}</strong>
-              <span>{run.attemptCount} attempts</span>
+              <span>{t("exp.attempts", { count: run.attemptCount })}</span>
             </div>
             <div>
-              <span className="eyebrow">Run fingerprint</span>
+              <span className="eyebrow">{t("exp.runFingerprint")}</span>
               <strong className="mono">{run.runFingerprint}</strong>
             </div>
           </>
@@ -95,15 +106,15 @@ export function ExperimentMonitor({
 
       <div className="experiment-hashes">
         <div>
-          <span className="eyebrow">Factor IR hash</span>
+          <span className="eyebrow">{t("exp.factorIrHash")}</span>
           <span className="mono">{experiment.factorIrHash}</span>
         </div>
         <div>
-          <span className="eyebrow">Snapshot</span>
+          <span className="eyebrow">{t("exp.snapshot")}</span>
           <span className="mono">{experiment.snapshotId}</span>
         </div>
         <div>
-          <span className="eyebrow">Snapshot manifest hash</span>
+          <span className="eyebrow">{t("exp.manifestHash")}</span>
           <span className="mono">{experiment.snapshotManifestHash}</span>
         </div>
       </div>
@@ -111,52 +122,52 @@ export function ExperimentMonitor({
       <div className="experiment-section-grid">
         <div className="experiment-section">
           <div className="section-label">
-            <span className="eyebrow">Validation summary</span>
+            <span className="eyebrow">{t("exp.validationSummary")}</span>
           </div>
           {summary ? (
             <div className="validation-metrics">
               <div>
-                <span>Coverage</span>
+                <span>{t("exp.coverage")}</span>
                 <strong>{(summary.coverageRatio * 100).toFixed(2)}%</strong>
               </div>
               <div>
-                <span>Finite</span>
+                <span>{t("exp.finite")}</span>
                 <strong>{summary.finiteCount.toLocaleString("en-US")}</strong>
               </div>
               <div>
-                <span>Missing</span>
+                <span>{t("exp.missing")}</span>
                 <strong>{summary.missingCount.toLocaleString("en-US")}</strong>
               </div>
               <div>
-                <span>Total</span>
+                <span>{t("exp.total")}</span>
                 <strong>{summary.observationCount.toLocaleString("en-US")}</strong>
               </div>
             </div>
           ) : (
             <p className="experiment-empty">
-              No validation summary was committed for this run state.
+              {t("exp.noValidation")}
             </p>
           )}
         </div>
 
         <div className="experiment-section">
           <div className="section-label">
-            <span className="eyebrow">Invariance evidence</span>
+            <span className="eyebrow">{t("exp.invariance")}</span>
           </div>
           {invariance ? (
             <div className="invariance-grid">
               <EvidenceResult
-                label="Future truncation"
+                label={t("exp.futureTruncation")}
                 passed={invariance.futureTruncationPassed}
               />
               <EvidenceResult
-                label="Sentinel isolation"
+                label={t("exp.sentinelIsolation")}
                 passed={invariance.sentinelIsolationPassed}
               />
             </div>
           ) : (
             <p className="experiment-empty">
-              No invariance evidence was committed for this run state.
+              {t("exp.noInvariance")}
             </p>
           )}
         </div>
@@ -165,8 +176,8 @@ export function ExperimentMonitor({
       <div className="experiment-evidence-grid">
         <div className="experiment-section">
           <div className="section-label">
-            <span className="eyebrow">Immutable artifacts</span>
-            <span>{artifacts?.items.length ?? 0} records</span>
+            <span className="eyebrow">{t("exp.artifacts")}</span>
+            <span>{t("exp.records", { count: artifacts?.items.length ?? 0 })}</span>
           </div>
           <div className="artifact-list">
             {artifacts?.items.map((artifact) => (
@@ -182,15 +193,15 @@ export function ExperimentMonitor({
               </div>
             ))}
             {!artifacts?.items.length ? (
-              <p className="experiment-empty">No artifact metadata returned.</p>
+              <p className="experiment-empty">{t("exp.noArtifacts")}</p>
             ) : null}
           </div>
         </div>
 
         <div className="experiment-section">
           <div className="section-label">
-            <span className="eyebrow">Lineage</span>
-            <span>{artifacts?.lineage.length ?? 0} edges</span>
+            <span className="eyebrow">{t("exp.lineage")}</span>
+            <span>{t("exp.edges", { count: artifacts?.lineage.length ?? 0 })}</span>
           </div>
           <div className="lineage-list">
             {artifacts?.lineage.map((edge) => (
@@ -201,7 +212,7 @@ export function ExperimentMonitor({
               </div>
             ))}
             {!artifacts?.lineage.length ? (
-              <p className="experiment-empty">No lineage edges returned.</p>
+              <p className="experiment-empty">{t("exp.noLineage")}</p>
             ) : null}
           </div>
         </div>

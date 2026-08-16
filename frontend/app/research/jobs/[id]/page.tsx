@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ExperimentActions } from "../../../../components/experiment-actions";
 import { ExperimentMonitor } from "../../../../components/experiment-monitor";
 import { FactorValidationReportPanel } from "../../../../components/factor-validation-report";
 import { IndependencePanel } from "../../../../components/independence-panel";
@@ -7,8 +8,9 @@ import { LineagePanel } from "../../../../components/lineage-panel";
 import { PromotionPanel } from "../../../../components/promotion-panel";
 import { ResearchJobSnapshot } from "../../../../components/research-job-snapshot";
 import { StatusChip } from "../../../../components/status-chip";
-import { MARKET_LABELS } from "../../../../lib/domain";
+import { MARKET_LABEL_KEYS } from "../../../../lib/domain";
 import { quantApiClient } from "../../../../lib/client";
+import { getServerT } from "../../../../lib/server-locale";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +19,11 @@ export default async function ResearchJobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = await getServerT();
   const { id } = await params;
   const job = await quantApiClient.getResearchJob(id);
+  const briefVersions = await quantApiClient.listBriefVersions(id);
+  const frozenBrief = briefVersions.find((item) => item.status === "FROZEN") ?? null;
   const experiment = job.experimentId
     ? await quantApiClient.getExperiment(job.experimentId)
     : null;
@@ -41,13 +46,13 @@ export default async function ResearchJobDetailPage({
   return (
     <div className="page">
       <div className="breadcrumb">
-        <Link href="/research/jobs">Research jobs</Link>
+        <Link href="/research/jobs">{t("jobs.title")}</Link>
         <span>/</span>
         <span className="mono">{job.id}</span>
       </div>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">{MARKET_LABELS[job.market]} / ResearchJob</span>
+          <span className="eyebrow">{t("detail.marketEyebrow", { market: t(MARKET_LABEL_KEYS[job.market]) })}</span>
           <h1>{job.title}</h1>
           <div className="heading-meta">
             <StatusChip state={job.state} />
@@ -56,22 +61,22 @@ export default async function ResearchJobDetailPage({
           </div>
         </div>
         <div className="evidence-stamp">
-          <span className="eyebrow">Freshness</span>
+          <span className="eyebrow">{t("detail.freshness")}</span>
           {job.freshness ? (
             <>
-              <strong>{isStale ? "STALE SNAPSHOT" : "CURRENT SNAPSHOT"}</strong>
+              <strong>{isStale ? t("detail.stale") : t("detail.current")}</strong>
               <span className="mono">{job.freshness.asOf}</span>
             </>
           ) : (
-            <strong>NOT RETURNED</strong>
+            <strong>{t("detail.notReturned")}</strong>
           )}
         </div>
       </div>
       {isStale ? (
         <div className="freshness-banner" role="alert">
-          <strong>Read-only until snapshot refresh.</strong>
+          <strong>{t("detail.readOnlyUntilRefresh")}</strong>
           {job.freshness?.staleReason ? <span>{job.freshness.staleReason}</span> : null}
-          <button className="button button-small" type="button">Refetch snapshot</button>
+          <button className="button button-small" type="button">{t("detail.refetch")}</button>
         </div>
       ) : null}
       <div className="detail-grid">
@@ -80,15 +85,15 @@ export default async function ResearchJobDetailPage({
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <span className="eyebrow">Research brief</span>
-                <h2>Version history</h2>
+                <span className="eyebrow">{t("detail.briefEyebrow")}</span>
+                <h2>{t("detail.versionHistory")}</h2>
               </div>
             </div>
-            <Link className="text-link" href={`/research/jobs/${job.id}/brief`}>Open brief editor →</Link>
+            <Link className="text-link" href={`/research/jobs/${job.id}/brief`}>{t("detail.openBriefEditor")}</Link>
           </section>
           {job.blockers.length ? (
             <section className="panel panel-warning">
-              <span className="eyebrow">Blockers</span>
+              <span className="eyebrow">{t("detail.blockers")}</span>
               {job.blockers.map((blocker) => (
                 <div className="blocker" key={blocker.code}>
                   <strong>{blocker.title}</strong>
@@ -100,6 +105,13 @@ export default async function ResearchJobDetailPage({
           ) : null}
         </aside>
       </div>
+      <ExperimentActions
+        jobId={job.id}
+        market={job.market}
+        experimentId={experiment?.id ?? null}
+        hasRun={run !== null}
+        frozenBriefId={frozenBrief?.id ?? null}
+      />
       <ExperimentMonitor
         experiment={experiment}
         run={run}

@@ -55,7 +55,18 @@ describe("buildProxyTarget", () => {
         "artifacts",
       ]),
     ).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "session"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "session", "extra"])).toBe(false);
+    expect(isAllowedQuantApiPath(["v1", "formal-snapshots"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "formal-snapshots", "x"])).toBe(false);
     expect(isAllowedQuantApiPath(["v1", "execution", "orders"])).toBe(false);
+    expect(isAllowedQuantApiPath(["v1", "execution", "state"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "execution", "kill-switch:trip"])).toBe(
+      true,
+    );
+    expect(isAllowedQuantApiPath(["v1", "execution", "kill-switch:reset"])).toBe(
+      true,
+    );
     expect(isAllowedQuantApiPath(["v1", "experiments", "exp_1:delete"])).toBe(
       false,
     );

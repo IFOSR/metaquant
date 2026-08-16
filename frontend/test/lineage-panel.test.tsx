@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LineagePanel } from "../components/lineage-panel";
 import type { ExperimentArtifacts } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const artifacts: ExperimentArtifacts = {
   items: [
@@ -35,7 +36,7 @@ const artifacts: ExperimentArtifacts = {
 
 describe("LineagePanel", () => {
   it("renders artifacts, edges and relation labels", () => {
-    render(<LineagePanel artifacts={artifacts} />);
+    renderWithI18n(<LineagePanel artifacts={artifacts} />);
 
     expect(screen.getByText("Evidence lineage")).toBeDefined();
     expect(screen.getByText("validated by")).toBeDefined();
@@ -43,13 +44,13 @@ describe("LineagePanel", () => {
   });
 
   it("renders an explicit empty state when no artifacts exist", () => {
-    render(<LineagePanel artifacts={null} />);
+    renderWithI18n(<LineagePanel artifacts={null} />);
 
     expect(screen.getByText("No run artifacts yet.")).toBeDefined();
   });
 
   it("renders a note when there are no lineage edges", () => {
-    render(<LineagePanel artifacts={{ items: artifacts.items, lineage: [] }} />);
+    renderWithI18n(<LineagePanel artifacts={{ items: artifacts.items, lineage: [] }} />);
 
     expect(screen.getByText("No lineage edges recorded for this run.")).toBeDefined();
   });

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useI18n } from "../../components/i18n-provider";
+
 const TOKEN_KEY = "quant-access-token";
 
 export function storeAccessToken(token: string) {
@@ -15,6 +17,7 @@ export function readAccessToken(): string | null {
 }
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export default function LoginPage() {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!token.trim()) {
-      setError("An access token is required.");
+      setError(t("login.tokenRequired"));
       return;
     }
     storeAccessToken(token.trim());
@@ -33,23 +36,22 @@ export default function LoginPage() {
     <div className="page">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">FR-701 / Authentication</span>
-          <h1>Sign in with a scoped access token.</h1>
+          <span className="eyebrow">{t("login.eyebrow")}</span>
+          <h1>{t("login.title")}</h1>
           <p className="lede">
-            Roles and capabilities are derived from the token, never hard-coded
-            in the client. Paper and live environments stay gated.
+            {t("login.lede")}
           </p>
         </div>
       </div>
       <form className="panel" onSubmit={submit}>
         <label className="context-select" htmlFor="access-token">
-          <span>Access token</span>
+          <span>{t("login.tokenLabel")}</span>
           <input
             id="access-token"
             type="password"
             value={token}
             onChange={(event) => setToken(event.target.value)}
-            placeholder="Bearer token issued by the identity provider"
+            placeholder={t("login.tokenPlaceholder")}
           />
         </label>
         {error ? (
@@ -58,7 +60,7 @@ export default function LoginPage() {
           </div>
         ) : null}
         <button className="button button-primary" type="submit">
-          Continue
+          {t("login.continue")}
         </button>
       </form>
     </div>

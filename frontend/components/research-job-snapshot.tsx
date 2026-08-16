@@ -1,6 +1,12 @@
+"use client";
+
+import { stageLabelKey } from "../lib/domain";
 import type { ResearchJob } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 export function ResearchJobSnapshot({ job }: { job: ResearchJob }) {
+  const { t } = useI18n();
+  const stageKey = job.currentStage ? stageLabelKey(job.currentStage) : null;
   const hasExecutionSnapshot =
     job.currentStage !== null ||
     job.latestAttempt !== null ||
@@ -12,8 +18,8 @@ export function ResearchJobSnapshot({ job }: { job: ResearchJob }) {
   if (!hasExecutionSnapshot) {
     return (
       <section className="panel">
-        <span className="eyebrow">Execution snapshot</span>
-        <h2>No execution snapshot returned.</h2>
+        <span className="eyebrow">{t("snapshot.eyebrow")}</span>
+        <h2>{t("snapshot.empty")}</h2>
       </section>
     );
   }
@@ -22,19 +28,24 @@ export function ResearchJobSnapshot({ job }: { job: ResearchJob }) {
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">Execution snapshot</span>
-          {job.currentStage ? <h2>{job.currentStage}</h2> : null}
+          <span className="eyebrow">{t("snapshot.eyebrow")}</span>
+          {job.currentStage ? (
+            <h2>{stageKey ? t(stageKey) : job.currentStage}</h2>
+          ) : null}
         </div>
         {job.latestAttempt ? (
           <span className="mono">
-            attempt {job.latestAttempt.attempt} / {job.latestAttempt.state}
+            {t("snapshot.attempt", {
+              attempt: job.latestAttempt.attempt,
+              state: job.latestAttempt.state,
+            })}
           </span>
         ) : null}
       </div>
 
       {job.latestAttempt?.heartbeatAt ? (
         <div className="snapshot-row">
-          <span className="eyebrow">Heartbeat</span>
+          <span className="eyebrow">{t("snapshot.heartbeat")}</span>
           <span className="mono">{job.latestAttempt.heartbeatAt}</span>
         </div>
       ) : null}
@@ -42,19 +53,19 @@ export function ResearchJobSnapshot({ job }: { job: ResearchJob }) {
       {job.budgetUsed ? (
         <div className="metrics-row">
           <div>
-            <span className="eyebrow">Candidates</span>
+            <span className="eyebrow">{t("snapshot.candidates")}</span>
             <strong>
               {job.budgetUsed.candidates} / {job.budget.candidateLimit}
             </strong>
           </div>
           <div>
-            <span className="eyebrow">CPU hours</span>
+            <span className="eyebrow">{t("snapshot.cpuHours")}</span>
             <strong>
               {job.budgetUsed.cpuHours} / {job.budget.cpuHours}
             </strong>
           </div>
           <div>
-            <span className="eyebrow">Wall clock</span>
+            <span className="eyebrow">{t("snapshot.wallClock")}</span>
             <strong>
               {job.budgetUsed.wallClockMinutes}m / {job.budget.wallClockMinutes}m
             </strong>
@@ -64,7 +75,7 @@ export function ResearchJobSnapshot({ job }: { job: ResearchJob }) {
 
       {job.snapshotRefs.length || job.policyVersion || job.runFingerprint ? (
         <div className="snapshot-references">
-          <span className="eyebrow">Returned references</span>
+          <span className="eyebrow">{t("snapshot.references")}</span>
           <ul className="reference-list">
             {job.snapshotRefs.map((reference) => (
               <li className="mono" key={reference}>

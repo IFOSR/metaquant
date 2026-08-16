@@ -9,7 +9,17 @@ export function buildProxyTarget(
 
 export function isAllowedQuantApiPath(path: string[]) {
   if (path[0] !== "v1") return false;
+  if (path[1] === "session") return path.length === 2;
+  if (path[1] === "formal-snapshots") return path.length === 2;
   if (path[1] === "experiments:preregister") return path.length === 2;
+  if (path[1] === "execution") {
+    return (
+      path.length === 3 &&
+      (path[2] === "state" ||
+        path[2] === "kill-switch:trip" ||
+        path[2] === "kill-switch:reset")
+    );
+  }
   if (path[1] === "experiments") {
     return (
       path.length === 3 &&

@@ -4,8 +4,10 @@ import { useState } from "react";
 
 import { quantApiClient } from "../lib/client";
 import type { ResearchBrief } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
+  const { t } = useI18n();
   const [brief, setBrief] = useState(initialBrief);
   const [saved, setSaved] = useState(false);
   const [freezing, setFreezing] = useState(false);
@@ -29,14 +31,19 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
     <div className="brief-editor">
       <div className="brief-statusbar">
         <span className={`brief-state state-${brief.status.toLowerCase()}`}>
-          {brief.status}
+          {t(`briefStatus.${brief.status}`)}
         </span>
-        <span className="mono">version {brief.version} · rv {brief.resourceVersion}</span>
+        <span className="mono">
+          {t("brief.version", {
+            version: brief.version,
+            resourceVersion: brief.resourceVersion,
+          })}
+        </span>
         {brief.contentHash ? <span className="mono">{brief.contentHash}</span> : null}
       </div>
       <div className="brief-grid">
         <label className="field field-wide">
-          <span>Hypothesis</span>
+          <span>{t("brief.hypothesis")}</span>
           <textarea
             disabled={disabled}
             value={brief.hypothesis}
@@ -45,7 +52,7 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           />
         </label>
         <label className="field field-wide">
-          <span>Economic mechanism</span>
+          <span>{t("brief.mechanism")}</span>
           <textarea
             disabled={disabled}
             value={brief.economicMechanism}
@@ -56,7 +63,7 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           />
         </label>
         <label className="field">
-          <span>Expected direction</span>
+          <span>{t("brief.direction")}</span>
           <select
             disabled={disabled}
             value={brief.expectedDirection}
@@ -67,14 +74,14 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
               })
             }
           >
-            <option value="POSITIVE">Positive</option>
-            <option value="NEGATIVE">Negative</option>
-            <option value="NON_MONOTONIC">Non-monotonic</option>
-            <option value="UNKNOWN">Unknown</option>
+            <option value="POSITIVE">{t("brief.direction.positive")}</option>
+            <option value="NEGATIVE">{t("brief.direction.negative")}</option>
+            <option value="NON_MONOTONIC">{t("brief.direction.nonMonotonic")}</option>
+            <option value="UNKNOWN">{t("brief.direction.unknown")}</option>
           </select>
         </label>
         <label className="field">
-          <span>Allowed data domains</span>
+          <span>{t("brief.domains")}</span>
           <textarea
             disabled={disabled}
             value={brief.allowedDataDomains.join("\n")}
@@ -88,7 +95,7 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           />
         </label>
         <label className="field">
-          <span>Falsification conditions</span>
+          <span>{t("brief.falsification")}</span>
           <textarea
             disabled={disabled}
             value={brief.falsificationConditions.join("\n")}
@@ -102,7 +109,7 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           />
         </label>
         <label className="field">
-          <span>Constraints</span>
+          <span>{t("brief.constraints")}</span>
           <textarea
             disabled={disabled}
             value={brief.constraints.join("\n")}
@@ -118,7 +125,7 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
       </div>
       <div className="brief-actions">
         <button className="button button-secondary" type="button" disabled={disabled} onClick={save}>
-          {saved ? "Draft saved" : "Save draft"}
+          {saved ? t("brief.saved") : t("brief.save")}
         </button>
         <button
           className="button button-primary"
@@ -126,10 +133,10 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           disabled={disabled || freezing}
           onClick={freeze}
         >
-          {freezing ? "Freezing…" : "Freeze brief version"}
+          {freezing ? t("brief.freezing") : t("brief.freeze")}
         </button>
         <span className="form-footnote">
-          Freeze creates an immutable content hash. Further edits require a new version.
+          {t("brief.footnote")}
         </span>
       </div>
     </div>

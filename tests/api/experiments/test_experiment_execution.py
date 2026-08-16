@@ -368,3 +368,16 @@ def test_run_fails_closed_when_ir_references_sentinel_field() -> None:
     body = client.get(f"/v1/experiment-runs/{run_id}", headers=headers()).json()
     assert body["state"] == "FAILED"
     assert body["invariance"]["sentinel_isolation_passed"] is False
+
+
+def test_formal_snapshots_listing_exposes_ids_and_manifest_hashes() -> None:
+    client = make_client()
+
+    response = client.get("/v1/formal-snapshots", headers=headers())
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [item["snapshot_id"] for item in items] == ["snapshot-cn-a-001"]
+    assert items[0]["frequency"] == "1d"
+    assert items[0]["market"] == "CN_A"
+    assert len(items[0]["manifest_hash"]) == 64

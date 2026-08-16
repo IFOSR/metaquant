@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useI18n } from "../../components/i18n-provider";
 import { KillSwitch } from "../../components/kill-switch";
 import { quantApiClient } from "../../lib/client";
 import type { ExecutionState } from "../../lib/types";
 
 export default function ExecutionPage() {
+  const { t } = useI18n();
   const [state, setState] = useState<ExecutionState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,9 +17,9 @@ export default function ExecutionPage() {
       .getExecutionState()
       .then(setState)
       .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Failed to load"),
+        setError(reason instanceof Error ? reason.message : t("exec.failedToLoad")),
       );
-  }, []);
+  }, [t]);
 
   const onTrip = useCallback(
     (reason: string) => quantApiClient.tripKillSwitch(reason),
@@ -29,18 +31,17 @@ export default function ExecutionPage() {
     <div className="page">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">FR-706 / Execution</span>
-          <h1>Paper and live operations.</h1>
+          <span className="eyebrow">{t("exec.eyebrow")}</span>
+          <h1>{t("exec.title")}</h1>
           <p className="lede">
-            Shadow and paper state, order safety, reconciliation, and the kill
-            switch that overrides every order when tripped.
+            {t("exec.lede")}
           </p>
         </div>
       </div>
 
       {error ? (
         <div className="freshness-banner" role="alert">
-          <strong>Execution state unavailable.</strong>
+          <strong>{t("exec.unavailable")}</strong>
           <span>{error}</span>
         </div>
       ) : null}
@@ -48,21 +49,21 @@ export default function ExecutionPage() {
       {state ? (
         <KillSwitch initialState={state} onTrip={onTrip} onReset={onReset} />
       ) : (
-        <p className="muted">Loading execution state…</p>
+        <p className="muted">{t("exec.loading")}</p>
       )}
 
       <section className="panel panel-dark">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Operating contract</span>
-            <h2>Live safety invariants.</h2>
+            <span className="eyebrow">{t("exec.contractEyebrow")}</span>
+            <h2>{t("exec.contractTitle")}</h2>
           </div>
         </div>
         <ul className="contract-list">
-          <li>Notional caps and max order quantity are enforced before any order.</li>
-          <li>A tripped kill switch blocks every order until explicitly reset.</li>
-          <li>Shadow trading only produces suggestions — it never sends real orders.</li>
-          <li>Broker positions are reconciled against expected positions.</li>
+          <li>{t("exec.contract1")}</li>
+          <li>{t("exec.contract2")}</li>
+          <li>{t("exec.contract3")}</li>
+          <li>{t("exec.contract4")}</li>
         </ul>
       </section>
     </div>

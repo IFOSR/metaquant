@@ -1,28 +1,29 @@
 import Link from "next/link";
 
 import { ResearchJobForm } from "../../../../components/research-job-form";
+import { getServerT } from "../../../../lib/server-locale";
 
-export default function NewResearchJobPage() {
+export default async function NewResearchJobPage() {
+  const t = await getServerT();
   return (
     <div className="page">
       <div className="breadcrumb">
-        <Link href="/research/jobs">Research jobs</Link>
+        <Link href="/research/jobs">{t("jobNew.breadcrumbJobs")}</Link>
         <span>/</span>
-        <span>New</span>
+        <span>{t("jobNew.breadcrumbNew")}</span>
       </div>
       <div className="page-heading page-heading-compact">
         <div>
-          <span className="eyebrow">Research intake / draft</span>
-          <h1>Open a new research job.</h1>
+          <span className="eyebrow">{t("jobNew.eyebrow")}</span>
+          <h1>{t("jobNew.title")}</h1>
           <p className="lede">
-            The form is deliberately strict: a market rule left blank is a future
-            source of false confidence.
+            {t("jobNew.lede")}
           </p>
         </div>
         <div className="evidence-stamp">
-          <span className="eyebrow">Contract</span>
+          <span className="eyebrow">{t("jobNew.contractEyebrow")}</span>
           <strong>POST /v1/research-jobs</strong>
-          <span className="mono">schema v1 · actor from session</span>
+          <span className="mono">{t("jobNew.contractNote")}</span>
         </div>
       </div>
       <ResearchJobForm />

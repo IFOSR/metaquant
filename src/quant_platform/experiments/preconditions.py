@@ -14,6 +14,7 @@ from quant_platform.experiments.contracts import (
 )
 from quant_platform.factor_ir import CompiledFactorIR
 from quant_platform.research.schemas import (
+    FREQUENCIES,
     BriefStatus,
     ResearchBriefRecord,
     ResearchJobRecord,
@@ -172,10 +173,14 @@ def validate_formal_preconditions(
         spec.frequency
         == research_job.frequency
         == snapshot_binding.frequency
-        == scope["frequency"]
-        == "1d",
-        "FREQUENCY_NOT_FORMAL",
-        "formal frequency must be 1d",
+        == scope["frequency"],
+        "FREQUENCY_MISMATCH",
+        "frequency identities differ",
+    )
+    require(
+        spec.frequency in FREQUENCIES,
+        "FREQUENCY_NOT_SUPPORTED",
+        "frequency must be one of 1d/1m/5m/15m/30m/60m",
     )
     if scope["market"] == "CN_COMMODITY_FUTURES":
         require(

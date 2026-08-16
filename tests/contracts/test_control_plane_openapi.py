@@ -125,12 +125,12 @@ def test_object_authorization_does_not_disclose_existence() -> None:
             )
 
 
-def test_g0_market_scope_is_daily_and_futures_constraints_are_required() -> None:
+def test_g0_market_scope_frequencies_and_futures_constraints_are_required() -> None:
     schemas = _load_spec()["components"]["schemas"]
     create_schema = schemas["CreateResearchJobCommand"]
     futures_rule = create_schema["allOf"][0]
 
-    assert schemas["FrequencyId"]["enum"] == ["1d"]
+    assert schemas["FrequencyId"]["enum"] == ["1d", "1m", "5m", "15m", "30m", "60m"]
     assert set(futures_rule["then"]["required"]) >= {
         "settlement_clock",
         "exchange_scope",

@@ -12,14 +12,16 @@ describe("session capability boundaries", () => {
       "research.jobs.write",
     ]);
 
-    expect(navigation.map((item) => item.label)).toEqual([
-      "Overview",
-      "Research jobs",
-      "New research",
+    expect(navigation.map((item) => item.labelKey)).toEqual([
+      "nav.overview",
+      "nav.researchJobs",
+      "nav.newResearch",
     ]);
-    expect((navigation.map((item) => item.label) as string[]).includes("Operations")).toBe(
-      false,
-    );
+    expect(
+      (navigation.map((item) => item.labelKey) as string[]).includes(
+        "Operations",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -27,6 +29,7 @@ describe("research job market rules", () => {
   it("requires the futures exchange, actual contracts, settlement clock, and roll policy", () => {
     const result = validateResearchJob({
       market: "CN_COMMODITY_FUTURES",
+      environment: "RESEARCH",
       universeRef: "futures:liquid",
       frequency: "1d",
       decisionClock: "T close",
@@ -50,9 +53,10 @@ describe("research job market rules", () => {
     );
   });
 
-  it("rejects disabled five-minute formal research", () => {
+  it("accepts minute-level frequencies for formal research", () => {
     const result = validateResearchJob({
       market: "CN_A",
+      environment: "RESEARCH",
       universeRef: "cn-a:main-board",
       frequency: "5m",
       decisionClock: "T close",
@@ -65,12 +69,7 @@ describe("research job market rules", () => {
       briefVersionId: "brief_v1",
     });
 
-    expect(result.valid).toBe(false);
-    expect(result.errors).toEqual([
-      expect.objectContaining({
-        field: "frequency",
-        message: "Formal research is enabled only at 1d in G1.",
-      }),
-    ]);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
   });
 });

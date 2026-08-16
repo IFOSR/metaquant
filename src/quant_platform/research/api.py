@@ -25,7 +25,6 @@ from quant_platform.research.schemas import (
 )
 from quant_platform.security import (
     AuthenticationError,
-    Environment,
     PrincipalProvider,
 )
 
@@ -78,7 +77,6 @@ def adapt_security_principal_provider(
                 market=capability.scope.market.value,
             )
             for capability in principal.capabilities
-            if capability.scope.environment is Environment.RESEARCH
         )
         return ResearchPrincipal(actor_id=principal.actor_id, grants=grants)
 
@@ -239,6 +237,7 @@ def build_research_router(
                 parent_artifact_id=command.metadata.parent_artifact_id,
                 title=f"{command.market} {command.horizon} research",
                 market=command.market,
+                environment=command.environment,
                 universe_ref=command.universe_ref,
                 frequency=command.frequency,
                 decision_clock=command.decision_clock,

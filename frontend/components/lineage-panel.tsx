@@ -1,12 +1,16 @@
+"use client";
+
+import type { MessageKey } from "../lib/i18n";
 import type { ExperimentArtifacts, LineageEdge } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 interface LineagePanelProps {
   artifacts: ExperimentArtifacts | null;
 }
 
-const RELATION_LABELS: Record<string, string> = {
-  VALIDATED_BY: "validated by",
-  DERIVED_FROM: "derived from",
+const RELATION_KEYS: Record<string, MessageKey> = {
+  VALIDATED_BY: "lin.validatedBy",
+  DERIVED_FROM: "lin.derivedFrom",
 };
 
 function shortHash(hash: string): string {
@@ -14,16 +18,17 @@ function shortHash(hash: string): string {
 }
 
 export function LineagePanel({ artifacts }: LineagePanelProps) {
+  const { t } = useI18n();
   if (!artifacts) {
     return (
-      <section className="panel" aria-label="Evidence lineage">
+      <section className="panel" aria-label={t("lin.aria")}>
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Lineage</span>
-            <h2>Evidence lineage</h2>
+            <span className="eyebrow">{t("lin.emptyEyebrow")}</span>
+            <h2>{t("lin.title")}</h2>
           </div>
         </div>
-        <p className="muted">No run artifacts yet.</p>
+        <p className="muted">{t("lin.noArtifacts")}</p>
       </section>
     );
   }
@@ -32,14 +37,14 @@ export function LineagePanel({ artifacts }: LineagePanelProps) {
   const edges = artifacts.lineage;
 
   return (
-    <section className="panel" aria-label="Evidence lineage">
+    <section className="panel" aria-label={t("lin.aria")}>
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">FR-704 / Lineage</span>
-          <h2>Evidence lineage</h2>
+          <span className="eyebrow">{t("lin.eyebrow")}</span>
+          <h2>{t("lin.title")}</h2>
         </div>
         <span className="mono muted">
-          {artifacts.items.length} artifacts · {edges.length} edges
+          {t("lin.count", { artifacts: artifacts.items.length, edges: edges.length })}
         </span>
       </div>
 
@@ -49,17 +54,17 @@ export function LineagePanel({ artifacts }: LineagePanelProps) {
             <li className="lineage-edge" key={edge.edgeHash}>
               <span className="mono">{shortHash(edge.sourceArtifactHash)}</span>
               <span className="lineage-relation">
-                {RELATION_LABELS[edge.relation] ?? edge.relation}
+                {RELATION_KEYS[edge.relation] ? t(RELATION_KEYS[edge.relation]) : edge.relation}
               </span>
               <span className="mono">{shortHash(edge.targetArtifactHash)}</span>
               <span className="lineage-type">
-                {byHash.get(edge.targetArtifactHash)?.artifactType ?? "artifact"}
+                {byHash.get(edge.targetArtifactHash)?.artifactType ?? t("lin.artifactFallback")}
               </span>
             </li>
           ))}
         </ol>
       ) : (
-        <p className="muted">No lineage edges recorded for this run.</p>
+        <p className="muted">{t("lin.noEdges")}</p>
       )}
     </section>
   );

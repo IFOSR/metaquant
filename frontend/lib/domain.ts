@@ -1,48 +1,90 @@
+import type { MessageKey } from "./i18n";
 import type {
   Capability,
   CreateResearchJobInput,
+  Environment,
+  ExperimentRunState,
+  ExperimentSpecState,
   MarketId,
   Session,
 } from "./types";
 
-export const MARKET_LABELS: Record<MarketId, string> = {
-  CN_A: "CN A-share",
-  CN_COMMODITY_FUTURES: "CN commodity futures",
+export const MARKET_LABEL_KEYS: Record<MarketId, MessageKey> = {
+  CN_A: "market.cnA.label",
+  CN_COMMODITY_FUTURES: "market.cnFutures.label",
 };
 
-export const MARKET_NOTES: Record<MarketId, string> = {
-  CN_A: "Shanghai + Shenzhen main board · T+1 execution",
-  CN_COMMODITY_FUTURES:
-    "Actual contracts · settlement-aware · immutable roll policy",
+export const MARKET_NOTE_KEYS: Record<MarketId, MessageKey> = {
+  CN_A: "market.cnA.note",
+  CN_COMMODITY_FUTURES: "market.cnFutures.note",
 };
+
+export const ENV_LABEL_KEYS: Record<Environment, MessageKey> = {
+  RESEARCH: "env.RESEARCH",
+  PAPER: "env.PAPER",
+  LIVE: "env.LIVE",
+};
+
+export const EXPERIMENT_SPEC_STATE_KEYS: Record<ExperimentSpecState, MessageKey> = {
+  DRAFT: "expState.DRAFT",
+  PREREGISTERED: "expState.PREREGISTERED",
+};
+
+export const EXPERIMENT_RUN_STATE_KEYS: Record<ExperimentRunState, MessageKey> = {
+  QUEUED: "runState.QUEUED",
+  RUNNING: "runState.RUNNING",
+  SUCCEEDED: "runState.SUCCEEDED",
+  FAILED_RETRYABLE: "runState.FAILED_RETRYABLE",
+  FAILED_TERMINAL: "runState.FAILED_TERMINAL",
+  BLOCKED_POLICY: "runState.BLOCKED_POLICY",
+  QUARANTINED: "runState.QUARANTINED",
+  NON_REPRODUCIBLE: "runState.NON_REPRODUCIBLE",
+  CANCELLED: "runState.CANCELLED",
+};
+
+export const DISPOSITION_KEYS: Record<string, MessageKey> = {
+  PROMOTE: "disposition.PROMOTE",
+  REJECT: "disposition.REJECT",
+  QUARANTINE: "disposition.QUARANTINE",
+};
+
+// Pipeline stages are backend data; map the known ones and fall back to the raw value.
+export const STAGE_LABEL_KEYS: Record<string, MessageKey> = {
+  RESEARCH_INTAKE: "stage.researchIntake",
+  BRIEF_FROZEN: "stage.briefFrozen",
+};
+
+export function stageLabelKey(stage: string): MessageKey | null {
+  return STAGE_LABEL_KEYS[stage] ?? null;
+}
 
 export const navigation = [
   {
-    label: "Overview",
+    labelKey: "nav.overview" as MessageKey,
     href: "/",
     required: "research.jobs.read" as Capability,
     marker: "00",
   },
   {
-    label: "Research jobs",
+    labelKey: "nav.researchJobs" as MessageKey,
     href: "/research/jobs",
     required: "research.jobs.read" as Capability,
     marker: "01",
   },
   {
-    label: "New research",
+    labelKey: "nav.newResearch" as MessageKey,
     href: "/research/jobs/new",
     required: "research.jobs.write" as Capability,
     marker: "02",
   },
   {
-    label: "Strategy",
+    labelKey: "nav.strategy" as MessageKey,
     href: "/strategy",
     required: "strategy.read" as Capability,
     marker: "03",
   },
   {
-    label: "Execution",
+    labelKey: "nav.execution" as MessageKey,
     href: "/execution",
     required: "execution.read" as Capability,
     marker: "04",
@@ -55,7 +97,7 @@ export function getVisibleNavigation(capabilities: Capability[]) {
 
 export interface ValidationError {
   field: keyof CreateResearchJobInput;
-  message: string;
+  message: MessageKey;
 }
 
 export function validateResearchJob(input: CreateResearchJobInput): {
@@ -63,48 +105,41 @@ export function validateResearchJob(input: CreateResearchJobInput): {
   errors: ValidationError[];
 } {
   const errors: ValidationError[] = [];
-  const required: Array<[keyof CreateResearchJobInput, string]> = [
-    ["universeRef", "Universe reference is required."],
-    ["decisionClock", "Decision clock is required."],
-    ["tradeClock", "Trade clock is required."],
-    ["horizon", "Horizon is required."],
-    ["briefVersionId", "A research brief draft is required."],
+  const required: Array<[keyof CreateResearchJobInput, MessageKey]> = [
+    ["universeRef", "validation.universeRequired"],
+    ["decisionClock", "validation.decisionClockRequired"],
+    ["tradeClock", "validation.tradeClockRequired"],
+    ["horizon", "validation.horizonRequired"],
+    ["briefVersionId", "validation.briefRequired"],
   ];
 
   required.forEach(([field, message]) => {
     if (!String(input[field]).trim()) errors.push({ field, message });
   });
 
-  if (input.frequency !== "1d") {
-    errors.push({
-      field: "frequency",
-      message: "Formal research is enabled only at 1d in G1.",
-    });
-  }
-
   if (input.market === "CN_COMMODITY_FUTURES") {
     if (!input.settlementClock.trim()) {
       errors.push({
         field: "settlementClock",
-        message: "Settlement clock is required for commodity futures.",
+        message: "validation.settlementRequired",
       });
     }
     if (!input.exchangeScope.length) {
       errors.push({
         field: "exchangeScope",
-        message: "Select at least one exchange scope.",
+        message: "validation.exchangeRequired",
       });
     }
     if (input.contractSelection !== "ACTUAL_CONTRACTS_ONLY") {
       errors.push({
         field: "contractSelection",
-        message: "Formal research must use actual contracts.",
+        message: "validation.actualContractsRequired",
       });
     }
     if (!input.rollPolicy.trim()) {
       errors.push({
         field: "rollPolicy",
-        message: "An immutable roll policy is required.",
+        message: "validation.rollPolicyRequired",
       });
     }
   }

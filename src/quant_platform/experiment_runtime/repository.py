@@ -135,6 +135,9 @@ class SqlAlchemyExperimentRepository:
             promotion_policy_catalog or InMemoryPromotionPolicyCatalog(())
         )
 
+    def list_formal_snapshots(self) -> list[dict[str, Any]]:
+        return self._snapshot_catalog.list()
+
     def preregister(
         self,
         *,

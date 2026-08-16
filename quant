@@ -77,6 +77,25 @@ start_frontend() {
     exec npm run dev
 }
 
+stop_frontend() {
+  if ! lsof -nP -iTCP:"${FRONTEND_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "==> 停止前端（:${FRONTEND_PORT}）..."
+  lsof -ti:"${FRONTEND_PORT}" | xargs kill 2>/dev/null || true
+  for _ in $(seq 1 10); do
+    lsof -nP -iTCP:"${FRONTEND_PORT}" -sTCP:LISTEN >/dev/null 2>&1 || return 0
+    sleep 1
+  done
+  echo "    前端进程未能退出，请手动检查端口 ${FRONTEND_PORT}"
+  return 1
+}
+
+restart_frontend() {
+  stop_frontend || exit 1
+  start_frontend
+}
+
 case "${1:-up}" in
   up|start)
     start_backend
@@ -87,6 +106,24 @@ case "${1:-up}" in
     ;;
   frontend)
     start_frontend
+    ;;
+  restart)
+    case "${2:-all}" in
+      backend)
+        start_backend
+        ;;
+      frontend)
+        restart_frontend
+        ;;
+      all)
+        start_backend
+        restart_frontend
+        ;;
+      *)
+        echo "用法: ./quant restart [backend|frontend]"
+        exit 1
+        ;;
+    esac
     ;;
   down|stop)
     docker compose down
@@ -103,10 +140,11 @@ case "${1:-up}" in
     docker compose logs --follow api postgres minio
     ;;
   *)
-    echo "用法: ./quant [up|backend|frontend|down|reset|status|logs]"
+    echo "用法: ./quant [up|backend|frontend|restart|down|reset|status|logs]"
     echo "  up        启动全部（后端 + 前端），默认命令"
     echo "  backend   只启动后端（API :${API_PORT}）"
-    echo "  frontend  只启动前端（:${FRONTEND_PORT}）"
+    echo "  frontend  只启动前端（:${FRONTEND_PORT}，前台运行，Ctrl+C 停止）"
+    echo "  restart   重启服务（默认全部；可指定 backend 或 frontend）"
     echo "  down      停止后端（保留数据）"
     echo "  reset     停止并删除数据"
     echo "  status    查看服务状态"

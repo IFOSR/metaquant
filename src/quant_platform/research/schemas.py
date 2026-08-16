@@ -12,6 +12,12 @@ class MarketId(StrEnum):
     CN_COMMODITY_FUTURES = "CN_COMMODITY_FUTURES"
 
 
+Frequency = Literal["1d", "1m", "5m", "15m", "30m", "60m"]
+FREQUENCIES: frozenset[str] = frozenset({"1d", "1m", "5m", "15m", "30m", "60m"})
+
+EnvironmentId = Literal["RESEARCH", "PAPER", "LIVE"]
+
+
 class ResearchJobState(StrEnum):
     DRAFT = "DRAFT"
     READY = "READY"
@@ -72,8 +78,9 @@ class CreateResearchJobCommand(BaseModel):
 
     metadata: CommandMetadata
     market: MarketId
+    environment: EnvironmentId = "RESEARCH"
     universe_ref: str
-    frequency: Literal["1d"]
+    frequency: Frequency
     decision_clock: str
     trade_clock: str
     settlement_clock: str | None = None
@@ -120,11 +127,11 @@ class ResearchJobRecord(BaseModel):
     resource_version: int
     title: str
     market: MarketId
-    environment: Literal["RESEARCH"] = "RESEARCH"
+    environment: EnvironmentId = "RESEARCH"
     state: ResearchJobState
     owner: str
     universe_ref: str
-    frequency: Literal["1d"]
+    frequency: Frequency
     decision_clock: str
     trade_clock: str
     settlement_clock: str | None

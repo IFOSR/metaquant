@@ -180,6 +180,7 @@ describe("HTTP QuantApiClient", () => {
 
     const job = await apiClient(fetcher).createResearchJob({
       market: "CN_COMMODITY_FUTURES",
+      environment: "RESEARCH",
       universeRef: "futures:liquid-initial",
       frequency: "1d",
       decisionClock: "T close",
@@ -202,6 +203,7 @@ describe("HTTP QuantApiClient", () => {
     );
     expect(JSON.parse(String(createInit?.body))).toMatchObject({
       market: "CN_COMMODITY_FUTURES",
+      environment: "RESEARCH",
       universe_ref: "futures:liquid-initial",
       settlement_clock: "T+1 settlement",
       exchange_scope: ["SHFE"],

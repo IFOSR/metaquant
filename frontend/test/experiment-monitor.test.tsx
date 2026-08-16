@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ExperimentMonitor } from "../components/experiment-monitor";
@@ -8,6 +8,7 @@ import type {
   ExperimentRun,
   ExperimentRunState,
 } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const experiment: Experiment = {
   id: "exp_1",
@@ -88,7 +89,7 @@ afterEach(cleanup);
 
 describe("ExperimentMonitor", () => {
   it("shows server-authoritative states, hashes, validation and lineage", () => {
-    render(
+    renderWithI18n(
       <ExperimentMonitor
         experiment={experiment}
         run={run("SUCCEEDED")}
@@ -114,7 +115,7 @@ describe("ExperimentMonitor", () => {
     "QUARANTINED",
     "NON_REPRODUCIBLE",
   ] as const)("renders only the server-provided %s state", (state) => {
-    render(
+    renderWithI18n(
       <ExperimentMonitor
         experiment={experiment}
         run={run(state)}
@@ -130,7 +131,7 @@ describe("ExperimentMonitor", () => {
   });
 
   it("renders an explicit empty state when the server has no experiment reference", () => {
-    render(
+    renderWithI18n(
       <ExperimentMonitor experiment={null} run={null} artifacts={null} />,
     );
 

@@ -267,7 +267,7 @@ def test_mutable_brief_and_unregistered_spec_fail_closed() -> None:
         ),
         ("MARKET_MISMATCH", snapshot_binding(market="CN_COMMODITY_FUTURES")),
         ("UNIVERSE_MISMATCH", snapshot_binding(universe_ref="universe://other/v1")),
-        ("FREQUENCY_NOT_FORMAL", snapshot_binding(frequency="5m")),
+        ("FREQUENCY_MISMATCH", snapshot_binding(frequency="5m")),
         ("CLOCK_MISMATCH", snapshot_binding(decision_clock="T_OPEN")),
         (
             "LICENSE_PURPOSE_MISMATCH",

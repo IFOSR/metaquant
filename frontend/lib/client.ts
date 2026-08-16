@@ -15,7 +15,7 @@ const localSession: Session = {
     "execution.read",
     "approval.read",
   ],
-  environments: ["RESEARCH"],
+  environments: ["RESEARCH", "PAPER", "LIVE"],
   markets: ["CN_A", "CN_COMMODITY_FUTURES"],
 };
 

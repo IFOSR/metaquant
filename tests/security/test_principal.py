@@ -46,18 +46,18 @@ def test_principal_exposes_only_scoped_capabilities() -> None:
 
 
 @pytest.mark.parametrize("environment", [Environment.PAPER, Environment.LIVE])
-def test_approval_capabilities_are_closed_outside_research(
+def test_capabilities_are_allowed_outside_research(
     environment: Environment,
 ) -> None:
-    with pytest.raises(ValidationError, match="paper/live approval capabilities"):
-        Capability(
-            name="approvals.decide",
-            scope=Scope(
-                project_id="project-alpha",
-                market=Market.CN_A,
-                environment=environment,
-            ),
-        )
+    capability = Capability(
+        name="approvals.decide",
+        scope=Scope(
+            project_id="project-alpha",
+            market=Market.CN_A,
+            environment=environment,
+        ),
+    )
+    assert capability.scope.environment is environment
 
 
 def test_principal_requires_an_authenticated_subject() -> None:

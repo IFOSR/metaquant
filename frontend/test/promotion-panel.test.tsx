@@ -1,8 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PromotionPanel } from "../components/promotion-panel";
 import type { PromotionSummary } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const report: PromotionSummary = {
   runId: "run-001",
@@ -26,7 +27,7 @@ afterEach(cleanup);
 
 describe("PromotionPanel", () => {
   it("renders disposition, scorecard, gates and rationale", () => {
-    render(<PromotionPanel report={report} />);
+    renderWithI18n(<PromotionPanel report={report} />);
 
     expect(screen.getByText("Promotion decision")).toBeInTheDocument();
     expect(screen.getByText("PROMOTE")).toBeInTheDocument();
@@ -37,7 +38,7 @@ describe("PromotionPanel", () => {
   });
 
   it("renders an explicit empty state when no report exists", () => {
-    render(<PromotionPanel report={null} />);
+    renderWithI18n(<PromotionPanel report={null} />);
 
     expect(screen.getByText("No promotion decision")).toBeInTheDocument();
     expect(screen.getByText(/No promotion decision was committed/)).toBeInTheDocument();

@@ -1,10 +1,15 @@
+"use client";
+
 import Link from "next/link";
 
-import { MARKET_LABELS } from "../lib/domain";
+import { stageLabelKey } from "../lib/domain";
 import type { ResearchJob } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 import { StatusChip } from "./status-chip";
 
 export function ResearchJobCard({ job }: { job: ResearchJob }) {
+  const { t } = useI18n();
+  const stageKey = job.currentStage ? stageLabelKey(job.currentStage) : null;
   const progress = job.budgetUsed
     ? Math.min(
         100,
@@ -19,30 +24,30 @@ export function ResearchJobCard({ job }: { job: ResearchJob }) {
       </div>
       <h2>{job.title}</h2>
       <p className="job-market">
-        {MARKET_LABELS[job.market]}
+        {job.market === "CN_A" ? t("market.cnA.label") : t("market.cnFutures.label")}
         {job.currentStage ? (
           <>
             {" "}
-            <span>/</span> {job.currentStage}
+            <span>/</span> {stageKey ? t(stageKey) : job.currentStage}
           </>
         ) : null}
       </p>
       <div className="job-card-bottom">
         {job.budgetUsed && progress !== null ? (
           <div>
-            <span className="eyebrow">Candidate budget</span>
+            <span className="eyebrow">{t("jobCard.budget")}</span>
             <strong>
               {job.budgetUsed.candidates} / {job.budget.candidateLimit}
             </strong>
-            <div className="meter" aria-label={`Candidate budget ${progress}%`}>
+            <div className="meter" aria-label={t("jobCard.budgetAria", { progress })}>
               <span style={{ width: `${progress}%` }} />
             </div>
           </div>
         ) : (
-          <span className="mono muted">No usage snapshot</span>
+          <span className="mono muted">{t("jobCard.noUsage")}</span>
         )}
         <div className="job-card-meta">
-          <span className="eyebrow">Updated</span>
+          <span className="eyebrow">{t("jobCard.updated")}</span>
           <span className="mono">{job.updatedAt.slice(11, 16)} CST</span>
         </div>
       </div>

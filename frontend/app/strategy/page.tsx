@@ -1,4 +1,5 @@
 import { quantApiClient } from "../../lib/client";
+import { getServerT } from "../../lib/server-locale";
 
 export const dynamic = "force-dynamic";
 
@@ -7,17 +8,17 @@ function shortHash(hash: string): string {
 }
 
 export default async function StrategyPage() {
+  const t = await getServerT();
   const factors = await quantApiClient.listAlphaPool();
 
   return (
     <div className="page">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">FR-705 / Strategy</span>
-          <h1>Alpha Pool and strategy surface.</h1>
+          <span className="eyebrow">{t("strategy.eyebrow")}</span>
+          <h1>{t("strategy.title")}</h1>
           <p className="lede">
-            Promoted factors, their promotion evidence, and the combination and
-            attribution that turn them into a backtestable strategy.
+            {t("strategy.lede")}
           </p>
         </div>
       </div>
@@ -25,10 +26,10 @@ export default async function StrategyPage() {
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Alpha Pool</span>
-            <h2>Promoted factors</h2>
+            <span className="eyebrow">{t("strategy.alphaPoolEyebrow")}</span>
+            <h2>{t("strategy.promotedFactors")}</h2>
           </div>
-          <span className="mono muted">{factors.length} factors</span>
+          <span className="mono muted">{t("strategy.factorCount", { count: factors.length })}</span>
         </div>
 
         {factors.length ? (
@@ -38,15 +39,14 @@ export default async function StrategyPage() {
                 <span className="task-stage">{factor.market}</span>
                 <strong className="mono">{shortHash(factor.factorIrHash)}</strong>
                 <span className="muted">{factor.direction}</span>
-                <span className="muted">horizon {factor.horizon}d</span>
-                <span className="muted">OOS IC {factor.oosIc?.toFixed(4) ?? "—"}</span>
+                <span className="muted">{t("strategy.horizon", { horizon: factor.horizon })}</span>
+                <span className="muted">{t("strategy.oosIc", { value: factor.oosIc?.toFixed(4) ?? "—" })}</span>
               </div>
             ))}
           </div>
         ) : (
           <p className="muted">
-            No promoted factors yet. Factors enter the Alpha Pool only after they
-            pass every gate and a two-person approval.
+            {t("strategy.emptyFactors")}
           </p>
         )}
       </section>
@@ -54,16 +54,16 @@ export default async function StrategyPage() {
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">StrategySpec</span>
-            <h2>Combination contract</h2>
+            <span className="eyebrow">{t("strategy.specEyebrow")}</span>
+            <h2>{t("strategy.combinationContract")}</h2>
           </div>
         </div>
         <ul className="contract-list">
-          <li>Factor weights are IC-shrunk toward equal weight (MVP combine).</li>
-          <li>Constraints: long-only, full investment, single-name cap, holding count.</li>
-          <li>Risk model: factor-exposure neutrality and tracking-error penalty.</li>
-          <li>Backtest: five-clock engine with T+1 and price-limit semantics.</li>
-          <li>Attribution: gross/net, cost, exposure, capacity, unfillable, roll.</li>
+          <li>{t("strategy.contract1")}</li>
+          <li>{t("strategy.contract2")}</li>
+          <li>{t("strategy.contract3")}</li>
+          <li>{t("strategy.contract4")}</li>
+          <li>{t("strategy.contract5")}</li>
         </ul>
       </section>
     </div>

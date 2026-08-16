@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ResearchJobSnapshot } from "../components/research-job-snapshot";
 import type { ResearchJob } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const job: ResearchJob = {
   id: "rj_1",
@@ -33,7 +34,7 @@ const job: ResearchJob = {
 
 describe("ResearchJobSnapshot", () => {
   it("does not invent run progress, attempts, policy, or references", () => {
-    render(<ResearchJobSnapshot job={job} />);
+    renderWithI18n(<ResearchJobSnapshot job={job} />);
 
     expect(screen.getByText("No execution snapshot returned.")).toBeInTheDocument();
     expect(screen.queryByText(/validation gates are running/i)).not.toBeInTheDocument();

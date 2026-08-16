@@ -1,4 +1,7 @@
+"use client";
+
 import type { FactorValidationReport } from "../lib/types";
+import { useI18n } from "./i18n-provider";
 
 interface FactorValidationReportProps {
   report: FactorValidationReport | null;
@@ -17,13 +20,14 @@ function pct(value: number | null): string {
 export function FactorValidationReportPanel({
   report,
 }: FactorValidationReportProps) {
+  const { t } = useI18n();
   if (!report) {
     return (
       <section className="panel validation-report">
-        <span className="eyebrow">Validation / server record</span>
-        <h2>No factor validation</h2>
+        <span className="eyebrow">{t("fvr.emptyEyebrow")}</span>
+        <h2>{t("fvr.emptyTitle")}</h2>
         <p className="experiment-empty">
-          No validation report was committed for this run.
+          {t("fvr.emptyDetail")}
         </p>
       </section>
     );
@@ -38,41 +42,41 @@ export function FactorValidationReportPanel({
     >
       <div className="experiment-heading">
         <div>
-          <span className="eyebrow">Validation / server authoritative</span>
-          <h2 id="validation-title">Factor validation</h2>
+          <span className="eyebrow">{t("fvr.eyebrow")}</span>
+          <h2 id="validation-title">{t("fvr.title")}</h2>
         </div>
       </div>
 
       <div className="experiment-hashes">
         <div>
-          <span className="eyebrow">Policy</span>
+          <span className="eyebrow">{t("fvr.policy")}</span>
           <span className="mono">{report.policyId}</span>
         </div>
         <div>
-          <span className="eyebrow">Label</span>
+          <span className="eyebrow">{t("fvr.label")}</span>
           <span className="mono">{report.labelId}</span>
         </div>
       </div>
 
       <div className="experiment-section">
         <div className="section-label">
-          <span className="eyebrow">Predictive power</span>
+          <span className="eyebrow">{t("fvr.predictive")}</span>
         </div>
         <div className="validation-metrics">
           <div>
-            <span>Mean Pearson IC</span>
+            <span>{t("fvr.meanPearsonIc")}</span>
             <strong>{num(power.meanPearsonIc)}</strong>
           </div>
           <div>
-            <span>Mean Rank IC</span>
+            <span>{t("fvr.meanRankIc")}</span>
             <strong>{num(power.meanRankIc)}</strong>
           </div>
           <div>
-            <span>ICIR</span>
+            <span>{t("fvr.icir")}</span>
             <strong>{num(power.icir)}</strong>
           </div>
           <div>
-            <span>Newey-West t</span>
+            <span>{t("fvr.neweyWest")}</span>
             <strong>{num(power.nwT)}</strong>
           </div>
         </div>
@@ -80,7 +84,7 @@ export function FactorValidationReportPanel({
 
       <div className="experiment-section">
         <div className="section-label">
-          <span className="eyebrow">Quantile returns</span>
+          <span className="eyebrow">{t("fvr.quantileReturns")}</span>
         </div>
         <div className="validation-metrics">
           {power.quantileReturns.map((item) => (
@@ -91,22 +95,22 @@ export function FactorValidationReportPanel({
           ))}
         </div>
         <div className="spread-row">
-          <span>Top-bottom spread</span>
+          <span>{t("fvr.topBottom")}</span>
           <strong>{pct(power.topBottomSpread)}</strong>
         </div>
       </div>
 
       <div className="experiment-section">
         <div className="section-label">
-          <span className="eyebrow">Data quality</span>
+          <span className="eyebrow">{t("fvr.dataQuality")}</span>
         </div>
         <div className="validation-metrics">
           <div>
-            <span>Coverage</span>
+            <span>{t("fvr.coverage")}</span>
             <strong>{pct(report.dataQuality.coverageRatio)}</strong>
           </div>
           <div>
-            <span>Constant ratio</span>
+            <span>{t("fvr.constantRatio")}</span>
             <strong>{pct(report.dataQuality.constantRatio)}</strong>
           </div>
         </div>

@@ -763,7 +763,7 @@ components:
       enum: [RESEARCH, PAPER, LIVE]
     FrequencyId:
       type: string
-      enum: [1d]
+      enum: [1d, 1m, 5m, 15m, 30m, 60m]
     ResearchJobState:
       type: string
       enum:

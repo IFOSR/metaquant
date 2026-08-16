@@ -37,8 +37,15 @@
 adapter；页面和组件不得直接依赖某个 adapter，也不直连 PostgreSQL、MinIO、
 编排器或 broker。`session.capabilities` 仍是导航和操作边界的来源。
 
+界面文案集中在 `frontend/lib/i18n.ts`（中/英双词典，`MessageKey` 类型保证
+两语言 key 一致）；client 组件用 `useI18n()`，server 组件用
+`lib/server-locale.ts` 的 `getServerT()`。语言选择存于 `quant_locale`
+cookie，顶栏可切换中/英文，缺省中文。
+
 首页、ResearchJob 列表/创建/详情、Brief draft/freeze 已实现。formal research
-只显示 `1d`；商品期货创建强制交易所、实际合约、结算时钟和不可变 roll policy。
+开放 `1d` 与全部分钟级频率（`1m/5m/15m/30m/60m`）；商品期货创建强制交易所、
+实际合约、结算时钟和不可变 roll policy。环境可选 RESEARCH / PAPER / LIVE；
+本地演示身份拥有全部环境与能力。
 360px 起支持状态查看、表单完成和 brief 编辑；状态组件覆盖 loading、empty、
 error、permission、stale、long-running 的统一呈现约定。
 

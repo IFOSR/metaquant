@@ -1,8 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { IndependencePanel } from "../components/independence-panel";
 import type { IndependenceSummary } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const report: IndependenceSummary = {
   runId: "run-001",
@@ -21,7 +22,7 @@ afterEach(cleanup);
 
 describe("IndependencePanel", () => {
   it("renders incremental IC metrics and pairwise correlations", () => {
-    render(<IndependencePanel report={report} />);
+    renderWithI18n(<IndependencePanel report={report} />);
 
     expect(screen.getByText("Factor independence")).toBeInTheDocument();
     expect(screen.getByText("Baseline IC")).toBeInTheDocument();
@@ -35,7 +36,7 @@ describe("IndependencePanel", () => {
   });
 
   it("marks a replicated risk factor", () => {
-    render(
+    renderWithI18n(
       <IndependencePanel
         report={{ ...report, replicatedRiskFactor: true }}
       />,
@@ -45,14 +46,14 @@ describe("IndependencePanel", () => {
   });
 
   it("renders an explicit empty state when no report exists", () => {
-    render(<IndependencePanel report={null} />);
+    renderWithI18n(<IndependencePanel report={null} />);
 
     expect(screen.getByText("No independence assessment")).toBeInTheDocument();
     expect(screen.getByText(/No independence report/)).toBeInTheDocument();
   });
 
   it("shows an empty pairwise note when there are no pool factors", () => {
-    render(<IndependencePanel report={{ ...report, pairwise: [] }} />);
+    renderWithI18n(<IndependencePanel report={{ ...report, pairwise: [] }} />);
 
     expect(
       screen.getByText(/No pool factors to compare against/),

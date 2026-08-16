@@ -1,8 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FactorValidationReportPanel } from "../components/factor-validation-report";
 import type { FactorValidationReport } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 const report: FactorValidationReport = {
   policyId: "policy://cn-a-daily-factor/v1",
@@ -36,7 +37,7 @@ afterEach(cleanup);
 
 describe("FactorValidationReportPanel", () => {
   it("renders policy, predictive power, quantiles and data quality", () => {
-    render(<FactorValidationReportPanel report={report} />);
+    renderWithI18n(<FactorValidationReportPanel report={report} />);
 
     expect(screen.getByText("Factor validation")).toBeInTheDocument();
     expect(
@@ -51,7 +52,7 @@ describe("FactorValidationReportPanel", () => {
   });
 
   it("renders an explicit empty state when no report exists", () => {
-    render(<FactorValidationReportPanel report={null} />);
+    renderWithI18n(<FactorValidationReportPanel report={null} />);
 
     expect(screen.getByText("No factor validation")).toBeInTheDocument();
     expect(screen.getByText(/No validation report/)).toBeInTheDocument();

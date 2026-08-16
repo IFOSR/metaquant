@@ -11,6 +11,7 @@ from quant_platform.experiments import canonical_hash
 
 class FormalSnapshotCatalog(Protocol):
     def resolve(self, snapshot_id: str, manifest_hash: str) -> dict[str, Any]: ...
+    def list(self) -> list[dict[str, Any]]: ...
 
 
 class InMemoryFormalSnapshotCatalog:
@@ -33,6 +34,21 @@ class InMemoryFormalSnapshotCatalog:
         if canonical_hash(payload) != manifest_hash:
             raise ValueError("SNAPSHOT_MANIFEST_HASH_MISMATCH")
         return dict(payload)
+
+    def list(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "snapshot_id": snapshot_id,
+                "manifest_hash": canonical_hash(payload),
+                "market": payload.get("market"),
+                "universe_ref": payload.get("universe_ref"),
+                "frequency": payload.get("frequency"),
+                "decision_clock": payload.get("decision_clock"),
+                "trade_clock": payload.get("trade_clock"),
+                "frozen_at": payload.get("frozen_at"),
+            }
+            for snapshot_id, payload in sorted(self._snapshots.items())
+        ]
 
 
 class JsonFormalSnapshotCatalog(InMemoryFormalSnapshotCatalog):

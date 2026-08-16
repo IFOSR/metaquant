@@ -40,15 +40,33 @@ from quant_platform.validation import (
 
 
 def _default_principal_provider(token: str) -> ResearchPrincipal | None:
-    scope_a = Scope(
-        project_id="local",
-        market=Market.CN_A,
-        environment=Environment.RESEARCH,
+    capability_names = (
+        # 后端授权检查使用的能力
+        "research.jobs.read",
+        "research.jobs.write",
+        "research.jobs.manage",
+        "research.briefs.write",
+        "research.briefs.freeze",
+        "research.experiments.read",
+        "research.experiments.preregister",
+        "research.experiments.run",
+        "research.strategy.read",
+        "research.governance.approve",
+        # 前端导航与操作边界使用的能力
+        "research.jobs.propose",
+        "strategy.read",
+        "execution.read",
+        "approval.read",
     )
-    scope_futures = Scope(
-        project_id="local",
-        market=Market.CN_COMMODITY_FUTURES,
-        environment=Environment.RESEARCH,
+    scopes = [
+        Scope(project_id="local", market=market, environment=environment)
+        for environment in (Environment.RESEARCH, Environment.PAPER, Environment.LIVE)
+        for market in (Market.CN_A, Market.CN_COMMODITY_FUTURES)
+    ]
+    capabilities = frozenset(
+        Capability(name=name, scope=scope)
+        for scope in scopes
+        for name in capability_names
     )
     provider = StaticBearerPrincipalProvider(
         {
@@ -58,39 +76,7 @@ def _default_principal_provider(token: str) -> ResearchPrincipal | None:
                 authentication_method=AuthenticationMethod.TEST_BEARER,
                 authenticated_at=datetime.now(UTC),
                 roles=frozenset({"Researcher"}),
-                capabilities=frozenset(
-                    {
-                        Capability(name="research.jobs.manage", scope=scope_a),
-                        Capability(
-                            name="research.experiments.read",
-                            scope=scope_a,
-                        ),
-                        Capability(
-                            name="research.experiments.preregister",
-                            scope=scope_a,
-                        ),
-                        Capability(
-                            name="research.experiments.run",
-                            scope=scope_a,
-                        ),
-                        Capability(
-                            name="research.jobs.manage",
-                            scope=scope_futures,
-                        ),
-                        Capability(
-                            name="research.experiments.read",
-                            scope=scope_futures,
-                        ),
-                        Capability(
-                            name="research.experiments.preregister",
-                            scope=scope_futures,
-                        ),
-                        Capability(
-                            name="research.experiments.run",
-                            scope=scope_futures,
-                        ),
-                    }
-                ),
+                capabilities=capabilities,
             )
         }
     )

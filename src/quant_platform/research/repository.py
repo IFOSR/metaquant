@@ -19,6 +19,7 @@ from quant_platform.research.models import (
     ResearchJobModel,
 )
 from quant_platform.research.schemas import (
+    FREQUENCIES,
     BriefContent,
     BriefDirection,
     BriefStatus,
@@ -120,6 +121,7 @@ class SqlAlchemyResearchRepository:
         parent_artifact_id: str | None,
         title: str,
         market: str,
+        environment: str = "RESEARCH",
         universe_ref: str,
         frequency: str,
         decision_clock: str,
@@ -158,7 +160,7 @@ class SqlAlchemyResearchRepository:
                 resource_version=1,
                 title=title,
                 market=market,
-                environment="RESEARCH",
+                environment=environment,
                 state=ResearchJobState.DRAFT,
                 owner=actor_id,
                 universe_ref=universe_ref,
@@ -688,7 +690,7 @@ class SqlAlchemyResearchRepository:
         contract_selection: str | None,
         roll_policy: str | None,
     ) -> None:
-        if frequency != "1d":
+        if frequency not in FREQUENCIES:
             raise ValueError("FREQUENCY_NOT_ENABLED")
         if market == MarketId.CN_COMMODITY_FUTURES and not all(
             (settlement_clock, exchange_scope, contract_selection, roll_policy)
@@ -743,10 +745,11 @@ class SqlAlchemyResearchRepository:
             resource_version=model.resource_version,
             title=model.title,
             market=MarketId(model.market),
+            environment=model.environment,
             state=ResearchJobState(model.state),
             owner=model.owner,
             universe_ref=model.universe_ref,
-            frequency="1d",
+            frequency=model.frequency,
             decision_clock=model.decision_clock,
             trade_clock=model.trade_clock,
             settlement_clock=model.settlement_clock,

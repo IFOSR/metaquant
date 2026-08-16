@@ -2,6 +2,9 @@
 
 import type { ReactNode } from "react";
 
+import type { MessageKey } from "../lib/i18n";
+import { useI18n } from "./i18n-provider";
+
 type BoundaryState =
   | "loading"
   | "empty"
@@ -9,6 +12,15 @@ type BoundaryState =
   | "permission"
   | "stale"
   | "long-running";
+
+const STATE_LABEL_KEYS: Record<BoundaryState, MessageKey> = {
+  loading: "state.loading",
+  empty: "state.empty",
+  error: "state.error",
+  permission: "state.permission",
+  stale: "state.stale",
+  "long-running": "state.long-running",
+};
 
 interface StateBoundaryProps {
   state: BoundaryState;
@@ -27,6 +39,7 @@ export function StateBoundary({
   actionLabel,
   onAction,
 }: StateBoundaryProps) {
+  const { t } = useI18n();
   const isReadOnly = state === "stale" || state === "permission";
   return (
     <section
@@ -38,10 +51,12 @@ export function StateBoundary({
         {state === "loading" ? "…" : state === "error" ? "!" : "·"}
       </div>
       <div>
-        <div className="eyebrow">{state.replace("-", " ")}</div>
+        <div className="eyebrow">{t(STATE_LABEL_KEYS[state])}</div>
         <h2>{title}</h2>
         <p>{detail}</p>
-        {isReadOnly ? <span className="read-only-label">Read-only mode</span> : null}
+        {isReadOnly ? (
+          <span className="read-only-label">{t("state.readOnly")}</span>
+        ) : null}
         {children}
         {!isReadOnly && actionLabel && onAction ? (
           <button className="button button-secondary" type="button" onClick={onAction}>

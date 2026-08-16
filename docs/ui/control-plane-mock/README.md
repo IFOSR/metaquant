@@ -24,7 +24,7 @@
 - body 不接受 `actor`；actor 由 OIDC/Bearer 认证主体推导。命令 metadata 包含 `reason`、`parent_artifact_id`、`budget` 和 `schema_version`。
 - `capabilities` 和 `allowed_actions` 由服务端返回，前端不得从角色名自行推导。
 - 事件只用于增量刷新；断线后必须重新 GET 资源 snapshot。
-- G0 formal research 只启用 `1d`；商品期货创建必须声明 exchange、实际合约、settlement clock 和 roll policy。
+- formal research 开放 `1d` 与分钟级频率（`1m/5m/15m/30m/60m`）；商品期货创建必须声明 exchange、实际合约、settlement clock 和 roll policy。
 - fixture 中的指标、hash、签名和 ID 均为虚构数据，不能用于研究结论。
 
 ## 建议的本地 mock 方式

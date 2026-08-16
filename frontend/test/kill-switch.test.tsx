@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { KillSwitch } from "../components/kill-switch";
 import type { ExecutionState } from "../lib/types";
+import { renderWithI18n } from "./render";
 
 function armed(): ExecutionState {
   return {
@@ -18,7 +19,7 @@ function armed(): ExecutionState {
 
 describe("KillSwitch", () => {
   it("renders the armed state with a trip action", () => {
-    render(<KillSwitch initialState={armed()} onTrip={vi.fn()} onReset={vi.fn()} />);
+    renderWithI18n(<KillSwitch initialState={armed()} onTrip={vi.fn()} onReset={vi.fn()} />);
 
     expect(screen.getByText("ARMED")).toBeDefined();
     expect(screen.getByText("Trip kill switch")).toBeDefined();
@@ -31,7 +32,7 @@ describe("KillSwitch", () => {
       trippedBy: "risk-officer",
       reason: "data anomaly",
     });
-    render(<KillSwitch initialState={armed()} onTrip={onTrip} onReset={vi.fn()} />);
+    renderWithI18n(<KillSwitch initialState={armed()} onTrip={onTrip} onReset={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText("Reason for tripping the kill switch"), {
       target: { value: "data anomaly" },
@@ -50,7 +51,7 @@ describe("KillSwitch", () => {
       reason: "data anomaly",
     };
     const onReset = vi.fn().mockResolvedValue(armed());
-    render(<KillSwitch initialState={tripped} onTrip={vi.fn()} onReset={onReset} />);
+    renderWithI18n(<KillSwitch initialState={tripped} onTrip={vi.fn()} onReset={onReset} />);
 
     fireEvent.click(screen.getByText("Reset kill switch"));
 

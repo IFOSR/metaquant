@@ -88,6 +88,20 @@ def build_experiment_router(
             raise _problem(exc) from exc
         return receipt.model_dump(mode="json")
 
+    @router.get("/formal-snapshots")
+    def list_formal_snapshots(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.scopes(
+            {
+                "research.experiments.read",
+                "research.jobs.read",
+                "research.jobs.manage",
+            }
+        ):
+            raise _not_found()
+        return {"items": repository.list_formal_snapshots()}
+
     @router.get("/experiments/{experiment_id}")
     def get_experiment(
         experiment_id: str,
@@ -391,7 +405,7 @@ def build_experiment_router(
             "actor": {"id": actor.actor_id, "displayName": actor.actor_id},
             "roles": ["Researcher"],
             "capabilities": capabilities,
-            "environments": ["RESEARCH"],
+            "environments": ["RESEARCH", "PAPER", "LIVE"],
             "markets": markets,
         }
 

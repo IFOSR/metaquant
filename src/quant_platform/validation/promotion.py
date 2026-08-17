@@ -7,9 +7,11 @@ results; the weighted scorecard decides promotion only after both clear.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Protocol
+from pathlib import Path
+from typing import Any, Protocol, cast
 
 from quant_platform.experiments import canonical_hash
 from quant_platform.validation.policy import ICSign
@@ -131,6 +133,37 @@ class InMemoryPromotionPolicyCatalog:
             return self._policies[policy_id]
         except KeyError as exc:
             raise ValueError("PROMOTION_POLICY_NOT_REGISTERED") from exc
+
+
+class JsonPromotionPolicyCatalog(InMemoryPromotionPolicyCatalog):
+    @classmethod
+    def from_path(cls, path: Path) -> JsonPromotionPolicyCatalog:
+        document = json.loads(path.read_text())
+        if not isinstance(document, list):
+            raise ValueError("promotion policy catalog must be a JSON array")
+        policies = tuple(
+            PromotionPolicy(
+                policy_id=str(item["policy_id"]),
+                market=str(item["market"]),
+                min_coverage=float(item["min_coverage"]),
+                min_observations=int(item["min_observations"]),
+                min_oos_ic=float(item["min_oos_ic"]),
+                fdr_bound=float(item["fdr_bound"]),
+                min_capacity=float(item["min_capacity"]),
+                effect_weight=float(item.get("effect_weight", 0.25)),
+                stability_weight=float(item.get("stability_weight", 0.25)),
+                independence_weight=float(item.get("independence_weight", 0.20)),
+                cost_value_weight=float(item.get("cost_value_weight", 0.20)),
+                interpretability_weight=float(
+                    item.get("interpretability_weight", 0.10)
+                ),
+                pass_line=float(item.get("pass_line", 0.6)),
+                quarantine_ic=float(item.get("quarantine_ic", 0.2)),
+                quarantine_sharpe=float(item.get("quarantine_sharpe", 5.0)),
+            )
+            for item in cast(list[dict[str, Any]], document)
+        )
+        return cls(policies)
 
 
 @dataclass(frozen=True, slots=True)

@@ -10,6 +10,28 @@
     "min_icir": 0.0,
     "min_nw_t": 0.0,
     "quantile_count": 5,
-    "decay_horizons": [1, 5, 10, 20, 60]
+    "decay_horizons": [
+      1,
+      5,
+      10,
+      20,
+      60
+    ]
+  },
+  {
+    "schema_version": "validation-policy/v1",
+    "policy_id": "policy://cn-futures-daily-factor/v1",
+    "market": "CN_COMMODITY_FUTURES",
+    "min_coverage": 0.1,
+    "min_observations": 2,
+    "max_constant_ratio": 1.0,
+    "ic_sign": "ANY",
+    "min_icir": 0.0,
+    "min_nw_t": 0.0,
+    "quantile_count": 5,
+    "decay_horizons": [
+      1,
+      5
+    ]
   }
 ]

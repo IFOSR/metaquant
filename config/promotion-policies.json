@@ -1,0 +1,38 @@
+[
+  {
+    "schema_version": "promotion-policy/v1",
+    "policy_id": "policy://cn-a-promotion/v1",
+    "market": "CN_A",
+    "min_coverage": 0.1,
+    "min_observations": 2,
+    "min_oos_ic": 0.0,
+    "fdr_bound": 0.5,
+    "min_capacity": 0.0,
+    "effect_weight": 0.25,
+    "stability_weight": 0.25,
+    "independence_weight": 0.20,
+    "cost_value_weight": 0.20,
+    "interpretability_weight": 0.10,
+    "pass_line": 0.3,
+    "quarantine_ic": 0.2,
+    "quarantine_sharpe": 5.0
+  },
+  {
+    "schema_version": "promotion-policy/v1",
+    "policy_id": "policy://cn-futures-promotion/v1",
+    "market": "CN_COMMODITY_FUTURES",
+    "min_coverage": 0.1,
+    "min_observations": 2,
+    "min_oos_ic": 0.0,
+    "fdr_bound": 0.5,
+    "min_capacity": 0.0,
+    "effect_weight": 0.25,
+    "stability_weight": 0.25,
+    "independence_weight": 0.20,
+    "cost_value_weight": 0.20,
+    "interpretability_weight": 0.10,
+    "pass_line": 0.3,
+    "quarantine_ic": 0.2,
+    "quarantine_sharpe": 5.0
+  }
+]

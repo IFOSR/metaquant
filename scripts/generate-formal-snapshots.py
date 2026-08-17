@@ -87,6 +87,10 @@ def build_futures_daily_snapshot(
         "frequency": "1d",
         "decision_clock": "T_CLOSE+30m",
         "trade_clock": "T+1_OPEN",
+        "settlement_clock": "T+1_SETTLEMENT",
+        "exchange_scope": ["SHFE"],
+        "contract_chain_ref": "chain://shfe-rb/v1",
+        "roll_policy_ref": "roll-policy://oi-confirmed-3d/v1",
         "purpose": "RESEARCH",
         "allowed_license_tags": ["licensed-research"],
         "datasets": [

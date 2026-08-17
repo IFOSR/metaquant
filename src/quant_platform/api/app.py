@@ -35,6 +35,7 @@ from quant_platform.security import (
 )
 from quant_platform.validation import (
     JsonLabelSnapshotCatalog,
+    JsonPromotionPolicyCatalog,
     JsonValidationPolicyCatalog,
 )
 
@@ -128,6 +129,9 @@ def create_app(
             ),
             label_snapshot_catalog=JsonLabelSnapshotCatalog.from_path(
                 Path(settings.label_snapshot_catalog_path)
+            ),
+            promotion_policy_catalog=JsonPromotionPolicyCatalog.from_path(
+                Path(settings.promotion_policy_catalog_path)
             ),
         )
     principal_provider = research_principal_provider or _default_principal_provider

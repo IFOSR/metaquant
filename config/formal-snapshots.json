@@ -101,6 +101,12 @@
     "frequency": "1d",
     "decision_clock": "T_CLOSE+30m",
     "trade_clock": "T+1_OPEN",
+    "settlement_clock": "T+1_SETTLEMENT",
+    "exchange_scope": [
+      "SHFE"
+    ],
+    "contract_chain_ref": "chain://shfe-rb/v1",
+    "roll_policy_ref": "roll-policy://oi-confirmed-3d/v1",
     "purpose": "RESEARCH",
     "allowed_license_tags": [
       "licensed-research"
@@ -2102,7 +2108,7 @@
   },
   {
     "snapshot_id": "snapshot-cn-futures-5m-001",
-    "frozen_at": "2026-08-16T13:51:09.912280+00:00",
+    "frozen_at": "2026-08-16T23:09:18.941064+00:00",
     "sealed": true,
     "artifact_class": "FORMAL",
     "market": "CN_COMMODITY_FUTURES",

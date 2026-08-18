@@ -6,7 +6,6 @@ import { quantApiClient } from "../lib/client";
 import type {
   AlphaPoolFactor,
   BacktestResult,
-  BacktestTrade,
   MarketDataCoverageEntry,
 } from "../lib/types";
 import { useI18n } from "./i18n-provider";
@@ -25,82 +24,6 @@ function pct(value: number): string {
 
 function money(value: number): string {
   return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
-}
-
-const CHART_WIDTH = 600;
-const CHART_HEIGHT = 160;
-
-function EquityCurve({
-  points,
-  trades,
-}: {
-  points: Array<{ date: string; equity: number }>;
-  trades: BacktestTrade[];
-}) {
-  const { t } = useI18n();
-  if (points.length < 2) return null;
-  const values = points.map((point) => point.equity);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const xOf = (index: number) => (index / (points.length - 1)) * CHART_WIDTH;
-  const yOf = (equity: number) =>
-    CHART_HEIGHT - ((equity - min) / span) * CHART_HEIGHT;
-  const coordinates = points
-    .map((point, index) => `${xOf(index).toFixed(1)},${yOf(point.equity).toFixed(1)}`)
-    .join(" ");
-
-  const dayIndex = new Map(points.map((point, index) => [point.date, index]));
-  const markers = trades.flatMap((trade) => {
-    const day = trade.time.slice(0, 10);
-    const index = dayIndex.get(day);
-    if (index === undefined) return [];
-    return [
-      {
-        key: `${trade.time}-${trade.instrumentId}-${trade.side}`,
-        x: xOf(index),
-        y: yOf(points[index].equity),
-        side: trade.side,
-        label: `${day} ${trade.instrumentId} ${trade.side} ×${trade.quantity} @ ${trade.price}`,
-      },
-    ];
-  });
-
-  return (
-    <figure className="equity-curve">
-      <svg
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        role="img"
-        aria-label={t("bt.equityCurve")}
-      >
-        <polyline points={coordinates} fill="none" stroke="currentColor" strokeWidth="2" />
-        {markers.map((marker) =>
-          marker.side === "BUY" ? (
-            <polygon
-              key={marker.key}
-              className="trade-marker-buy"
-              points={`${marker.x},${marker.y - 8} ${marker.x - 5},${marker.y - 1} ${marker.x + 5},${marker.y - 1}`}
-            >
-              <title>{marker.label}</title>
-            </polygon>
-          ) : (
-            <polygon
-              key={marker.key}
-              className="trade-marker-sell"
-              points={`${marker.x},${marker.y + 8} ${marker.x - 5},${marker.y + 1} ${marker.x + 5},${marker.y + 1}`}
-            >
-              <title>{marker.label}</title>
-            </polygon>
-          ),
-        )}
-      </svg>
-      <figcaption className="muted">
-        {points[0].date} → {points[points.length - 1].date} ·{" "}
-        <span className="trade-marker-buy">▲</span> {t("bt.buy")}{" "}
-        <span className="trade-marker-sell">▼</span> {t("bt.sell")}
-      </figcaption>
-    </figure>
-  );
 }
 
 export function BacktestLab({ factors }: BacktestLabProps) {
@@ -403,7 +326,6 @@ export function BacktestLab({ factors }: BacktestLabProps) {
               <strong>{result.metrics.tradeCount}</strong>
             </div>
           </div>
-          <EquityCurve points={result.equityCurve} trades={result.trades} />
           <p className="muted">
             {t("bt.grossNote")} · {result.frequency}
             {result.dataSource === "realtime" && result.artifactClass

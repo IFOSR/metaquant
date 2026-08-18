@@ -3,19 +3,19 @@ import type { Metadata } from "next";
 import "../styles/globals.css";
 import { WorkbenchShell } from "../components/workbench-shell";
 import { I18nProvider } from "../components/i18n-provider";
-import { getServerLocale } from "../lib/server-locale";
 
 export const metadata: Metadata = {
-  title: "Research desk | Quant Control Plane",
-  description: "Auditable quant research control plane",
+  title: "研究台面 | Quant 控制面",
+  description: "可审计的量化研究控制面",
 };
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const locale = await getServerLocale();
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang={locale === "zh" ? "zh-CN" : "en"}>
+    <html lang="zh-CN">
       <body>
-        <I18nProvider initialLocale={locale}>
+        <I18nProvider>
           <WorkbenchShell>{children}</WorkbenchShell>
         </I18nProvider>
       </body>

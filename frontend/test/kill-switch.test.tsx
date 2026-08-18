@@ -21,8 +21,8 @@ describe("KillSwitch", () => {
   it("renders the armed state with a trip action", () => {
     renderWithI18n(<KillSwitch initialState={armed()} onTrip={vi.fn()} onReset={vi.fn()} />);
 
-    expect(screen.getByText("ARMED")).toBeDefined();
-    expect(screen.getByText("Trip kill switch")).toBeDefined();
+    expect(screen.getByText("待命")).toBeDefined();
+    expect(screen.getByText("触发熔断")).toBeDefined();
   });
 
   it("trips the switch when a reason is provided", async () => {
@@ -34,12 +34,12 @@ describe("KillSwitch", () => {
     });
     renderWithI18n(<KillSwitch initialState={armed()} onTrip={onTrip} onReset={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText("Reason for tripping the kill switch"), {
+    fireEvent.change(screen.getByPlaceholderText("触发熔断的原因"), {
       target: { value: "data anomaly" },
     });
-    fireEvent.click(screen.getByText("Trip kill switch"));
+    fireEvent.click(screen.getByText("触发熔断"));
 
-    expect(await screen.findByText("Orders blocked.")).toBeDefined();
+    expect(await screen.findByText("订单已阻断。")).toBeDefined();
     expect(onTrip).toHaveBeenCalledWith("data anomaly");
   });
 
@@ -53,10 +53,10 @@ describe("KillSwitch", () => {
     const onReset = vi.fn().mockResolvedValue(armed());
     renderWithI18n(<KillSwitch initialState={tripped} onTrip={vi.fn()} onReset={onReset} />);
 
-    fireEvent.click(screen.getByText("Reset kill switch"));
+    fireEvent.click(screen.getByText("复位熔断开关"));
 
     expect(await screen.findByTestId("kill-switch-state")).toHaveTextContent(
-      "ARMED",
+      "待命",
     );
     expect(onReset).toHaveBeenCalled();
   });

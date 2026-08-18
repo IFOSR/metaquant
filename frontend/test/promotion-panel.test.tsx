@@ -29,8 +29,8 @@ describe("PromotionPanel", () => {
   it("renders disposition, scorecard, gates and rationale", () => {
     renderWithI18n(<PromotionPanel report={report} />);
 
-    expect(screen.getByText("Promotion decision")).toBeInTheDocument();
-    expect(screen.getByText("PROMOTE")).toBeInTheDocument();
+    expect(screen.getByText("晋升决策")).toBeInTheDocument();
+    expect(screen.getByText("晋升")).toBeInTheDocument();
     expect(screen.getByText("0.7200")).toBeInTheDocument();
     expect(screen.getByText("effect")).toBeInTheDocument();
     expect(screen.getByText("data_quality.coverage")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("PromotionPanel", () => {
   it("renders an explicit empty state when no report exists", () => {
     renderWithI18n(<PromotionPanel report={null} />);
 
-    expect(screen.getByText("No promotion decision")).toBeInTheDocument();
-    expect(screen.getByText(/No promotion decision was committed/)).toBeInTheDocument();
+    expect(screen.getByText("暂无晋升决策")).toBeInTheDocument();
+    expect(screen.getByText(/本次运行未提交晋升决策。/)).toBeInTheDocument();
   });
 });

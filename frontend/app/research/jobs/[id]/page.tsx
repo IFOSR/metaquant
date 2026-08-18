@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { ExperimentActions } from "../../../../components/experiment-actions";
 import { ExperimentMonitor } from "../../../../components/experiment-monitor";
-import { FactorProfilePanel } from "../../../../components/factor-profile-panel";
 import { FactorValidationReportPanel } from "../../../../components/factor-validation-report";
 import { IndependencePanel } from "../../../../components/independence-panel";
 import { LineagePanel } from "../../../../components/lineage-panel";
@@ -118,9 +117,6 @@ export default async function ResearchJobDetailPage({
         run={run}
         artifacts={artifacts}
       />
-      {experiment ? (
-        <FactorProfilePanel brief={frozenBrief} experiment={experiment} />
-      ) : null}
       {run ? (
         <div className="evidence-grid">
           <FactorValidationReportPanel report={validation} />

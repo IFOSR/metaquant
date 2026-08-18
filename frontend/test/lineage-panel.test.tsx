@@ -38,20 +38,20 @@ describe("LineagePanel", () => {
   it("renders artifacts, edges and relation labels", () => {
     renderWithI18n(<LineagePanel artifacts={artifacts} />);
 
-    expect(screen.getByText("Evidence lineage")).toBeDefined();
-    expect(screen.getByText("validated by")).toBeDefined();
+    expect(screen.getByText("证据血缘")).toBeDefined();
+    expect(screen.getByText("由…校验")).toBeDefined();
     expect(screen.getByText("FactorValidationReport")).toBeDefined();
   });
 
   it("renders an explicit empty state when no artifacts exist", () => {
     renderWithI18n(<LineagePanel artifacts={null} />);
 
-    expect(screen.getByText("No run artifacts yet.")).toBeDefined();
+    expect(screen.getByText("暂无运行产物。")).toBeDefined();
   });
 
   it("renders a note when there are no lineage edges", () => {
     renderWithI18n(<LineagePanel artifacts={{ items: artifacts.items, lineage: [] }} />);
 
-    expect(screen.getByText("No lineage edges recorded for this run.")).toBeDefined();
+    expect(screen.getByText("本次运行未记录血缘边。")).toBeDefined();
   });
 });

@@ -1,5 +1,4 @@
 import { HttpQuantApiClient, type QuantApiClient } from "./api";
-import { mockClient } from "./mock-client";
 import type { Session } from "./types";
 
 const localSession: Session = {
@@ -20,15 +19,13 @@ const localSession: Session = {
 };
 
 function buildClient(): QuantApiClient {
-  if (process.env.NEXT_PUBLIC_QUANT_API_MODE !== "http") return mockClient;
-
   if (typeof window === "undefined") {
     const upstream = process.env.QUANT_API_UPSTREAM_URL;
     const accessToken = process.env.QUANT_API_ACCESS_TOKEN;
     if (!upstream || !accessToken) {
       throw new Error(
-        "HTTP API mode requires QUANT_API_UPSTREAM_URL and " +
-          "QUANT_API_ACCESS_TOKEN on the Next.js server.",
+        "The Next.js server requires QUANT_API_UPSTREAM_URL and " +
+          "QUANT_API_ACCESS_TOKEN to reach the Quant API.",
       );
     }
     return new HttpQuantApiClient({
@@ -40,14 +37,8 @@ function buildClient(): QuantApiClient {
 
   return new HttpQuantApiClient({
     baseUrl: "/api/quant/v1",
-    accessToken: readClientToken() ?? undefined,
     session: localSession,
   });
-}
-
-function readClientToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("quant-access-token");
 }
 
 export const quantApiClient = buildClient();

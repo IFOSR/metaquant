@@ -36,7 +36,7 @@ describe("ResearchJobSnapshot", () => {
   it("does not invent run progress, attempts, policy, or references", () => {
     renderWithI18n(<ResearchJobSnapshot job={job} />);
 
-    expect(screen.getByText("No execution snapshot returned.")).toBeInTheDocument();
+    expect(screen.getByText("未返回执行快照。")).toBeInTheDocument();
     expect(screen.queryByText(/validation gates are running/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/attempt 0/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/validation-policy:\/\/pending/i)).not.toBeInTheDocument();

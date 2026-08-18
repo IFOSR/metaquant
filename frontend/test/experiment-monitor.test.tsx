@@ -100,12 +100,12 @@ describe("ExperimentMonitor", () => {
       />,
     );
 
-    expect(screen.getByText("PREREGISTERED")).toBeInTheDocument();
-    expect(screen.getByText("SUCCEEDED")).toBeInTheDocument();
-    expect(screen.getByText("2 attempts")).toBeInTheDocument();
+    expect(screen.getByText("已预注册")).toBeInTheDocument();
+    expect(screen.getByText("已成功")).toBeInTheDocument();
+    expect(screen.getByText("2 次尝试")).toBeInTheDocument();
     expect(screen.getByText("96.00%")).toBeInTheDocument();
-    expect(screen.getByText("Future truncation")).toBeInTheDocument();
-    expect(screen.getByText("Sentinel isolation")).toBeInTheDocument();
+    expect(screen.getByText("未来截断")).toBeInTheDocument();
+    expect(screen.getByText("哨兵隔离")).toBeInTheDocument();
     expect(screen.getByText("FactorComputationArtifact")).toBeInTheDocument();
     expect(screen.getByText("VALIDATED_BY")).toBeInTheDocument();
     expect(screen.getByText("sha256:factor-ir")).toBeInTheDocument();
@@ -114,10 +114,10 @@ describe("ExperimentMonitor", () => {
   });
 
   it.each([
-    "BLOCKED_POLICY",
-    "QUARANTINED",
-    "NON_REPRODUCIBLE",
-  ] as const)("renders only the server-provided %s state", (state) => {
+    ["BLOCKED_POLICY", "被策略阻止"],
+    ["QUARANTINED", "已隔离"],
+    ["NON_REPRODUCIBLE", "不可复现"],
+  ] as const)("renders only the server-provided %s state", (state, label) => {
     renderWithI18n(
       <ExperimentMonitor
         experiment={experiment}
@@ -126,7 +126,7 @@ describe("ExperimentMonitor", () => {
       />,
     );
 
-    expect(screen.getByText(state)).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.queryByText("Advancement blocked")).not.toBeInTheDocument();
     expect(
       screen.queryByText(/cannot advance|valid research result|pending investigation/i),
@@ -138,7 +138,7 @@ describe("ExperimentMonitor", () => {
       <ExperimentMonitor experiment={null} run={null} artifacts={null} />,
     );
 
-    expect(screen.getByText("No preregistered experiment")).toBeInTheDocument();
-    expect(screen.getByText(/No experiment resource was returned/)).toBeInTheDocument();
+    expect(screen.getByText("尚无预注册实验")).toBeInTheDocument();
+    expect(screen.getByText(/该研究任务未返回任何实验资源。/)).toBeInTheDocument();
   });
 });

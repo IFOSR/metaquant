@@ -7,7 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getVisibleNavigation, ENV_LABEL_KEYS, MARKET_LABEL_KEYS } from "../lib/domain";
 import { quantApiClient } from "../lib/client";
 import type { Environment, MarketId, Session } from "../lib/types";
-import { LanguageSwitch, useI18n } from "./i18n-provider";
+import { useI18n } from "./i18n-provider";
 import { StateBoundary } from "./state-boundary";
 
 export function WorkbenchShell({ children }: { children: ReactNode }) {
@@ -72,7 +72,6 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
               ))}
             </select>
           </label>
-          <LanguageSwitch />
         </div>
         <div className="actor-context">
           <span className="online-dot" aria-hidden="true" />

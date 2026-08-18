@@ -17,20 +17,20 @@ describe("StateBoundary", () => {
     );
 
     expect(screen.getByRole("status")).toHaveTextContent("Snapshot is stale");
-    expect(screen.getByText("Read-only mode")).toBeInTheDocument();
+    expect(screen.getByText("只读模式")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
   it.each([
-    ["loading", "Loading session"],
-    ["empty", "No authorized jobs"],
-    ["error", "Snapshot failed"],
-    ["permission", "Capability required"],
-    ["long-running", "Run still active"],
-  ] as const)("renders the %s state with an explicit title", (state, title) => {
+    ["loading", "Loading session", "加载中"],
+    ["empty", "No authorized jobs", "空"],
+    ["error", "Snapshot failed", "错误"],
+    ["permission", "Capability required", "无权限"],
+    ["long-running", "Run still active", "长时间运行"],
+  ] as const)("renders the %s state with an explicit title", (state, title, label) => {
     renderWithI18n(<StateBoundary state={state} title={title} detail="State detail" />);
 
     expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.getByText(state.replace("-", " "))).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 });

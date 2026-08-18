@@ -39,22 +39,22 @@ describe("FactorValidationReportPanel", () => {
   it("renders policy, predictive power, quantiles and data quality", () => {
     renderWithI18n(<FactorValidationReportPanel report={report} />);
 
-    expect(screen.getByText("Factor validation")).toBeInTheDocument();
+    expect(screen.getByText("因子校验")).toBeInTheDocument();
     expect(
       screen.getByText("policy://cn-a-daily-factor/v1"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Mean Pearson IC")).toBeInTheDocument();
+    expect(screen.getByText("平均 Pearson IC")).toBeInTheDocument();
     expect(screen.getByText("0.0420")).toBeInTheDocument();
     expect(screen.getByText("96.00%")).toBeInTheDocument();
     expect(screen.getByText("Q1")).toBeInTheDocument();
-    expect(screen.getByText("Top-bottom spread")).toBeInTheDocument();
+    expect(screen.getByText("多空价差")).toBeInTheDocument();
     expect(screen.queryByText(/profit|sharpe/i)).not.toBeInTheDocument();
   });
 
   it("renders an explicit empty state when no report exists", () => {
     renderWithI18n(<FactorValidationReportPanel report={null} />);
 
-    expect(screen.getByText("No factor validation")).toBeInTheDocument();
-    expect(screen.getByText(/No validation report/)).toBeInTheDocument();
+    expect(screen.getByText("暂无因子校验")).toBeInTheDocument();
+    expect(screen.getByText(/本次运行未提交校验报告。/)).toBeInTheDocument();
   });
 });

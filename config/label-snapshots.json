@@ -40,124 +40,2254 @@
     },
     "rows": [
       {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-01T15:00:00+00:00",
-        "available_time": "2026-08-06T15:00:00+00:00",
-        "value": 0.00332889
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-02T15:00:00+00:00",
-        "available_time": "2026-08-07T15:00:00+00:00",
-        "value": 0.00133156
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-03T15:00:00+00:00",
-        "available_time": "2026-08-08T15:00:00+00:00",
-        "value": 0.01075269
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-04T15:00:00+00:00",
-        "available_time": "2026-08-09T15:00:00+00:00",
-        "value": 0.00838082
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-05T15:00:00+00:00",
-        "available_time": "2026-08-10T15:00:00+00:00",
-        "value": 0.00234114
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-06T15:00:00+00:00",
-        "available_time": "2026-08-11T15:00:00+00:00",
-        "value": 0.00066357
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-07T15:00:00+00:00",
-        "available_time": "2026-08-12T15:00:00+00:00",
-        "value": 0.00066489
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-08T15:00:00+00:00",
-        "available_time": "2026-08-13T15:00:00+00:00",
-        "value": -0.00199468
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-09T15:00:00+00:00",
-        "available_time": "2026-08-14T15:00:00+00:00",
-        "value": 0.00232713
-      },
-      {
-        "instrument_id": "RB2610.SHF",
-        "event_time": "2026-08-10T15:00:00+00:00",
-        "available_time": "2026-08-15T15:00:00+00:00",
-        "value": 0.00600601
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-11-18T07:00:00+00:00",
+        "available_time": "2025-11-25T07:20:00+00:00",
+        "value": 0.02656798151792581
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-01T15:00:00+00:00",
-        "available_time": "2026-08-06T15:00:00+00:00",
-        "value": 0.04342454
+        "event_time": "2025-11-19T07:00:00+00:00",
+        "available_time": "2025-11-26T07:20:00+00:00",
+        "value": 0.006611396788750203
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-02T15:00:00+00:00",
-        "available_time": "2026-08-07T15:00:00+00:00",
-        "value": 0.05443231
+        "event_time": "2025-11-20T07:00:00+00:00",
+        "available_time": "2025-11-27T07:20:00+00:00",
+        "value": 0.011949924127465771
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-03T15:00:00+00:00",
-        "available_time": "2026-08-08T15:00:00+00:00",
-        "value": 0.05628319
+        "event_time": "2025-11-21T07:00:00+00:00",
+        "available_time": "2025-11-28T07:20:00+00:00",
+        "value": 0.027995830408237124
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-04T15:00:00+00:00",
-        "available_time": "2026-08-09T15:00:00+00:00",
-        "value": 0.05673503
+        "event_time": "2025-11-24T07:00:00+00:00",
+        "available_time": "2025-12-01T07:20:00+00:00",
+        "value": 0.03055926420412405
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-05T15:00:00+00:00",
-        "available_time": "2026-08-10T15:00:00+00:00",
-        "value": 0.04189503
+        "event_time": "2025-11-25T07:00:00+00:00",
+        "available_time": "2025-12-02T07:20:00+00:00",
+        "value": 0.012210877266097132
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-06T15:00:00+00:00",
-        "available_time": "2026-08-11T15:00:00+00:00",
-        "value": 0.02508235
+        "event_time": "2025-11-26T07:00:00+00:00",
+        "available_time": "2025-12-03T07:20:00+00:00",
+        "value": 0.010842368640533754
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-07T15:00:00+00:00",
-        "available_time": "2026-08-12T15:00:00+00:00",
-        "value": 0.02345697
+        "event_time": "2025-11-27T07:00:00+00:00",
+        "available_time": "2025-12-04T07:20:00+00:00",
+        "value": 0.005914818285952373
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-08T15:00:00+00:00",
-        "available_time": "2026-08-13T15:00:00+00:00",
-        "value": 0.01761936
+        "event_time": "2025-11-28T07:00:00+00:00",
+        "available_time": "2025-12-05T07:20:00+00:00",
+        "value": 0.0070566810835419325
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-09T15:00:00+00:00",
-        "available_time": "2026-08-14T15:00:00+00:00",
-        "value": 0.00686026
+        "event_time": "2025-12-01T07:00:00+00:00",
+        "available_time": "2025-12-08T07:20:00+00:00",
+        "value": -0.0015834173024327843
       },
       {
         "instrument_id": "AU2612.SHF",
-        "event_time": "2026-08-10T15:00:00+00:00",
-        "available_time": "2026-08-15T15:00:00+00:00",
-        "value": -0.00559705
+        "event_time": "2025-12-02T07:00:00+00:00",
+        "available_time": "2025-12-09T07:20:00+00:00",
+        "value": -0.007513998682476897
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-03T07:00:00+00:00",
+        "available_time": "2025-12-10T07:20:00+00:00",
+        "value": -0.0012169966996700326
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-04T07:00:00+00:00",
+        "available_time": "2025-12-11T07:20:00+00:00",
+        "value": 0.004596368454833372
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-05T07:00:00+00:00",
+        "available_time": "2025-12-12T07:20:00+00:00",
+        "value": 0.010582771658721096
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-08T07:00:00+00:00",
+        "available_time": "2025-12-15T07:20:00+00:00",
+        "value": 0.025086505190311435
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-09T07:00:00+00:00",
+        "available_time": "2025-12-16T07:20:00+00:00",
+        "value": 0.020244342577420072
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-10T07:00:00+00:00",
+        "available_time": "2025-12-17T07:20:00+00:00",
+        "value": 0.02461741806241097
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-11T07:00:00+00:00",
+        "available_time": "2025-12-18T07:20:00+00:00",
+        "value": 0.023865954947342474
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-12T07:00:00+00:00",
+        "available_time": "2025-12-19T07:20:00+00:00",
+        "value": 0.009841599056507808
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-15T07:00:00+00:00",
+        "available_time": "2025-12-22T07:20:00+00:00",
+        "value": 0.017480409885473155
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-16T07:00:00+00:00",
+        "available_time": "2025-12-23T07:20:00+00:00",
+        "value": 0.04399536462886532
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-17T07:00:00+00:00",
+        "available_time": "2025-12-24T07:20:00+00:00",
+        "value": 0.03630096950396064
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-18T07:00:00+00:00",
+        "available_time": "2025-12-25T07:20:00+00:00",
+        "value": 0.02830169689405987
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-19T07:00:00+00:00",
+        "available_time": "2025-12-26T07:20:00+00:00",
+        "value": 0.036083200773211366
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-22T07:00:00+00:00",
+        "available_time": "2025-12-29T07:20:00+00:00",
+        "value": 0.00797788309636655
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-23T07:00:00+00:00",
+        "available_time": "2025-12-30T07:20:00+00:00",
+        "value": -0.02825650912348346
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-24T07:00:00+00:00",
+        "available_time": "2025-12-31T07:20:00+00:00",
+        "value": -0.036449216166802835
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-25T07:00:00+00:00",
+        "available_time": "2026-01-05T07:20:00+00:00",
+        "value": -0.013076245473230903
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-26T07:00:00+00:00",
+        "available_time": "2026-01-06T07:20:00+00:00",
+        "value": -0.010824992712078393
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-29T07:00:00+00:00",
+        "available_time": "2026-01-07T07:20:00+00:00",
+        "value": -0.008855105399263345
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-30T07:00:00+00:00",
+        "available_time": "2026-01-08T07:20:00+00:00",
+        "value": 0.01296593186372751
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2025-12-31T07:00:00+00:00",
+        "available_time": "2026-01-09T07:20:00+00:00",
+        "value": 0.02935002018570856
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-05T07:00:00+00:00",
+        "available_time": "2026-01-12T07:20:00+00:00",
+        "value": 0.03050558343415899
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-06T07:00:00+00:00",
+        "available_time": "2026-01-13T07:20:00+00:00",
+        "value": 0.022731737985775345
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-07T07:00:00+00:00",
+        "available_time": "2026-01-14T07:20:00+00:00",
+        "value": 0.041587602783048745
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-08T07:00:00+00:00",
+        "available_time": "2026-01-15T07:20:00+00:00",
+        "value": 0.037608562328130236
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-09T07:00:00+00:00",
+        "available_time": "2026-01-16T07:20:00+00:00",
+        "value": 0.02557163587873087
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-12T07:00:00+00:00",
+        "available_time": "2026-01-19T07:20:00+00:00",
+        "value": 0.022692714849389044
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-13T07:00:00+00:00",
+        "available_time": "2026-01-20T07:20:00+00:00",
+        "value": 0.02843146671789467
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-14T07:00:00+00:00",
+        "available_time": "2026-01-21T07:20:00+00:00",
+        "value": 0.047347047214209674
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-15T07:00:00+00:00",
+        "available_time": "2026-01-22T07:20:00+00:00",
+        "value": 0.04783785845027462
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-16T07:00:00+00:00",
+        "available_time": "2026-01-23T07:20:00+00:00",
+        "value": 0.07719224444529428
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-19T07:00:00+00:00",
+        "available_time": "2026-01-26T07:20:00+00:00",
+        "value": 0.08824857906425261
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-20T07:00:00+00:00",
+        "available_time": "2026-01-27T07:20:00+00:00",
+        "value": 0.08478565424488649
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-21T07:00:00+00:00",
+        "available_time": "2026-01-28T07:20:00+00:00",
+        "value": 0.08640901596274765
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-22T07:00:00+00:00",
+        "available_time": "2026-01-29T07:20:00+00:00",
+        "value": 0.1484069363320413
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-23T07:00:00+00:00",
+        "available_time": "2026-01-30T07:20:00+00:00",
+        "value": 0.04020591106771985
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-26T07:00:00+00:00",
+        "available_time": "2026-02-02T07:20:00+00:00",
+        "value": -0.1256247513965032
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-27T07:00:00+00:00",
+        "available_time": "2026-02-03T07:20:00+00:00",
+        "value": -0.049729655267417426
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-28T07:00:00+00:00",
+        "available_time": "2026-02-04T07:20:00+00:00",
+        "value": -0.039543028685790585
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-29T07:00:00+00:00",
+        "available_time": "2026-02-05T07:20:00+00:00",
+        "value": -0.11536450493559162
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-01-30T07:00:00+00:00",
+        "available_time": "2026-02-06T07:20:00+00:00",
+        "value": -0.0617406143344709
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-02T07:00:00+00:00",
+        "available_time": "2026-02-09T07:20:00+00:00",
+        "value": 0.12419153859846917
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-03T07:00:00+00:00",
+        "available_time": "2026-02-10T07:20:00+00:00",
+        "value": 0.025404994020222487
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-04T07:00:00+00:00",
+        "available_time": "2026-02-11T07:20:00+00:00",
+        "value": -0.009602528260605276
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-05T07:00:00+00:00",
+        "available_time": "2026-02-12T07:20:00+00:00",
+        "value": 0.017767588479724813
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-06T07:00:00+00:00",
+        "available_time": "2026-02-13T07:20:00+00:00",
+        "value": 0.01862427703612072
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-09T07:00:00+00:00",
+        "available_time": "2026-02-24T07:20:00+00:00",
+        "value": 0.022080298391920817
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-10T07:00:00+00:00",
+        "available_time": "2026-02-25T07:20:00+00:00",
+        "value": 0.027673711741005105
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-11T07:00:00+00:00",
+        "available_time": "2026-02-26T07:20:00+00:00",
+        "value": 0.015674310961497896
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-12T07:00:00+00:00",
+        "available_time": "2026-02-27T07:20:00+00:00",
+        "value": 0.021065042939603033
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-13T07:00:00+00:00",
+        "available_time": "2026-03-02T07:20:00+00:00",
+        "value": 0.07922365460843482
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-24T07:00:00+00:00",
+        "available_time": "2026-03-03T07:20:00+00:00",
+        "value": 0.027679754875802664
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-25T07:00:00+00:00",
+        "available_time": "2026-03-04T07:20:00+00:00",
+        "value": 0.0017883550572618864
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-26T07:00:00+00:00",
+        "available_time": "2026-03-05T07:20:00+00:00",
+        "value": 0.00509235283963412
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-02-27T07:00:00+00:00",
+        "available_time": "2026-03-06T07:20:00+00:00",
+        "value": -0.006359766291515235
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-02T07:00:00+00:00",
+        "available_time": "2026-03-09T07:20:00+00:00",
+        "value": -0.04652317059047368
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-03T07:00:00+00:00",
+        "available_time": "2026-03-10T07:20:00+00:00",
+        "value": -0.0265992194435604
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-04T07:00:00+00:00",
+        "available_time": "2026-03-11T07:20:00+00:00",
+        "value": -0.0009784063991212365
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-05T07:00:00+00:00",
+        "available_time": "2026-03-12T07:20:00+00:00",
+        "value": -0.0038643194504079004
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-06T07:00:00+00:00",
+        "available_time": "2026-03-13T07:20:00+00:00",
+        "value": -0.006660653576632263
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-09T07:00:00+00:00",
+        "available_time": "2026-03-16T07:20:00+00:00",
+        "value": -0.01941663340910264
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-10T07:00:00+00:00",
+        "available_time": "2026-03-17T07:20:00+00:00",
+        "value": -0.028995233424534996
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-11T07:00:00+00:00",
+        "available_time": "2026-03-18T07:20:00+00:00",
+        "value": -0.0334530334530335
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-12T07:00:00+00:00",
+        "available_time": "2026-03-19T07:20:00+00:00",
+        "value": -0.0737413793103448
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-13T07:00:00+00:00",
+        "available_time": "2026-03-20T07:20:00+00:00",
+        "value": -0.08262904239715013
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-16T07:00:00+00:00",
+        "available_time": "2026-03-23T07:20:00+00:00",
+        "value": -0.16012528312570784
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-17T07:00:00+00:00",
+        "available_time": "2026-03-24T07:20:00+00:00",
+        "value": -0.12456581838803425
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-18T07:00:00+00:00",
+        "available_time": "2026-03-25T07:20:00+00:00",
+        "value": -0.09153126888754569
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-19T07:00:00+00:00",
+        "available_time": "2026-03-26T07:20:00+00:00",
+        "value": -0.06535375909759324
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-20T07:00:00+00:00",
+        "available_time": "2026-03-27T07:20:00+00:00",
+        "value": -0.041723770366986476
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-23T07:00:00+00:00",
+        "available_time": "2026-03-30T07:20:00+00:00",
+        "value": 0.0781240123885974
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-24T07:00:00+00:00",
+        "available_time": "2026-03-31T07:20:00+00:00",
+        "value": 0.040932002672118925
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-25T07:00:00+00:00",
+        "available_time": "2026-04-01T07:20:00+00:00",
+        "value": 0.03890030329713323
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-26T07:00:00+00:00",
+        "available_time": "2026-04-02T07:20:00+00:00",
+        "value": 0.027622878993069394
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-27T07:00:00+00:00",
+        "available_time": "2026-04-03T07:20:00+00:00",
+        "value": 0.03432385189893539
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-30T07:00:00+00:00",
+        "available_time": "2026-04-07T07:20:00+00:00",
+        "value": 0.018584745265873344
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-03-31T07:00:00+00:00",
+        "available_time": "2026-04-08T07:20:00+00:00",
+        "value": 0.04074210925497351
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-01T07:00:00+00:00",
+        "available_time": "2026-04-09T07:20:00+00:00",
+        "value": -0.011282089917691402
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-02T07:00:00+00:00",
+        "available_time": "2026-04-10T07:20:00+00:00",
+        "value": 0.024186515242543494
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-03T07:00:00+00:00",
+        "available_time": "2026-04-13T07:20:00+00:00",
+        "value": 0.009717314487632403
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-07T07:00:00+00:00",
+        "available_time": "2026-04-14T07:20:00+00:00",
+        "value": 0.017401481140401243
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-08T07:00:00+00:00",
+        "available_time": "2026-04-15T07:20:00+00:00",
+        "value": -0.0037745720905896962
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-09T07:00:00+00:00",
+        "available_time": "2026-04-16T07:20:00+00:00",
+        "value": 0.01838305330132963
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-10T07:00:00+00:00",
+        "available_time": "2026-04-17T07:20:00+00:00",
+        "value": 0.004654947300698095
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-13T07:00:00+00:00",
+        "available_time": "2026-04-20T07:20:00+00:00",
+        "value": 0.010327513408650128
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-14T07:00:00+00:00",
+        "available_time": "2026-04-21T07:20:00+00:00",
+        "value": -0.0006223010051102741
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-15T07:00:00+00:00",
+        "available_time": "2026-04-22T07:20:00+00:00",
+        "value": -0.006583636568255976
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-16T07:00:00+00:00",
+        "available_time": "2026-04-23T07:20:00+00:00",
+        "value": -0.02031463364447523
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-17T07:00:00+00:00",
+        "available_time": "2026-04-24T07:20:00+00:00",
+        "value": -0.02100088523910869
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-20T07:00:00+00:00",
+        "available_time": "2026-04-27T07:20:00+00:00",
+        "value": -0.014476384104215007
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-21T07:00:00+00:00",
+        "available_time": "2026-04-28T07:20:00+00:00",
+        "value": -0.028643671220469586
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-22T07:00:00+00:00",
+        "available_time": "2026-04-29T07:20:00+00:00",
+        "value": -0.03785661688348472
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-23T07:00:00+00:00",
+        "available_time": "2026-04-30T07:20:00+00:00",
+        "value": -0.023638134153094143
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-24T07:00:00+00:00",
+        "available_time": "2026-05-06T07:20:00+00:00",
+        "value": -0.003578437031051625
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-27T07:00:00+00:00",
+        "available_time": "2026-05-07T07:20:00+00:00",
+        "value": 0.0012033924205378888
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-28T07:00:00+00:00",
+        "available_time": "2026-05-08T07:20:00+00:00",
+        "value": 0.01524923268192242
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-29T07:00:00+00:00",
+        "available_time": "2026-05-11T07:20:00+00:00",
+        "value": 0.014070410926645504
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-04-30T07:00:00+00:00",
+        "available_time": "2026-05-12T07:20:00+00:00",
+        "value": 0.014393272709494502
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-06T07:00:00+00:00",
+        "available_time": "2026-05-13T07:20:00+00:00",
+        "value": 0.0015446400988570982
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-07T07:00:00+00:00",
+        "available_time": "2026-05-14T07:20:00+00:00",
+        "value": -0.010912906610703096
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-08T07:00:00+00:00",
+        "available_time": "2026-05-15T07:20:00+00:00",
+        "value": -0.03191550427644798
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-11T07:00:00+00:00",
+        "available_time": "2026-05-18T07:20:00+00:00",
+        "value": -0.025911949685534563
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-12T07:00:00+00:00",
+        "available_time": "2026-05-19T07:20:00+00:00",
+        "value": -0.029303464363517273
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-13T07:00:00+00:00",
+        "available_time": "2026-05-20T07:20:00+00:00",
+        "value": -0.04420496607032697
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-14T07:00:00+00:00",
+        "available_time": "2026-05-21T07:20:00+00:00",
+        "value": -0.03607044345427528
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-15T07:00:00+00:00",
+        "available_time": "2026-05-22T07:20:00+00:00",
+        "value": -0.011443818559146089
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-18T07:00:00+00:00",
+        "available_time": "2026-05-25T07:20:00+00:00",
+        "value": -0.0010926573426573653
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-19T07:00:00+00:00",
+        "available_time": "2026-05-26T07:20:00+00:00",
+        "value": -0.006931341979305295
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-20T07:00:00+00:00",
+        "available_time": "2026-05-27T07:20:00+00:00",
+        "value": -0.0031666633050283248
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-21T07:00:00+00:00",
+        "available_time": "2026-05-28T07:20:00+00:00",
+        "value": -0.03325795929802094
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-22T07:00:00+00:00",
+        "available_time": "2026-05-29T07:20:00+00:00",
+        "value": -0.005938099808061475
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-25T07:00:00+00:00",
+        "available_time": "2026-06-01T07:20:00+00:00",
+        "value": -0.01704421153119467
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-26T07:00:00+00:00",
+        "available_time": "2026-06-02T07:20:00+00:00",
+        "value": -0.004959801607935605
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-27T07:00:00+00:00",
+        "available_time": "2026-06-03T07:20:00+00:00",
+        "value": -0.007061632471369044
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-28T07:00:00+00:00",
+        "available_time": "2026-06-04T07:20:00+00:00",
+        "value": 0.01680776634720872
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-05-29T07:00:00+00:00",
+        "available_time": "2026-06-05T07:20:00+00:00",
+        "value": -0.015587602325066875
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-01T07:00:00+00:00",
+        "available_time": "2026-06-08T07:20:00+00:00",
+        "value": -0.04214551634833276
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-02T07:00:00+00:00",
+        "available_time": "2026-06-09T07:20:00+00:00",
+        "value": -0.043092012702496275
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-03T07:00:00+00:00",
+        "available_time": "2026-06-10T07:20:00+00:00",
+        "value": -0.058851099382552514
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-04T07:00:00+00:00",
+        "available_time": "2026-06-11T07:20:00+00:00",
+        "value": -0.08431895446125036
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-05T07:00:00+00:00",
+        "available_time": "2026-06-12T07:20:00+00:00",
+        "value": -0.06425711016672113
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-08T07:00:00+00:00",
+        "available_time": "2026-06-15T07:20:00+00:00",
+        "value": -0.003506474303457943
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-09T07:00:00+00:00",
+        "available_time": "2026-06-16T07:20:00+00:00",
+        "value": -0.006364209199748014
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-10T07:00:00+00:00",
+        "available_time": "2026-06-17T07:20:00+00:00",
+        "value": 0.025441160549962108
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-11T07:00:00+00:00",
+        "available_time": "2026-06-18T07:20:00+00:00",
+        "value": 0.0468864631733398
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-12T07:00:00+00:00",
+        "available_time": "2026-06-22T07:20:00+00:00",
+        "value": 0.005502303543745457
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-15T07:00:00+00:00",
+        "available_time": "2026-06-23T07:20:00+00:00",
+        "value": -0.043751987281399014
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-16T07:00:00+00:00",
+        "available_time": "2026-06-24T07:20:00+00:00",
+        "value": -0.04855518210835599
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-17T07:00:00+00:00",
+        "available_time": "2026-06-25T07:20:00+00:00",
+        "value": -0.07508445945945946
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-18T07:00:00+00:00",
+        "available_time": "2026-06-26T07:20:00+00:00",
+        "value": -0.05776173285198554
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-22T07:00:00+00:00",
+        "available_time": "2026-06-29T07:20:00+00:00",
+        "value": -0.03009706629606309
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-23T07:00:00+00:00",
+        "available_time": "2026-06-30T07:20:00+00:00",
+        "value": -0.018465562723060984
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-24T07:00:00+00:00",
+        "available_time": "2026-07-01T07:20:00+00:00",
+        "value": -0.028593645856476346
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-25T07:00:00+00:00",
+        "available_time": "2026-07-02T07:20:00+00:00",
+        "value": 0.021687517121724044
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-26T07:00:00+00:00",
+        "available_time": "2026-07-03T07:20:00+00:00",
+        "value": 0.03184584178498985
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-29T07:00:00+00:00",
+        "available_time": "2026-07-06T07:20:00+00:00",
+        "value": 0.021067950296652916
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-06-30T07:00:00+00:00",
+        "available_time": "2026-07-07T07:20:00+00:00",
+        "value": 0.025452820813948326
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-01T07:00:00+00:00",
+        "available_time": "2026-07-08T07:20:00+00:00",
+        "value": 0.03737163506621223
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-02T07:00:00+00:00",
+        "available_time": "2026-07-09T07:20:00+00:00",
+        "value": 0.009272914152924827
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-03T07:00:00+00:00",
+        "available_time": "2026-07-10T07:20:00+00:00",
+        "value": -0.014546884214664763
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-06T07:00:00+00:00",
+        "available_time": "2026-07-13T07:20:00+00:00",
+        "value": -0.02390036398719462
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-07T07:00:00+00:00",
+        "available_time": "2026-07-14T07:20:00+00:00",
+        "value": -0.025944279264398257
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-08T07:00:00+00:00",
+        "available_time": "2026-07-15T07:20:00+00:00",
+        "value": -0.02475913309963185
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-09T07:00:00+00:00",
+        "available_time": "2026-07-16T07:20:00+00:00",
+        "value": -0.02174057428767516
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-10T07:00:00+00:00",
+        "available_time": "2026-07-17T07:20:00+00:00",
+        "value": -0.026730500698184723
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-13T07:00:00+00:00",
+        "available_time": "2026-07-20T07:20:00+00:00",
+        "value": -0.01287177643993175
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-14T07:00:00+00:00",
+        "available_time": "2026-07-21T07:20:00+00:00",
+        "value": 0.0110565943880436
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-15T07:00:00+00:00",
+        "available_time": "2026-07-22T07:20:00+00:00",
+        "value": 0.021634941447755233
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-16T07:00:00+00:00",
+        "available_time": "2026-07-23T07:20:00+00:00",
+        "value": 0.02310634349469296
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-17T07:00:00+00:00",
+        "available_time": "2026-07-24T07:20:00+00:00",
+        "value": 0.00935984149757467
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-20T07:00:00+00:00",
+        "available_time": "2026-07-27T07:20:00+00:00",
+        "value": 0.0218464829438135
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-21T07:00:00+00:00",
+        "available_time": "2026-07-28T07:20:00+00:00",
+        "value": -0.007625905716074839
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-22T07:00:00+00:00",
+        "available_time": "2026-07-29T07:20:00+00:00",
+        "value": -0.019207364298200982
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-23T07:00:00+00:00",
+        "available_time": "2026-07-30T07:20:00+00:00",
+        "value": -0.022849938064059425
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-24T07:00:00+00:00",
+        "available_time": "2026-07-31T07:20:00+00:00",
+        "value": 0.004331934479490905
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-27T07:00:00+00:00",
+        "available_time": "2026-08-03T07:20:00+00:00",
+        "value": -0.010400195977996926
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-28T07:00:00+00:00",
+        "available_time": "2026-08-04T07:20:00+00:00",
+        "value": 0.0009464788732394725
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-29T07:00:00+00:00",
+        "available_time": "2026-08-05T07:20:00+00:00",
+        "value": 0.029127089772804114
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-30T07:00:00+00:00",
+        "available_time": "2026-08-06T07:20:00+00:00",
+        "value": 0.05143180531975105
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-07-31T07:00:00+00:00",
+        "available_time": "2026-08-07T07:20:00+00:00",
+        "value": 0.054432313429482904
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-08-03T07:00:00+00:00",
+        "available_time": "2026-08-10T07:20:00+00:00",
+        "value": 0.06951570798451702
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-08-04T07:00:00+00:00",
+        "available_time": "2026-08-11T07:20:00+00:00",
+        "value": 0.07193191795933987
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-08-05T07:00:00+00:00",
+        "available_time": "2026-08-12T07:20:00+00:00",
+        "value": 0.053141579339676434
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-08-06T07:00:00+00:00",
+        "available_time": "2026-08-13T07:20:00+00:00",
+        "value": 0.0283548991323443
+      },
+      {
+        "instrument_id": "AU2612.SHF",
+        "event_time": "2026-08-07T07:00:00+00:00",
+        "available_time": "2026-08-14T07:20:00+00:00",
+        "value": 0.006860259496772206
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-16T07:00:00+00:00",
+        "available_time": "2025-10-23T07:20:00+00:00",
+        "value": 0.005093919134033747
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-17T07:00:00+00:00",
+        "available_time": "2025-10-24T07:20:00+00:00",
+        "value": 0.004789272030651341
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-20T07:00:00+00:00",
+        "available_time": "2025-10-27T07:20:00+00:00",
+        "value": 0.01365512861225786
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-21T07:00:00+00:00",
+        "available_time": "2025-10-28T07:20:00+00:00",
+        "value": 0.01431297709923664
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-22T07:00:00+00:00",
+        "available_time": "2025-10-29T07:20:00+00:00",
+        "value": 0.01867679645457423
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-23T07:00:00+00:00",
+        "available_time": "2025-10-30T07:20:00+00:00",
+        "value": 0.013303769401330377
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-24T07:00:00+00:00",
+        "available_time": "2025-10-31T07:20:00+00:00",
+        "value": 0.01334604385128694
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-27T07:00:00+00:00",
+        "available_time": "2025-11-03T07:20:00+00:00",
+        "value": -0.007518796992481203
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-28T07:00:00+00:00",
+        "available_time": "2025-11-04T07:20:00+00:00",
+        "value": -0.014111006585136407
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-29T07:00:00+00:00",
+        "available_time": "2025-11-05T07:20:00+00:00",
+        "value": -0.026413921690490987
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-30T07:00:00+00:00",
+        "available_time": "2025-11-06T07:20:00+00:00",
+        "value": -0.019381056580181306
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-10-31T07:00:00+00:00",
+        "available_time": "2025-11-07T07:20:00+00:00",
+        "value": -0.017873941674506115
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-03T07:00:00+00:00",
+        "available_time": "2025-11-10T07:20:00+00:00",
+        "value": -0.010101010101010102
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-04T07:00:00+00:00",
+        "available_time": "2025-11-11T07:20:00+00:00",
+        "value": -0.003498727735368957
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-05T07:00:00+00:00",
+        "available_time": "2025-11-12T07:20:00+00:00",
+        "value": 0.0015959144589849984
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-06T07:00:00+00:00",
+        "available_time": "2025-11-13T07:20:00+00:00",
+        "value": 0.000637551801083838
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-07T07:00:00+00:00",
+        "available_time": "2025-11-14T07:20:00+00:00",
+        "value": 0.0038314176245210726
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-10T07:00:00+00:00",
+        "available_time": "2025-11-17T07:20:00+00:00",
+        "value": 0.017857142857142856
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-11T07:00:00+00:00",
+        "available_time": "2025-11-18T07:20:00+00:00",
+        "value": 0.015001595914458985
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-12T07:00:00+00:00",
+        "available_time": "2025-11-19T07:20:00+00:00",
+        "value": 0.0076481835564053535
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-13T07:00:00+00:00",
+        "available_time": "2025-11-20T07:20:00+00:00",
+        "value": 0.0012742911755336094
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-14T07:00:00+00:00",
+        "available_time": "2025-11-21T07:20:00+00:00",
+        "value": -0.0006361323155216285
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-17T07:00:00+00:00",
+        "available_time": "2025-11-24T07:20:00+00:00",
+        "value": -0.007832080200501253
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-18T07:00:00+00:00",
+        "available_time": "2025-11-25T07:20:00+00:00",
+        "value": -0.0025157232704402514
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-19T07:00:00+00:00",
+        "available_time": "2025-11-26T07:20:00+00:00",
+        "value": -0.002213788741302973
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-20T07:00:00+00:00",
+        "available_time": "2025-11-27T07:20:00+00:00",
+        "value": 0.0003181673560292714
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-21T07:00:00+00:00",
+        "available_time": "2025-11-28T07:20:00+00:00",
+        "value": 0.0038192234245703373
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-24T07:00:00+00:00",
+        "available_time": "2025-12-01T07:20:00+00:00",
+        "value": 0.012314493211240922
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-25T07:00:00+00:00",
+        "available_time": "2025-12-02T07:20:00+00:00",
+        "value": 0.011349306431273645
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-26T07:00:00+00:00",
+        "available_time": "2025-12-03T07:20:00+00:00",
+        "value": 0.015213946117274169
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-27T07:00:00+00:00",
+        "available_time": "2025-12-04T07:20:00+00:00",
+        "value": 0.020674300254452927
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-11-28T07:00:00+00:00",
+        "available_time": "2025-12-05T07:20:00+00:00",
+        "value": 0.012048192771084338
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-01T07:00:00+00:00",
+        "available_time": "2025-12-08T07:20:00+00:00",
+        "value": -0.013100436681222707
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-02T07:00:00+00:00",
+        "available_time": "2025-12-09T07:20:00+00:00",
+        "value": -0.030236907730673317
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-03T07:00:00+00:00",
+        "available_time": "2025-12-10T07:20:00+00:00",
+        "value": -0.01685919450515142
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-04T07:00:00+00:00",
+        "available_time": "2025-12-11T07:20:00+00:00",
+        "value": -0.03303209722655033
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-05T07:00:00+00:00",
+        "available_time": "2025-12-12T07:20:00+00:00",
+        "value": -0.03101503759398496
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-08T07:00:00+00:00",
+        "available_time": "2025-12-15T07:20:00+00:00",
+        "value": -0.019279393173198482
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-09T07:00:00+00:00",
+        "available_time": "2025-12-16T07:20:00+00:00",
+        "value": 0.0003214400514304082
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-10T07:00:00+00:00",
+        "available_time": "2025-12-17T07:20:00+00:00",
+        "value": -0.011432200698634487
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-11T07:00:00+00:00",
+        "available_time": "2025-12-18T07:20:00+00:00",
+        "value": 0.015468901063486949
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-12T07:00:00+00:00",
+        "available_time": "2025-12-19T07:20:00+00:00",
+        "value": 0.0187520206918849
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-15T07:00:00+00:00",
+        "available_time": "2025-12-22T07:20:00+00:00",
+        "value": 0.018047051240734774
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-16T07:00:00+00:00",
+        "available_time": "2025-12-23T07:20:00+00:00",
+        "value": 0.018316195372750643
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-17T07:00:00+00:00",
+        "available_time": "2025-12-24T07:20:00+00:00",
+        "value": 0.019274012206874396
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-18T07:00:00+00:00",
+        "available_time": "2025-12-25T07:20:00+00:00",
+        "value": 0.006664550936210727
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-19T07:00:00+00:00",
+        "available_time": "2025-12-26T07:20:00+00:00",
+        "value": 0.0050777530942557915
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-22T07:00:00+00:00",
+        "available_time": "2025-12-29T07:20:00+00:00",
+        "value": 0.0053814498258942705
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-23T07:00:00+00:00",
+        "available_time": "2025-12-30T07:20:00+00:00",
+        "value": 0.0025244556642473968
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-24T07:00:00+00:00",
+        "available_time": "2025-12-31T07:20:00+00:00",
+        "value": -0.0034667507091080997
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-25T07:00:00+00:00",
+        "available_time": "2026-01-05T07:20:00+00:00",
+        "value": -0.00819672131147541
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-26T07:00:00+00:00",
+        "available_time": "2026-01-06T07:20:00+00:00",
+        "value": -0.0034733185980423114
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-29T07:00:00+00:00",
+        "available_time": "2026-01-07T07:20:00+00:00",
+        "value": 0.01857682619647355
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-30T07:00:00+00:00",
+        "available_time": "2026-01-08T07:20:00+00:00",
+        "value": 0.0113314447592068
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2025-12-31T07:00:00+00:00",
+        "available_time": "2026-01-09T07:20:00+00:00",
+        "value": 0.010752688172043012
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-05T07:00:00+00:00",
+        "available_time": "2026-01-12T07:20:00+00:00",
+        "value": 0.02066115702479339
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-06T07:00:00+00:00",
+        "available_time": "2026-01-13T07:20:00+00:00",
+        "value": 0.014575411913814956
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-07T07:00:00+00:00",
+        "available_time": "2026-01-14T07:20:00+00:00",
+        "value": -0.0077279752704791345
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-08T07:00:00+00:00",
+        "available_time": "2026-01-15T07:20:00+00:00",
+        "value": -0.002178649237472767
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-09T07:00:00+00:00",
+        "available_time": "2026-01-16T07:20:00+00:00",
+        "value": 0.0050062578222778474
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-12T07:00:00+00:00",
+        "available_time": "2026-01-19T07:20:00+00:00",
+        "value": -0.0071628776082217375
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-13T07:00:00+00:00",
+        "available_time": "2026-01-20T07:20:00+00:00",
+        "value": -0.013429106808244847
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-14T07:00:00+00:00",
+        "available_time": "2026-01-21T07:20:00+00:00",
+        "value": -0.014953271028037384
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-15T07:00:00+00:00",
+        "available_time": "2026-01-22T07:20:00+00:00",
+        "value": -0.011540860885839051
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-16T07:00:00+00:00",
+        "available_time": "2026-01-23T07:20:00+00:00",
+        "value": -0.007471980074719801
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-19T07:00:00+00:00",
+        "available_time": "2026-01-26T07:20:00+00:00",
+        "value": 0.0015683814303638645
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-20T07:00:00+00:00",
+        "available_time": "2026-01-27T07:20:00+00:00",
+        "value": 0.004748338081671415
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-21T07:00:00+00:00",
+        "available_time": "2026-01-28T07:20:00+00:00",
+        "value": 0.002213788741302973
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-22T07:00:00+00:00",
+        "available_time": "2026-01-29T07:20:00+00:00",
+        "value": 0.010728936573051436
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-23T07:00:00+00:00",
+        "available_time": "2026-01-30T07:20:00+00:00",
+        "value": -0.003450439146800502
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-26T07:00:00+00:00",
+        "available_time": "2026-02-02T07:20:00+00:00",
+        "value": -0.015032884434700909
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-27T07:00:00+00:00",
+        "available_time": "2026-02-03T07:20:00+00:00",
+        "value": -0.007246376811594203
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-28T07:00:00+00:00",
+        "available_time": "2026-02-04T07:20:00+00:00",
+        "value": -0.002840012622278321
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-29T07:00:00+00:00",
+        "available_time": "2026-02-05T07:20:00+00:00",
+        "value": -0.017795816422104278
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-01-30T07:00:00+00:00",
+        "available_time": "2026-02-06T07:20:00+00:00",
+        "value": -0.01668240478438779
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-02T07:00:00+00:00",
+        "available_time": "2026-02-09T07:20:00+00:00",
+        "value": -0.011128775834658187
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-03T07:00:00+00:00",
+        "available_time": "2026-02-10T07:20:00+00:00",
+        "value": -0.0171374166931133
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-04T07:00:00+00:00",
+        "available_time": "2026-02-11T07:20:00+00:00",
+        "value": -0.018037974683544303
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-05T07:00:00+00:00",
+        "available_time": "2026-02-12T07:20:00+00:00",
+        "value": -0.01589319771137953
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-06T07:00:00+00:00",
+        "available_time": "2026-02-13T07:20:00+00:00",
+        "value": -0.009282970550576185
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-09T07:00:00+00:00",
+        "available_time": "2026-02-24T07:20:00+00:00",
+        "value": -0.012218649517684888
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-10T07:00:00+00:00",
+        "available_time": "2026-02-25T07:20:00+00:00",
+        "value": 0.005166289958023894
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-11T07:00:00+00:00",
+        "available_time": "2026-02-26T07:20:00+00:00",
+        "value": -0.0019336126329358686
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-12T07:00:00+00:00",
+        "available_time": "2026-02-27T07:20:00+00:00",
+        "value": 0.0012919896640826874
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-13T07:00:00+00:00",
+        "available_time": "2026-03-02T07:20:00+00:00",
+        "value": 0.0032310177705977385
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-24T07:00:00+00:00",
+        "available_time": "2026-03-03T07:20:00+00:00",
+        "value": 0.0107421875
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-25T07:00:00+00:00",
+        "available_time": "2026-03-04T07:20:00+00:00",
+        "value": -0.004176035978156119
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-26T07:00:00+00:00",
+        "available_time": "2026-03-05T07:20:00+00:00",
+        "value": 0.0022602518566354536
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-02-27T07:00:00+00:00",
+        "available_time": "2026-03-06T07:20:00+00:00",
+        "value": 0.004838709677419355
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-02T07:00:00+00:00",
+        "available_time": "2026-03-09T07:20:00+00:00",
+        "value": 0.01352657004830918
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-03T07:00:00+00:00",
+        "available_time": "2026-03-10T07:20:00+00:00",
+        "value": 0.008695652173913044
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-04T07:00:00+00:00",
+        "available_time": "2026-03-11T07:20:00+00:00",
+        "value": 0.014193548387096775
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-05T07:00:00+00:00",
+        "available_time": "2026-03-12T07:20:00+00:00",
+        "value": 0.014497422680412372
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-06T07:00:00+00:00",
+        "available_time": "2026-03-13T07:20:00+00:00",
+        "value": 0.016051364365971106
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-09T07:00:00+00:00",
+        "available_time": "2026-03-16T07:20:00+00:00",
+        "value": 0.005719733079122974
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-10T07:00:00+00:00",
+        "available_time": "2026-03-17T07:20:00+00:00",
+        "value": 0.011494252873563218
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-11T07:00:00+00:00",
+        "available_time": "2026-03-18T07:20:00+00:00",
+        "value": 0.006679389312977099
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-12T07:00:00+00:00",
+        "available_time": "2026-03-19T07:20:00+00:00",
+        "value": 0.004445855827246745
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-13T07:00:00+00:00",
+        "available_time": "2026-03-20T07:20:00+00:00",
+        "value": -0.0044233807266982625
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-16T07:00:00+00:00",
+        "available_time": "2026-03-23T07:20:00+00:00",
+        "value": 0.005371248025276461
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-17T07:00:00+00:00",
+        "available_time": "2026-03-24T07:20:00+00:00",
+        "value": 0.0015782828282828283
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-18T07:00:00+00:00",
+        "available_time": "2026-03-25T07:20:00+00:00",
+        "value": -0.0009478672985781991
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-19T07:00:00+00:00",
+        "available_time": "2026-03-26T07:20:00+00:00",
+        "value": -0.0015807777426493834
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-20T07:00:00+00:00",
+        "available_time": "2026-03-27T07:20:00+00:00",
+        "value": 0.0
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-23T07:00:00+00:00",
+        "available_time": "2026-03-30T07:20:00+00:00",
+        "value": -0.0043997485857950975
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-24T07:00:00+00:00",
+        "available_time": "2026-03-31T07:20:00+00:00",
+        "value": -0.008509297195083518
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-25T07:00:00+00:00",
+        "available_time": "2026-04-01T07:20:00+00:00",
+        "value": -0.004111321948134092
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-26T07:00:00+00:00",
+        "available_time": "2026-04-02T07:20:00+00:00",
+        "value": -0.006649778340721976
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-27T07:00:00+00:00",
+        "available_time": "2026-04-03T07:20:00+00:00",
+        "value": -0.00856870834655665
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-30T07:00:00+00:00",
+        "available_time": "2026-04-07T07:20:00+00:00",
+        "value": -0.01672979797979798
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-03-31T07:00:00+00:00",
+        "available_time": "2026-04-08T07:20:00+00:00",
+        "value": -0.010171646535282899
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-01T07:00:00+00:00",
+        "available_time": "2026-04-09T07:20:00+00:00",
+        "value": -0.016830739917434105
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-02T07:00:00+00:00",
+        "available_time": "2026-04-10T07:20:00+00:00",
+        "value": -0.012113484220592923
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-03T07:00:00+00:00",
+        "available_time": "2026-04-13T07:20:00+00:00",
+        "value": -0.0076824583866837385
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-07T07:00:00+00:00",
+        "available_time": "2026-04-14T07:20:00+00:00",
+        "value": -0.006741573033707865
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-08T07:00:00+00:00",
+        "available_time": "2026-04-15T07:20:00+00:00",
+        "value": -0.0035324341682723185
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-09T07:00:00+00:00",
+        "available_time": "2026-04-16T07:20:00+00:00",
+        "value": 0.011950904392764857
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-10T07:00:00+00:00",
+        "available_time": "2026-04-17T07:20:00+00:00",
+        "value": 0.010971281058405937
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-13T07:00:00+00:00",
+        "available_time": "2026-04-20T07:20:00+00:00",
+        "value": 0.023225806451612905
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-14T07:00:00+00:00",
+        "available_time": "2026-04-21T07:20:00+00:00",
+        "value": 0.026502908855850032
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-15T07:00:00+00:00",
+        "available_time": "2026-04-22T07:20:00+00:00",
+        "value": 0.026748308088946182
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-16T07:00:00+00:00",
+        "available_time": "2026-04-23T07:20:00+00:00",
+        "value": 0.015320778806255984
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-17T07:00:00+00:00",
+        "available_time": "2026-04-24T07:20:00+00:00",
+        "value": 0.01851260772422598
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-20T07:00:00+00:00",
+        "available_time": "2026-04-27T07:20:00+00:00",
+        "value": 0.005674653215636823
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-21T07:00:00+00:00",
+        "available_time": "2026-04-28T07:20:00+00:00",
+        "value": 0.0
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-22T07:00:00+00:00",
+        "available_time": "2026-04-29T07:20:00+00:00",
+        "value": 0.002824858757062147
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-23T07:00:00+00:00",
+        "available_time": "2026-04-30T07:20:00+00:00",
+        "value": 0.010374096196164728
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-24T07:00:00+00:00",
+        "available_time": "2026-05-06T07:20:00+00:00",
+        "value": 0.02287684111563773
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-27T07:00:00+00:00",
+        "available_time": "2026-05-07T07:20:00+00:00",
+        "value": 0.026018808777429465
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-28T07:00:00+00:00",
+        "available_time": "2026-05-08T07:20:00+00:00",
+        "value": 0.02739294710327456
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-29T07:00:00+00:00",
+        "available_time": "2026-05-11T07:20:00+00:00",
+        "value": 0.028482003129890455
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-04-30T07:00:00+00:00",
+        "available_time": "2026-05-12T07:20:00+00:00",
+        "value": 0.012756689483509645
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-06T07:00:00+00:00",
+        "available_time": "2026-05-13T07:20:00+00:00",
+        "value": -0.002144607843137255
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-07T07:00:00+00:00",
+        "available_time": "2026-05-14T07:20:00+00:00",
+        "value": -0.005499541704857928
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-08T07:00:00+00:00",
+        "available_time": "2026-05-15T07:20:00+00:00",
+        "value": -0.009500459699662888
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-11T07:00:00+00:00",
+        "available_time": "2026-05-18T07:20:00+00:00",
+        "value": -0.024345709068776627
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-12T07:00:00+00:00",
+        "available_time": "2026-05-19T07:20:00+00:00",
+        "value": -0.01566820276497696
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-13T07:00:00+00:00",
+        "available_time": "2026-05-20T07:20:00+00:00",
+        "value": -0.020878108688977586
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-14T07:00:00+00:00",
+        "available_time": "2026-05-21T07:20:00+00:00",
+        "value": -0.02457757296466974
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-15T07:00:00+00:00",
+        "available_time": "2026-05-22T07:20:00+00:00",
+        "value": -0.019801980198019802
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-18T07:00:00+00:00",
+        "available_time": "2026-05-25T07:20:00+00:00",
+        "value": 0.0037429819089207735
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-19T07:00:00+00:00",
+        "available_time": "2026-05-26T07:20:00+00:00",
+        "value": -0.018102372034956304
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-20T07:00:00+00:00",
+        "available_time": "2026-05-27T07:20:00+00:00",
+        "value": -0.014111006585136407
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-21T07:00:00+00:00",
+        "available_time": "2026-05-28T07:20:00+00:00",
+        "value": -0.009448818897637795
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-22T07:00:00+00:00",
+        "available_time": "2026-05-29T07:20:00+00:00",
+        "value": -0.0031565656565656565
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-25T07:00:00+00:00",
+        "available_time": "2026-06-01T07:20:00+00:00",
+        "value": -0.0127408328154133
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-26T07:00:00+00:00",
+        "available_time": "2026-06-02T07:20:00+00:00",
+        "value": 0.01080737444373808
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-27T07:00:00+00:00",
+        "available_time": "2026-06-03T07:20:00+00:00",
+        "value": 0.007951653944020356
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-28T07:00:00+00:00",
+        "available_time": "2026-06-04T07:20:00+00:00",
+        "value": 0.0038155802861685214
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-05-29T07:00:00+00:00",
+        "available_time": "2026-06-05T07:20:00+00:00",
+        "value": 0.002216592780240659
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-01T07:00:00+00:00",
+        "available_time": "2026-06-08T07:20:00+00:00",
+        "value": -0.006295247088448221
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-02T07:00:00+00:00",
+        "available_time": "2026-06-09T07:20:00+00:00",
+        "value": -0.007547169811320755
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-03T07:00:00+00:00",
+        "available_time": "2026-06-10T07:20:00+00:00",
+        "value": 0.0034711265383401703
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-04T07:00:00+00:00",
+        "available_time": "2026-06-11T07:20:00+00:00",
+        "value": -0.0003167564143173899
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-05T07:00:00+00:00",
+        "available_time": "2026-06-12T07:20:00+00:00",
+        "value": 0.004107424960505529
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-08T07:00:00+00:00",
+        "available_time": "2026-06-15T07:20:00+00:00",
+        "value": 0.009502692429521698
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-09T07:00:00+00:00",
+        "available_time": "2026-06-16T07:20:00+00:00",
+        "value": 0.004119138149556401
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-10T07:00:00+00:00",
+        "available_time": "2026-06-17T07:20:00+00:00",
+        "value": -0.007861635220125786
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-11T07:00:00+00:00",
+        "available_time": "2026-06-18T07:20:00+00:00",
+        "value": -0.007921419518377694
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-12T07:00:00+00:00",
+        "available_time": "2026-06-22T07:20:00+00:00",
+        "value": -0.016047828823159218
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-15T07:00:00+00:00",
+        "available_time": "2026-06-23T07:20:00+00:00",
+        "value": -0.023533103231879512
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-16T07:00:00+00:00",
+        "available_time": "2026-06-24T07:20:00+00:00",
+        "value": -0.018302303565793626
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-17T07:00:00+00:00",
+        "available_time": "2026-06-25T07:20:00+00:00",
+        "value": -0.018066561014263075
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-18T07:00:00+00:00",
+        "available_time": "2026-06-26T07:20:00+00:00",
+        "value": -0.012136697540721815
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-22T07:00:00+00:00",
+        "available_time": "2026-06-29T07:20:00+00:00",
+        "value": -0.010233450591621363
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-23T07:00:00+00:00",
+        "available_time": "2026-06-30T07:20:00+00:00",
+        "value": -0.007712082262210797
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-24T07:00:00+00:00",
+        "available_time": "2026-07-01T07:20:00+00:00",
+        "value": -0.014143362262937963
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-25T07:00:00+00:00",
+        "available_time": "2026-07-02T07:20:00+00:00",
+        "value": -0.010006455777921239
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-26T07:00:00+00:00",
+        "available_time": "2026-07-03T07:20:00+00:00",
+        "value": -0.010022631749110895
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-29T07:00:00+00:00",
+        "available_time": "2026-07-06T07:20:00+00:00",
+        "value": -0.007431340872374798
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-06-30T07:00:00+00:00",
+        "available_time": "2026-07-07T07:20:00+00:00",
+        "value": -0.006476683937823834
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-01T07:00:00+00:00",
+        "available_time": "2026-07-08T07:20:00+00:00",
+        "value": 0.009455493968046952
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-02T07:00:00+00:00",
+        "available_time": "2026-07-09T07:20:00+00:00",
+        "value": 0.0078252363873492
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-03T07:00:00+00:00",
+        "available_time": "2026-07-10T07:20:00+00:00",
+        "value": 0.008164598301763554
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-06T07:00:00+00:00",
+        "available_time": "2026-07-13T07:20:00+00:00",
+        "value": -0.005859375
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-07T07:00:00+00:00",
+        "available_time": "2026-07-14T07:20:00+00:00",
+        "value": 0.007170795306388526
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-08T07:00:00+00:00",
+        "available_time": "2026-07-15T07:20:00+00:00",
+        "value": 0.006136950904392765
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-09T07:00:00+00:00",
+        "available_time": "2026-07-16T07:20:00+00:00",
+        "value": 0.007764477515367195
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-10T07:00:00+00:00",
+        "available_time": "2026-07-17T07:20:00+00:00",
+        "value": 0.008098477486232589
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-13T07:00:00+00:00",
+        "available_time": "2026-07-20T07:20:00+00:00",
+        "value": 0.0137524557956778
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-14T07:00:00+00:00",
+        "available_time": "2026-07-21T07:20:00+00:00",
+        "value": 0.0016181229773462784
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-15T07:00:00+00:00",
+        "available_time": "2026-07-22T07:20:00+00:00",
+        "value": -0.010272873194221509
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-16T07:00:00+00:00",
+        "available_time": "2026-07-23T07:20:00+00:00",
+        "value": -0.009630818619582664
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-17T07:00:00+00:00",
+        "available_time": "2026-07-24T07:20:00+00:00",
+        "value": -0.011568123393316195
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-20T07:00:00+00:00",
+        "available_time": "2026-07-27T07:20:00+00:00",
+        "value": -0.005813953488372093
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-21T07:00:00+00:00",
+        "available_time": "2026-07-28T07:20:00+00:00",
+        "value": -0.011308562197092083
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-22T07:00:00+00:00",
+        "available_time": "2026-07-29T07:20:00+00:00",
+        "value": -0.006811547194291274
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-23T07:00:00+00:00",
+        "available_time": "2026-07-30T07:20:00+00:00",
+        "value": -0.02301458670988655
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-24T07:00:00+00:00",
+        "available_time": "2026-07-31T07:20:00+00:00",
+        "value": -0.02340702210663199
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-27T07:00:00+00:00",
+        "available_time": "2026-08-03T07:20:00+00:00",
+        "value": -0.03313840155945419
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-28T07:00:00+00:00",
+        "available_time": "2026-08-04T07:20:00+00:00",
+        "value": -0.02516339869281046
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-29T07:00:00+00:00",
+        "available_time": "2026-08-05T07:20:00+00:00",
+        "value": -0.023514043109079032
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-30T07:00:00+00:00",
+        "available_time": "2026-08-06T07:20:00+00:00",
+        "value": 0.0
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-07-31T07:00:00+00:00",
+        "available_time": "2026-08-07T07:20:00+00:00",
+        "value": 0.0013315579227696406
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-08-03T07:00:00+00:00",
+        "available_time": "2026-08-10T07:20:00+00:00",
+        "value": 0.007056451612903226
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-08-04T07:00:00+00:00",
+        "available_time": "2026-08-11T07:20:00+00:00",
+        "value": 0.011062688568555145
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-08-05T07:00:00+00:00",
+        "available_time": "2026-08-12T07:20:00+00:00",
+        "value": 0.006688963210702341
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-08-06T07:00:00+00:00",
+        "available_time": "2026-08-13T07:20:00+00:00",
+        "value": -0.003981420039814201
+      },
+      {
+        "instrument_id": "RB2610.SHF",
+        "event_time": "2026-08-07T07:00:00+00:00",
+        "available_time": "2026-08-14T07:20:00+00:00",
+        "value": 0.002327127659574468
       }
     ]
   }

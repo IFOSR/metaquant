@@ -98,6 +98,8 @@ services:
       args:
         UV_EXTRAS: --extra data
     environment: *app-environment
+    volumes:
+      - ./config:/app/config:ro
     ports:
       - "${API_PORT:-8091}:8000"
     depends_on:

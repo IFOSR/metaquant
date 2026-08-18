@@ -15,7 +15,7 @@ import type {
 import { RESEARCH_TEMPLATES, type ResearchTemplate } from "../lib/research-templates";
 import { useI18n } from "./i18n-provider";
 
-const FREQUENCIES: FrequencyId[] = ["1d", "1m", "5m", "15m", "30m", "60m"];
+const FREQUENCIES: FrequencyId[] = ["1d"];
 const ENVIRONMENTS: Environment[] = ["RESEARCH", "PAPER", "LIVE"];
 
 const initial: CreateResearchJobInput = {

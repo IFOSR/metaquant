@@ -138,7 +138,7 @@ const zh = {
   "form.market": "市场",
   "form.universeRef": "标的范围引用",
   "form.frequency": "频率",
-  "form.freqNote": "正式研究已开放日线及全部分钟级别频率。",
+  "form.freqNote": "当前正式研究仅支持日频（1d），分钟频即将开放。",
   "form.environment": "环境",
   "form.briefVersion": "研究简报版本",
   "form.clockEyebrow": "时钟与执行",

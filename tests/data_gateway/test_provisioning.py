@@ -96,4 +96,5 @@ def test_build_formal_snapshot_metadata() -> None:
     assert snapshot["sealed"] is True
     assert snapshot["artifact_class"] == "FORMAL"
     assert snapshot["universe_ref"] == "futures:liquid-initial"
-    assert len(snapshot["rows"]) == 3
+    snapshot_rows = snapshot["rows"]
+    assert isinstance(snapshot_rows, list) and len(snapshot_rows) == 3

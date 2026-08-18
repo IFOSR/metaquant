@@ -139,6 +139,7 @@ def create_app(
             ),
         )
         provisioning = DataProvisioning(SqlAlchemyPitStore(sessionmaker(engine)))
+        experiment_repository.load_snapshots_from_registry()
     principal_provider = research_principal_provider or _default_principal_provider
     application = FastAPI(
         title="Quant Platform API",

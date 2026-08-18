@@ -12,6 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import Engine, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from quant_platform.artifacts import ArtifactStore, canonical_bytes
@@ -71,6 +72,7 @@ from quant_platform.research.models import (
     IndependenceReportModel,
     OutboxEventModel,
     PromotionRecordModel,
+    SnapshotRegistryModel,
     TrialLedgerModel,
 )
 from quant_platform.research.repository import SqlAlchemyResearchRepository
@@ -146,9 +148,47 @@ class SqlAlchemyExperimentRepository:
     def list_formal_snapshots(self) -> list[dict[str, Any]]:
         return self._snapshot_catalog.list()
 
-    def register_snapshot(self, formal: dict[str, Any], label: dict[str, Any]) -> None:
+    def register_snapshot(
+        self, formal: dict[str, Any], label: dict[str, Any]
+    ) -> None:
         self._snapshot_catalog.register(formal)
-        self._label_snapshot_catalog.register(FormalLabelSnapshot.from_payload(label))
+        self._label_snapshot_catalog.register(
+            FormalLabelSnapshot.from_payload(label)
+        )
+        with self._sessions.begin() as session:
+            session.add_all(
+                [
+                    SnapshotRegistryModel(
+                        snapshot_id=str(formal["snapshot_id"]),
+                        kind="formal",
+                        payload=formal,
+                        manifest_hash=canonical_hash(formal),
+                        created_at=_now(),
+                    ),
+                    SnapshotRegistryModel(
+                        snapshot_id=str(label["snapshot_id"]),
+                        kind="label",
+                        payload=label,
+                        manifest_hash=canonical_hash(label),
+                        created_at=_now(),
+                    ),
+                ]
+            )
+
+    def load_snapshots_from_registry(self) -> None:
+        """启动时从数据库恢复运行时注册的快照。"""
+        try:
+            with self._sessions() as session:
+                rows = list(session.scalars(select(SnapshotRegistryModel)).all())
+        except SQLAlchemyError:
+            return  # 数据库不可用或表未迁移（如首次启动），跳过恢复
+        for row in rows:
+            if row.kind == "formal":
+                self._snapshot_catalog.register(row.payload)
+            elif row.kind == "label":
+                self._label_snapshot_catalog.register(
+                    FormalLabelSnapshot.from_payload(row.payload)
+                )
 
     def preregister(
         self,

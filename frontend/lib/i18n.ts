@@ -420,6 +420,7 @@ const zh = {
   "expAction.snapshot": "正式快照",
   "expAction.factorIr": "因子 IR（JSON）",
   "expAction.decisionTime": "决策时间",
+  "expAction.decisionTimeHint": "研究时点：因子只用该时点之前的数据，标签只用该时点之后的数据。",
   "expAction.seed": "随机种子",
   "expAction.cancel": "取消",
   "expAction.submit": "提交预注册",

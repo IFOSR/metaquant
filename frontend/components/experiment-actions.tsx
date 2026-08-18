@@ -44,10 +44,10 @@ const FUTURES_TEMPLATE = {
   market_scope: {
     market: "CN_COMMODITY_FUTURES",
     frequency: "1d",
-    universe_ref: "universe://cn-commodity-liquid-pit/v1",
-    exchange_scope: ["SHFE", "INE", "DCE", "CZCE", "GFEX"],
-    contract_chain_ref: "chain://commodity/main-volume-pit/v1",
-    roll_policy_ref: "policy://roll/volume-no-future/v1",
+    universe_ref: "futures:liquid-initial",
+    exchange_scope: ["SHFE"],
+    contract_chain_ref: "chain://shfe-rb/v1",
+    roll_policy_ref: "roll-policy://oi-confirmed-3d/v1",
   },
   decision_clock: {
     signal_time: "T_CLOSE+30m",
@@ -67,8 +67,22 @@ const FUTURES_TEMPLATE = {
     args: [{ ref: "close" }],
     params: { periods: 5 },
   },
-  validation_policy_ref: "policy://cn-commodity-daily-factor/v1",
+  validation_policy_ref: "policy://cn-futures-daily-factor/v1",
 };
+
+function defaultDecisionTime(frozenAt: string | null): string {
+  if (!frozenAt) return new Date().toISOString();
+  const base = new Date(frozenAt);
+  if (Number.isNaN(base.getTime())) return new Date().toISOString();
+  base.setUTCDate(base.getUTCDate() - 5);
+  return base.toISOString();
+}
+
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 interface ExperimentActionsProps {
   jobId: string;
@@ -116,6 +130,7 @@ export function ExperimentActions({
     const match =
       snapshots.find((item) => item.market === market) ?? snapshots[0];
     setSnapshotId(match?.snapshotId ?? "");
+    setDecisionTime(defaultDecisionTime(match?.frozenAt ?? null));
     setError(null);
     setOpen(true);
   }
@@ -229,9 +244,15 @@ export function ExperimentActions({
             <label className="field">
               <span>{t("expAction.decisionTime")}</span>
               <input
-                value={decisionTime}
-                onChange={(event) => setDecisionTime(event.target.value)}
+                type="datetime-local"
+                value={isoToLocalInput(decisionTime)}
+                onChange={(event) =>
+                  setDecisionTime(new Date(event.target.value).toISOString())
+                }
               />
+              <span className="form-footnote">
+                {t("expAction.decisionTimeHint")}
+              </span>
             </label>
             <label className="field">
               <span>{t("expAction.seed")}</span>

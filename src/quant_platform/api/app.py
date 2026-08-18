@@ -5,10 +5,13 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from minio import Minio
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from quant_platform import __version__
 from quant_platform.artifacts import MinioArtifactStore
 from quant_platform.config import get_settings
+from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
+from quant_platform.data_gateway.provisioning import DataProvisioning
 from quant_platform.experiment_runtime import (
     ExecutionIdentity,
     JsonFormalSnapshotCatalog,
@@ -95,6 +98,7 @@ def create_app(
     repository = research_repository or SqlAlchemyResearchRepository(
         create_engine(str(settings.database_url), pool_pre_ping=True)
     )
+    provisioning: DataProvisioning | None = None
     if experiment_repository is None:
         engine = create_engine(str(settings.database_url), pool_pre_ping=True)
         minio_endpoint = settings.minio_endpoint.removeprefix("http://").removeprefix(
@@ -134,6 +138,7 @@ def create_app(
                 Path(settings.promotion_policy_catalog_path)
             ),
         )
+        provisioning = DataProvisioning(SqlAlchemyPitStore(sessionmaker(engine)))
     principal_provider = research_principal_provider or _default_principal_provider
     application = FastAPI(
         title="Quant Platform API",
@@ -142,7 +147,7 @@ def create_app(
     install_problem_handlers(application)
     application.include_router(build_research_router(repository, principal_provider))
     application.include_router(
-        build_experiment_router(experiment_repository, principal_provider)
+        build_experiment_router(experiment_repository, principal_provider, provisioning)
     )
 
     @application.get("/health/live", tags=["health"])

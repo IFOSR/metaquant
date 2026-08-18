@@ -115,3 +115,13 @@ class RunBacktestCommand(BaseModel):
     lot_size: int = Field(default=1, ge=1)
     initial_cash: float = Field(default=100_000_000.0, gt=0)
     reason: str = Field(min_length=1)
+
+
+class ProvisionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    universe_ref: str = "futures:liquid-initial"
+    explicit_instruments: list[str] = Field(default_factory=list)
+    exchange_scope: list[str] = Field(default_factory=list)
+    start: date
+    end: date

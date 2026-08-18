@@ -76,9 +76,7 @@ def parse_paper_to_brief(
 def _deepseek_complete(paper_text: str, hint: str | None) -> str:
     api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if not api_key:
-        raise PaperParseError(
-            "DEEPSEEK_API_KEY is not configured; cannot parse papers"
-        )
+        raise PaperParseError("DEEPSEEK_API_KEY is not configured; cannot parse papers")
     user_prompt = f"Paper text:\n\n{paper_text}"
     if hint:
         user_prompt += f"\n\n{hint}"

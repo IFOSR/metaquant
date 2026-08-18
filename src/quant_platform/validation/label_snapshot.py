@@ -56,6 +56,29 @@ class FormalLabelSnapshot:
                 "label snapshot rows must be unique per instrument and time"
             )
 
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> FormalLabelSnapshot:
+        label_payload = cast(dict[str, Any], payload["label"])
+        label = ForwardReturnLabel(
+            label_id=str(label_payload["label_id"]),
+            market=str(label_payload["market"]),
+            horizon=int(label_payload["horizon"]),
+            field_ref=str(label_payload["field_ref"]),
+            return_definition=str(
+                label_payload.get("return_definition", "close_to_close")
+            ),
+        )
+        rows = tuple(
+            LabelSnapshotRow(
+                instrument_id=str(row["instrument_id"]),
+                event_time=datetime.fromisoformat(str(row["event_time"])),
+                available_time=datetime.fromisoformat(str(row["available_time"])),
+                value=float(row["value"]) if row.get("value") is not None else None,
+            )
+            for row in cast(list[dict[str, Any]], payload["rows"])
+        )
+        return cls(snapshot_id=str(payload["snapshot_id"]), label=label, rows=rows)
+
     def to_label_series(self) -> LabelSeries:
         return LabelSeries(
             label=self.label,
@@ -112,6 +135,7 @@ class FormalLabelSnapshot:
 
 class LabelSnapshotCatalog(Protocol):
     def resolve(self, snapshot_id: str, manifest_hash: str) -> FormalLabelSnapshot: ...
+    def register(self, snapshot: FormalLabelSnapshot) -> None: ...
 
 
 class InMemoryLabelSnapshotCatalog:
@@ -128,6 +152,10 @@ class InMemoryLabelSnapshotCatalog:
         if snapshot.content_hash() != manifest_hash:
             raise ValueError("LABEL_SNAPSHOT_MANIFEST_HASH_MISMATCH")
         return snapshot
+
+    def register(self, snapshot: FormalLabelSnapshot) -> None:
+        """运行时注册一个密封 label 快照（按需数据供给用）。"""
+        self._snapshots[str(snapshot.snapshot_id)] = snapshot
 
 
 class JsonLabelSnapshotCatalog(InMemoryLabelSnapshotCatalog):

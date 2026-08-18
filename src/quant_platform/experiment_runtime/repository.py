@@ -77,6 +77,7 @@ from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import CommandReceipt
 from quant_platform.validation import (
     CandidateEvidence,
+    FormalLabelSnapshot,
     InMemoryLabelSnapshotCatalog,
     InMemoryPromotionPolicyCatalog,
     InMemoryValidationPolicyCatalog,
@@ -144,6 +145,10 @@ class SqlAlchemyExperimentRepository:
 
     def list_formal_snapshots(self) -> list[dict[str, Any]]:
         return self._snapshot_catalog.list()
+
+    def register_snapshot(self, formal: dict[str, Any], label: dict[str, Any]) -> None:
+        self._snapshot_catalog.register(formal)
+        self._label_snapshot_catalog.register(FormalLabelSnapshot.from_payload(label))
 
     def preregister(
         self,

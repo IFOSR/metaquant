@@ -7,6 +7,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header
 
+from quant_platform.data_gateway.provisioning import DataProvisioning
+from quant_platform.data_gateway.universe import UniverseResolver
 from quant_platform.experiment_runtime.repository import (
     SqlAlchemyExperimentRepository,
 )
@@ -15,6 +17,7 @@ from quant_platform.experiment_runtime.schemas import (
     AssessRobustnessCommand,
     PreregisterExperimentCommand,
     PromoteCommand,
+    ProvisionCommand,
     RunBacktestCommand,
     RunExperimentCommand,
     SignApprovalCommand,
@@ -32,6 +35,7 @@ from quant_platform.validation import CandidateEvidence, ICSign
 def build_experiment_router(
     repository: SqlAlchemyExperimentRepository,
     principal_provider: ResearchPrincipalProvider,
+    provisioning: DataProvisioning | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1", tags=["Experiments"])
 
@@ -103,6 +107,49 @@ def build_experiment_router(
         ):
             raise _not_found()
         return {"items": repository.list_formal_snapshots()}
+
+    @router.post("/data-provisioning")
+    def provision_data(
+        command: ProvisionCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.can(
+            {"research.experiments.preregister", "research.jobs.manage"},
+            project_id="local",
+            market="CN_COMMODITY_FUTURES",
+        ):
+            raise _not_found()
+        if provisioning is None:
+            raise ProblemError(
+                status=503,
+                code="DATA_PROVISIONING_UNAVAILABLE",
+                title="Data provisioning unavailable",
+                detail="Data provisioning is not configured for this deployment.",
+            )
+        try:
+            spec = UniverseResolver().resolve(
+                command.universe_ref,
+                explicit=tuple(command.explicit_instruments),
+                exchange_scope=tuple(command.exchange_scope),
+            )
+            result = provisioning.provision(spec, start=command.start, end=command.end)
+            repository.register_snapshot(result.formal_snapshot, result.label_snapshot)
+        except ValueError as exc:
+            raise ProblemError(
+                status=422,
+                code="DATA_PROVISIONING_FAILED",
+                title="Data provisioning failed",
+                detail=str(exc),
+            ) from exc
+        return {
+            "snapshot_id": result.snapshot_id,
+            "snapshot_manifest_hash": result.snapshot_manifest_hash,
+            "decision_time": result.decision_time,
+            "instrument_count": result.instrument_count,
+            "row_count": result.row_count,
+            "label_snapshot_id": str(result.label_snapshot["snapshot_id"]),
+            "label_snapshot_manifest_hash": result.label_manifest_hash,
+        }
 
     @router.get("/experiments/{experiment_id}")
     def get_experiment(

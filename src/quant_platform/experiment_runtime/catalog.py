@@ -12,6 +12,7 @@ from quant_platform.experiments import canonical_hash
 class FormalSnapshotCatalog(Protocol):
     def resolve(self, snapshot_id: str, manifest_hash: str) -> dict[str, Any]: ...
     def list(self) -> list[dict[str, Any]]: ...
+    def register(self, payload: dict[str, Any]) -> None: ...
 
 
 class InMemoryFormalSnapshotCatalog:
@@ -49,6 +50,15 @@ class InMemoryFormalSnapshotCatalog:
             }
             for snapshot_id, payload in sorted(self._snapshots.items())
         ]
+
+    def register(self, payload: dict[str, Any]) -> None:
+        """运行时注册一个密封快照（按需数据供给用）。"""
+        if (
+            payload.get("sealed") is not True
+            or payload.get("artifact_class") != "FORMAL"
+        ):
+            raise ValueError("catalog accepts only sealed FORMAL snapshots")
+        self._snapshots[str(payload["snapshot_id"])] = dict(payload)
 
 
 class JsonFormalSnapshotCatalog(InMemoryFormalSnapshotCatalog):

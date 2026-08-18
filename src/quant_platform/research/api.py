@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from quant_platform.control_plane import format_etag, parse_strong_etag
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import (
     CommandMetadata,
@@ -478,9 +477,26 @@ def _problem_from_value_error(exc: ValueError) -> ProblemError:
     )
 
 
+def _format_etag(version: str) -> str:
+    if not version.strip() or '"' in version or version.startswith("W/"):
+        raise ValueError("ETag version must be a non-empty strong token")
+    return f'"{version}"'
+
+
+def _parse_strong_etag(value: str) -> str:
+    if not value or value.startswith("W/") or len(value) < 3:
+        raise ValueError("If-Match must contain a strong ETag")
+    if not (value.startswith('"') and value.endswith('"')):
+        raise ValueError("If-Match must contain a quoted strong ETag")
+    version = value[1:-1]
+    if not version or '"' in version or "," in version:
+        raise ValueError("If-Match must contain one strong ETag")
+    return version
+
+
 def _parse_etag(value: str) -> int:
     try:
-        return int(parse_strong_etag(value))
+        return int(_parse_strong_etag(value))
     except ValueError as exc:
         raise ProblemError(
             status=400,
@@ -491,7 +507,7 @@ def _parse_etag(value: str) -> int:
 
 
 def _etag(version: int) -> str:
-    return format_etag(str(version))
+    return _format_etag(str(version))
 
 
 def _job_snapshot(

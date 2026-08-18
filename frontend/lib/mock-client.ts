@@ -7,6 +7,7 @@ import type {
   PreregisterExperimentInput,
   ResearchBrief,
   ResearchJob,
+  RunBacktestInput,
   Session,
 } from "./types";
 import type { QuantApiClient } from "./api";
@@ -135,6 +136,35 @@ const experiments: Experiment[] = [
     factorIrHash: "sha256:35cf688eb668da12",
     snapshotId: "snapshot-cn-futures-20260808-v4",
     snapshotManifestHash: "sha256:1fd6ae705d1bf2f0",
+    factorIr: {
+      factorId: "classic.cn_futures.momentum_20d",
+      version: "1.0.0",
+      marketScope: {
+        market: "CN_COMMODITY_FUTURES",
+        frequency: "1d",
+        universeRef: "futures:liquid-initial",
+      },
+      decisionClock: {
+        signalTime: "T_CLOSE+30m",
+        earliestTradeTime: "T+1_OPEN",
+      },
+      inputs: [
+        {
+          alias: "close",
+          fieldRef: "market.eod.close",
+          dataType: "ScalarSeries",
+          unit: "CNY",
+          availableTimeRule: "T_CLOSE+20m",
+        },
+      ],
+      expression: {
+        op: "returns",
+        args: [{ ref: "close" }],
+        params: { periods: 20 },
+      },
+    },
+    decisionTime: "2026-08-08T16:00:00Z",
+    randomSeed: 42,
     latestRunId: "run_futures_curve_0042",
     createdAt: "2026-08-12T02:14:00Z",
     createdBy: "user_researcher_018",
@@ -151,6 +181,37 @@ const experiments: Experiment[] = [
     factorIrHash: "sha256:141dde47431fd22a",
     snapshotId: "snapshot-cn-a-20260808-v2",
     snapshotManifestHash: "sha256:9681a4a2369097d1",
+    factorIr: {
+      factorId: "classic.cn_a.reversal_5d",
+      version: "1.0.0",
+      marketScope: {
+        market: "CN_A",
+        frequency: "1d",
+        universeRef: "cn-a:csi300",
+      },
+      decisionClock: {
+        signalTime: "T_CLOSE+30m",
+        earliestTradeTime: "T+1_OPEN",
+      },
+      inputs: [
+        {
+          alias: "close",
+          fieldRef: "market.eod.close",
+          dataType: "ScalarSeries",
+          unit: "CNY",
+          availableTimeRule: "T_CLOSE+20m",
+        },
+      ],
+      expression: {
+        op: "neg",
+        args: [
+          { op: "returns", args: [{ ref: "close" }], params: { periods: 5 } },
+        ],
+        params: {},
+      },
+    },
+    decisionTime: "2026-08-08T16:00:00Z",
+    randomSeed: 17,
     latestRunId: "run_cn_a_reversal_0017",
     createdAt: "2026-08-12T03:11:00Z",
     createdBy: "user_researcher_018",
@@ -365,6 +426,9 @@ export const mockClient: QuantApiClient = {
       factorIrHash: "sha256:mock-factor-ir",
       snapshotId: input.snapshotId,
       snapshotManifestHash: input.snapshotManifestHash,
+      factorIr: null,
+      decisionTime: input.decisionTime,
+      randomSeed: input.randomSeed,
       latestRunId: null,
       createdAt: "2026-08-13T00:00:00Z",
       createdBy: session.actor.id,
@@ -485,16 +549,90 @@ export const mockClient: QuantApiClient = {
     return [
       {
         factorIrHash: "a".repeat(64),
+        factorId: "classic.cn_futures.momentum_1d",
+        instruments: ["AU2612.SHF", "RB2610.SHF"],
+        dataStart: "2026-08-01",
+        dataEnd: "2026-08-10",
         direction: "LONG_SHORT",
-        market: "CN_A",
-        universe: "cn-a-000300",
+        market: "CN_COMMODITY_FUTURES",
+        universe: "futures-liquid",
         horizon: 5,
-        policyId: "policy://cn-a-promotion/v1",
+        policyId: "policy://cn-futures-promotion/v1",
         riskPremium: false,
         lifecycleState: "PROMOTED",
         oosIc: 0.05,
       },
     ];
+  },
+  async runBacktest(input: RunBacktestInput) {
+    const instruments = input.instrumentIds ?? ["AU2612.SHF", "RB2610.SHF"];
+    return {
+      factorIrHash: input.factorIrHash,
+      instrumentIds: instruments,
+      start: input.startDate ?? "2026-08-01",
+      end: input.endDate ?? "2026-08-10",
+      frequency: input.frequency ?? "1d",
+      dataSource: input.dataSource ?? "snapshot",
+      artifactClass: input.dataSource === "realtime" ? "FORMAL" : "FORMAL",
+      initialCash: input.initialCash ?? 100_000_000,
+      lotSize: input.lotSize ?? 1,
+      grossOfFees: true,
+      metrics: {
+        totalReturn: 0.0113,
+        sharpe: 1.82,
+        maxDrawdown: 0.0042,
+        tradeCount: 6,
+      },
+      equityCurve: [
+        { date: "2026-08-03", equity: 100_000_000 },
+        { date: "2026-08-04", equity: 100_058_000 },
+        { date: "2026-08-05", equity: 100_121_500 },
+        { date: "2026-08-06", equity: 100_079_300 },
+        { date: "2026-08-07", equity: 100_204_100 },
+        { date: "2026-08-10", equity: 100_113_000 },
+      ],
+      trades: [
+        {
+          time: "2026-08-04T15:00:00+00:00",
+          instrumentId: "RB2610.SHFE",
+          side: "BUY",
+          quantity: 1,
+          price: 3035.0,
+        },
+        {
+          time: "2026-08-06T15:00:00+00:00",
+          instrumentId: "RB2610.SHFE",
+          side: "SELL",
+          quantity: 1,
+          price: 3055.0,
+        },
+      ],
+      positions: [
+        {
+          instrumentId: "RB2610.SHFE",
+          entry: "BUY",
+          peakQty: 1,
+          avgPxOpen: 3035.0,
+          avgPxClose: 3055.0,
+          realizedPnl: 200.0,
+          openedAt: "2026-08-04T15:00:00+00:00",
+          closedAt: "2026-08-06T15:00:00+00:00",
+        },
+      ],
+      backtestHash: "c".repeat(64),
+    };
+  },
+  async getMarketDataCoverage(instruments: string[]) {
+    return instruments.map((instrument) => ({
+      instrumentId: instrument,
+      fieldPrefix: "market.eod",
+      sourceId: "ifind-cn",
+      licenseTag: "formal",
+      artifactClass: "FORMAL",
+      rowCount: 250,
+      firstEvent: "2025-08-01T15:00:00+08:00",
+      lastEvent: "2026-08-14T15:00:00+08:00",
+    }));
   },
   async listFormalSnapshots() {
     return [

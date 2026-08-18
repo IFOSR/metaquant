@@ -5,6 +5,7 @@ x-app-environment: &app-environment
   MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-quant_minio}
   MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-quant_minio_dev}
   MINIO_BUCKET: ${MINIO_BUCKET:-artifacts}
+  IFIND_REFRESH_TOKEN: ${IFIND_REFRESH_TOKEN:-}
   FORMAL_SNAPSHOT_CATALOG_PATH: /app/config/formal-snapshots.json
   VALIDATION_POLICY_CATALOG_PATH: /app/config/validation-policies.json
   LABEL_SNAPSHOT_CATALOG_PATH: /app/config/label-snapshots.json
@@ -25,7 +26,6 @@ services:
       QUANT_DB_USER: ${QUANT_DB_USER:-quant_app}
       QUANT_DB_PASSWORD: ${QUANT_DB_PASSWORD:-quant_app_dev}
       QUANT_DB_NAME: ${QUANT_DB_NAME:-quant_platform}
-      MLFLOW_DB_NAME: ${MLFLOW_DB_NAME:-quant_mlflow}
     ports:
       - "${POSTGRES_PORT:-55432}:5432"
     volumes:
@@ -76,7 +76,6 @@ services:
         mc alias set local http://minio:9000
         "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
         && mc mb --ignore-existing "local/$$MINIO_BUCKET"
-        && mc mb --ignore-existing local/mlflow
     restart: "no"
 
   migrate:
@@ -94,6 +93,8 @@ services:
     image: quant-platform-api:local
     build:
       context: .
+      args:
+        UV_EXTRAS: --extra data
     environment: *app-environment
     ports:
       - "${API_PORT:-8091}:8000"
@@ -115,68 +116,6 @@ services:
       retries: 20
     restart: unless-stopped
 
-  dagster:
-    profiles: ["orchestration"]
-    image: quant-platform-dagster:local
-    build:
-      context: .
-      args:
-        UV_EXTRAS: --extra orchestration
-    environment:
-      <<: *app-environment
-      DAGSTER_HOME: /app/.dagster
-    command:
-      - dagster
-      - dev
-      - -h
-      - 0.0.0.0
-      - -p
-      - "3000"
-      - -m
-      - quant_platform.orchestration.definitions
-    ports:
-      - "${DAGSTER_PORT:-3000}:3000"
-    volumes:
-      - dagster_data:/app/.dagster
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    restart: unless-stopped
-
-  mlflow:
-    profiles: ["tracking"]
-    image: quant-platform-mlflow:local
-    build:
-      context: .
-      args:
-        UV_EXTRAS: --extra tracking
-    environment:
-      <<: *app-environment
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-quant_minio}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-quant_minio_dev}
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-    command:
-      - mlflow
-      - server
-      - --host
-      - 0.0.0.0
-      - --port
-      - "5000"
-      - --backend-store-uri
-      - >-
-        postgresql+psycopg://${QUANT_DB_USER:-quant_app}:${QUANT_DB_PASSWORD:-quant_app_dev}@postgres:5432/${MLFLOW_DB_NAME:-quant_mlflow}
-      - --artifacts-destination
-      - s3://mlflow
-    ports:
-      - "${MLFLOW_PORT:-5000}:5000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-
 volumes:
   postgres_data:
   minio_data:
-  dagster_data:

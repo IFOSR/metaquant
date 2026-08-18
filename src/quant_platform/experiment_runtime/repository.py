@@ -6,7 +6,8 @@ import math
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
@@ -27,6 +28,7 @@ from quant_platform.data_gateway import (
     SourceClass,
 )
 from quant_platform.execution.safety import KillSwitch, KillSwitchState
+from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
 from quant_platform.experiment_runtime.catalog import (
     ExecutionIdentity,
     FormalSnapshotCatalog,
@@ -294,6 +296,9 @@ class SqlAlchemyExperimentRepository:
                 "factor_ir_hash": model.factor_ir_hash,
                 "snapshot_id": model.snapshot_id,
                 "snapshot_manifest_hash": model.snapshot_manifest_hash,
+                "factor_ir": model.factor_ir_payload,
+                "decision_time": model.spec_payload.get("decision_time"),
+                "random_seed": model.spec_payload.get("random_seed"),
                 "latest_run_id": latest_run_id,
                 "created_at": model.created_at,
                 "created_by": model.created_by,
@@ -1573,20 +1578,192 @@ class SqlAlchemyExperimentRepository:
                     AlphaPoolFactorModel.market.in_(markets)
                 )
             ).all()
-            return [
-                {
-                    "factor_ir_hash": model.factor_ir_hash,
-                    "direction": model.direction,
-                    "market": model.market,
-                    "universe": model.universe,
-                    "horizon": model.horizon,
-                    "policy_id": model.policy_id,
-                    "risk_premium": model.risk_premium,
-                    "lifecycle_state": model.lifecycle_state,
-                    "oos_ic": model.oos_ic,
-                }
-                for model in models
-            ]
+            items: list[dict[str, Any]] = []
+            for model in models:
+                factor_id: str | None = None
+                instruments: list[str] = []
+                data_start: str | None = None
+                data_end: str | None = None
+                context = self._latest_factor_context(session, model.factor_ir_hash)
+                if context is not None:
+                    spec, factor = context
+                    factor_id = str(spec.factor_ir_payload.get("factor_id") or "") or None
+                    days = sorted(
+                        {
+                            item.event_time.date().isoformat()
+                            for item in factor.observations
+                            if item.value is not None
+                        }
+                    )
+                    instruments = sorted(
+                        {
+                            item.instrument_id
+                            for item in factor.observations
+                            if item.value is not None
+                        }
+                    )
+                    if days:
+                        data_start, data_end = days[0], days[-1]
+                items.append(
+                    {
+                        "factor_ir_hash": model.factor_ir_hash,
+                        "factor_id": factor_id,
+                        "instruments": instruments,
+                        "data_start": data_start,
+                        "data_end": data_end,
+                        "direction": model.direction,
+                        "market": model.market,
+                        "universe": model.universe,
+                        "horizon": model.horizon,
+                        "policy_id": model.policy_id,
+                        "risk_premium": model.risk_premium,
+                        "lifecycle_state": model.lifecycle_state,
+                        "oos_ic": model.oos_ic,
+                    }
+                )
+            return items
+
+    def _latest_factor_context(
+        self, session: Session, factor_ir_hash: str
+    ) -> tuple[ExperimentSpecModel, FactorComputationArtifact] | None:
+        """factor_ir_hash → 最新实验定义 + 最新成功 run 的因子计算产物。"""
+        spec = session.scalar(
+            select(ExperimentSpecModel)
+            .where(ExperimentSpecModel.factor_ir_hash == factor_ir_hash)
+            .order_by(ExperimentSpecModel.created_at.desc())
+            .limit(1)
+        )
+        if spec is None:
+            return None
+        run_id = session.scalar(
+            select(ExperimentRunModel.id)
+            .where(
+                ExperimentRunModel.experiment_id == spec.id,
+                ExperimentRunModel.state == "SUCCEEDED",
+            )
+            .order_by(ExperimentRunModel.created_at.desc())
+            .limit(1)
+        )
+        if run_id is None:
+            return None
+        factor, _ = self._load_factor_artifact(session, run_id)
+        return spec, factor
+
+    def run_factor_backtest(
+        self,
+        *,
+        factor_ir_hash: str,
+        instrument_ids: tuple[str, ...] | None,
+        start: date | None,
+        end: date | None,
+        frequency: str,
+        data_source: str,
+        lot_size: int,
+        initial_cash: Decimal,
+        scopes: frozenset[tuple[str, str]],
+    ) -> dict[str, Any]:
+        """对 Alpha 池因子跑 NautilusTrader 回测（策略台面）。
+
+        ``data_source=snapshot``：预注册时封存的快照 + 封存因子产物。
+        ``data_source=realtime``：pit_observations 里的真实接入数据，
+        因子值按 IR 在该数据上重算（研究级用途，与封存产物区分披露）。
+        """
+        from quant_platform.backtest import run_factor_backtest as _run_backtest
+
+        with self._sessions() as session:
+            alpha = session.get(AlphaPoolFactorModel, factor_ir_hash)
+            if alpha is None or not any(
+                market == alpha.market for _, market in scopes
+            ):
+                raise ValueError("RESOURCE_NOT_FOUND")
+            context = self._latest_factor_context(session, factor_ir_hash)
+            if context is None:
+                raise ValueError("FACTOR_ARTIFACT_NOT_FOUND")
+            spec, factor = context
+
+            if data_source == "snapshot":
+                snapshot, _binding = _snapshot(dict(spec.snapshot_payload))
+                rows: tuple[PITRow, ...] = snapshot.rows
+                observations = factor.observations
+                artifact_class = "FORMAL"
+            elif data_source == "realtime":
+                store = SqlAlchemyPitStore(self._sessions)
+                if instrument_ids is None:
+                    instrument_ids = tuple(
+                        sorted(
+                            {
+                                item.instrument_id
+                                for item in factor.observations
+                                if item.value is not None
+                            }
+                        )
+                    )
+                field_prefix = "market.eod" if frequency == "1d" else "market.minute"
+                start_dt = (
+                    datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+                    if start
+                    else None
+                )
+                end_dt = (
+                    datetime.combine(end, datetime.max.time(), tzinfo=UTC)
+                    if end
+                    else None
+                )
+                rows = store.load(
+                    instrument_ids=instrument_ids,
+                    field_prefix=field_prefix,
+                    start=start_dt,
+                    end=end_dt,
+                )
+                if not rows:
+                    raise ValueError("MARKET_DATA_NOT_INGESTED")
+                # 因子信号用完整历史重算（窗口只截行情 bar，不截信号），
+                # 否则窗口首日永远拿不到信号。
+                eod_rows = store.load(
+                    instrument_ids=instrument_ids,
+                    field_prefix="market.eod",
+                )
+                if not eod_rows:
+                    raise ValueError("MARKET_DATA_NOT_INGESTED")
+                observations = _recompute_factor(
+                    dict(spec.factor_ir_payload), eod_rows
+                )
+                artifact_class = (
+                    "FORMAL"
+                    if all(
+                        row.license_tag in {"formal", "licensed-research"}
+                        for row in rows
+                    )
+                    else "EXPLORATORY"
+                )
+            else:
+                raise ValueError("UNKNOWN_DATA_SOURCE")
+
+        result = _run_backtest(
+            factor_ir_hash=factor_ir_hash,
+            observations=observations,
+            snapshot_rows=rows,
+            instrument_ids=instrument_ids,
+            start=start,
+            end=end,
+            frequency=frequency,
+            initial_cash=initial_cash,
+            lot_size=lot_size,
+        )
+        payload = result.payload()
+        payload["data_source"] = data_source
+        payload["artifact_class"] = artifact_class
+        self._artifacts.put(
+            canonical_bytes(payload), media_type="application/json"
+        )
+        return payload
+
+    def market_data_coverage(
+        self, instrument_ids: tuple[str, ...], *, scopes: frozenset[tuple[str, str]]
+    ) -> dict[str, Any]:
+        store = SqlAlchemyPitStore(self._sessions)
+        entries = store.coverage(instrument_ids=instrument_ids)
+        return {"items": [entry.payload() for entry in entries]}
 
     def get_execution_state(self) -> dict[str, Any]:
         with self._sessions() as session:
@@ -1727,6 +1904,31 @@ class SqlAlchemyExperimentRepository:
     def _run_before_commit(self) -> None:
         if self._before_commit is not None:
             self._before_commit()
+
+
+def _recompute_factor(
+    factor_ir_payload: dict[str, Any], eod_rows: tuple[PITRow, ...]
+) -> tuple[FactorObservation, ...]:
+    """在实时接入的日频数据上按因子 IR 重算因子值（realtime 回测路径）。"""
+    compiled = compile_factor_ir(factor_ir_payload)
+    by_key: dict[tuple[datetime, str], dict[str, float]] = defaultdict(dict)
+    for input_item in factor_ir_payload["inputs"]:
+        alias = str(input_item["alias"])
+        field = str(input_item["field_ref"])
+        for row in eod_rows:
+            if row.field == field and row.value is not None:
+                by_key[(row.event_time, row.instrument_id)][alias] = float(row.value)
+    table = FactorTable(
+        rows=tuple(
+            FactorInputRow(timestamp=ts, instrument_id=instrument, values=values)
+            for (ts, instrument), values in sorted(by_key.items())
+        )
+    )
+    result = execute_factor(compiled, table)
+    return tuple(
+        FactorObservation(item.instrument_id, item.timestamp, item.value)
+        for item in result.observations
+    )
 
 
 def _snapshot(payload: dict[str, Any]) -> tuple[FrozenSnapshot, FormalSnapshotBinding]:

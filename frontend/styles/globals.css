@@ -312,6 +312,24 @@ h2 { font-size: 1.28rem; letter-spacing: -0.02em; line-height: 1.05; margin: 8px
   .artifact-row > div:last-child { text-align: left; }
 }
 
+
+.equity-curve { margin: 12px 0 4px; }
+.equity-curve svg { color: var(--amber-deep); display: block; height: auto; width: 100%; background: rgba(20,26,34,0.03); border: 1px solid var(--line); border-radius: 6px; }
+.equity-curve figcaption { font-size: 0.78rem; margin-top: 4px; }
+
+.trade-marker-buy { fill: #2e7d32; }
+.trade-marker-sell { fill: #c62828; }
+span.trade-marker-buy, span.trade-marker-sell { background: none; }
+.trade-table { border-collapse: collapse; font-size: 0.85rem; margin: 8px 0; width: 100%; }
+.trade-table th { border-bottom: 1px solid var(--line); color: var(--ink-soft); font-weight: 500; padding: 6px 10px 6px 0; text-align: left; }
+.trade-table td { border-bottom: 1px solid rgba(184,197,207,0.4); padding: 5px 10px 5px 0; }
+.pnl-positive { color: #2e7d32; }
+.pnl-negative { color: #c62828; }
+
+.artifact-badge { border: 1px solid var(--line-dark); border-radius: 4px; font-size: 0.68rem; letter-spacing: 0.04em; margin-left: 8px; padding: 1px 6px; }
+.artifact-formal { color: #2e7d32; border-color: #2e7d32; }
+.artifact-exploratory { color: var(--amber-deep); border-color: var(--amber-deep); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }

@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, time
 from pathlib import Path
 
 SNAPSHOT_PATH = Path("config/formal-snapshots.json")
@@ -48,13 +48,12 @@ def forward_returns(
             if future >= len(days):
                 continue
             forward = closes[days[future]] / closes[day] - 1.0
-            event_time = (
-                datetime.combine(day, datetime.min.time()).isoformat() + "+00:00"
-            )
+            # event_time 必须与行情快照行保持一致（T 日 15:00 UTC 收盘），
+            # 否则校验器按 (instrument, event_time) 精确对齐时匹配不到任何横截面。
+            event_time = datetime.combine(day, time(15, 0)).isoformat() + "+00:00"
             available_day = days[future]
             available_time = (
-                datetime.combine(available_day, datetime.min.time()).isoformat()
-                + "+00:00"
+                datetime.combine(available_day, time(15, 0)).isoformat() + "+00:00"
             )
             rows.append(
                 {

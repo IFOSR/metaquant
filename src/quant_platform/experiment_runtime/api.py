@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header
@@ -14,6 +15,7 @@ from quant_platform.experiment_runtime.schemas import (
     AssessRobustnessCommand,
     PreregisterExperimentCommand,
     PromoteCommand,
+    RunBacktestCommand,
     RunExperimentCommand,
     SignApprovalCommand,
     ValidateExperimentCommand,
@@ -419,6 +421,47 @@ def build_experiment_router(
             ),
         )
         return {"items": factors}
+
+    @router.post("/backtests", status_code=200)
+    def run_backtest(
+        command: RunBacktestCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        try:
+            return repository.run_factor_backtest(
+                factor_ir_hash=command.factor_ir_hash,
+                instrument_ids=(
+                    tuple(command.instrument_ids)
+                    if command.instrument_ids
+                    else None
+                ),
+                start=command.start_date,
+                end=command.end_date,
+                frequency=command.frequency,
+                data_source=command.data_source,
+                lot_size=command.lot_size,
+                initial_cash=Decimal(str(command.initial_cash)),
+                scopes=actor.scopes(
+                    {"research.experiments.read", "research.strategy.read"}
+                ),
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+
+    @router.get("/market-data/coverage")
+    def market_data_coverage(
+        instruments: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        instrument_ids = tuple(
+            item.strip() for item in instruments.split(",") if item.strip()
+        )
+        return repository.market_data_coverage(
+            instrument_ids,
+            scopes=actor.scopes(
+                {"research.experiments.read", "research.strategy.read"}
+            ),
+        )
 
     @router.get("/execution/state")
     def get_execution_state(

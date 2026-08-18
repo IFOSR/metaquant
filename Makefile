@@ -44,8 +44,5 @@ check: build ## Run formatting, linting, type checking, and tests
 g3-integration: build ## Verify G3 migrations, PostgreSQL concurrency, and MinIO hashes
 	./scripts/verify-g3-infrastructure.sh
 
-optional: bootstrap ## Start the optional Dagster and MLflow profiles
-	docker compose --profile orchestration --profile tracking up --build -d
-
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z_-]+:.*## / {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

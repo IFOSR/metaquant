@@ -107,7 +107,8 @@ def test_error_code_raises() -> None:
         client.get_access_token()
 
 
-def test_client_requires_token() -> None:
+def test_client_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("IFIND_REFRESH_TOKEN", raising=False)
     with pytest.raises(ValueError, match="refresh_token"):
         IFindClient()
 

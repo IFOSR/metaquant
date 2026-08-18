@@ -143,7 +143,7 @@ class IFindClient:
             "codes": ",".join(codes),
             "startdate": start_date,
             "enddate": end_date,
-            "functionpara": {"Days": "Alldays", "Fill": "-1"},
+            "functionpara": {"Days": "Tradingdays", "Fill": "-1"},
             "indipara": [
                 {"indicator": indicator, "indiparams": ["", "100"]}
                 for indicator in indicators

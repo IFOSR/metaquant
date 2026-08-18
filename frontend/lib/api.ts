@@ -1,5 +1,6 @@
 import type {
   AlphaPoolFactor,
+  BacktestResult,
   BriefDraftInput,
   Capability,
   CreateResearchJobInput,
@@ -8,14 +9,17 @@ import type {
   Experiment,
   ExperimentArtifacts,
   ExperimentRun,
+  FactorIR,
   FactorValidationReport,
   FormalSnapshotInfo,
   IndependenceSummary,
+  MarketDataCoverageEntry,
   MarketId,
   PreregisterExperimentInput,
   PromotionSummary,
   ResearchBrief,
   ResearchJob,
+  RunBacktestInput,
   Session,
 } from "./types";
 
@@ -134,6 +138,37 @@ interface ApiProblem {
   field_errors?: Array<{ path: string; code: string; message: string }>;
 }
 
+export interface ApiFactorIrExpression {
+  ref?: string;
+  literal?: number | boolean;
+  unit?: string;
+  op?: string;
+  args?: ApiFactorIrExpression[];
+  params?: Record<string, unknown>;
+}
+
+export interface ApiFactorIR {
+  factor_id: string;
+  version: string;
+  market_scope: {
+    market: string;
+    frequency: string;
+    universe_ref: string;
+  };
+  decision_clock: {
+    signal_time: string;
+    earliest_trade_time: string;
+  };
+  inputs: Array<{
+    alias: string;
+    field_ref: string;
+    data_type: string;
+    unit: string;
+    available_time_rule: string;
+  }>;
+  expression: ApiFactorIrExpression;
+}
+
 export interface ApiExperiment {
   id: string;
   project_id: string;
@@ -146,6 +181,9 @@ export interface ApiExperiment {
   factor_ir_hash: string;
   snapshot_id: string;
   snapshot_manifest_hash: string;
+  factor_ir?: ApiFactorIR | null;
+  decision_time?: string | null;
+  random_seed?: number | null;
   latest_run_id?: string | null;
   created_at: string;
   created_by: string;
@@ -258,6 +296,10 @@ export interface ApiPromotion {
 
 export interface ApiAlphaPoolFactor {
   factor_ir_hash: string;
+  factor_id: string | null;
+  instruments: string[];
+  data_start: string | null;
+  data_end: string | null;
   direction: string;
   market: string;
   universe: string;
@@ -266,6 +308,56 @@ export interface ApiAlphaPoolFactor {
   risk_premium: boolean;
   lifecycle_state: string;
   oos_ic: number | null;
+}
+
+export interface ApiBacktestResult {
+  schema_version: string;
+  factor_ir_hash: string;
+  instrument_ids: string[];
+  start: string;
+  end: string;
+  frequency: string;
+  data_source: "snapshot" | "realtime";
+  artifact_class: string | null;
+  initial_cash: number;
+  lot_size: number;
+  gross_of_fees: boolean;
+  metrics: {
+    total_return: number;
+    sharpe: number | null;
+    max_drawdown: number;
+    trade_count: number;
+  };
+  equity_curve: Array<{ date: string; equity: number }>;
+  trades: Array<{
+    time: string;
+    instrument_id: string;
+    side: string;
+    quantity: number;
+    price: number;
+  }>;
+  positions: Array<{
+    instrument_id: string;
+    entry: string;
+    peak_qty: number;
+    avg_px_open: number;
+    avg_px_close: number | null;
+    realized_pnl: number;
+    opened_at: string;
+    closed_at: string | null;
+  }>;
+  backtest_hash: string;
+}
+
+export interface ApiMarketDataCoverageEntry {
+  instrument_id: string;
+  field_prefix: string;
+  source_id: string;
+  license_tag: string;
+  artifact_class: string;
+  row_count: number;
+  first_event: string;
+  last_event: string;
 }
 
 export interface ApiExecutionState {
@@ -309,6 +401,10 @@ export interface QuantApiClient {
   getExperimentIndependence(id: string): Promise<IndependenceSummary>;
   getExperimentPromotion(id: string): Promise<PromotionSummary>;
   listAlphaPool(): Promise<AlphaPoolFactor[]>;
+  runBacktest(input: RunBacktestInput): Promise<BacktestResult>;
+  getMarketDataCoverage(
+    instruments: string[],
+  ): Promise<MarketDataCoverageEntry[]>;
   listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
@@ -556,6 +652,33 @@ export class HttpQuantApiClient implements QuantApiClient {
     return result.body.items.map(mapAlphaPoolFactor);
   }
 
+  async runBacktest(input: RunBacktestInput) {
+    const result = await this.request<ApiBacktestResult>("/backtests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        factor_ir_hash: input.factorIrHash,
+        instrument_ids: input.instrumentIds ?? null,
+        start_date: input.startDate ?? null,
+        end_date: input.endDate ?? null,
+        frequency: input.frequency ?? "1d",
+        data_source: input.dataSource ?? "snapshot",
+        lot_size: input.lotSize ?? 1,
+        initial_cash: input.initialCash ?? 100_000_000,
+        reason: "Run factor backtest from strategy workbench",
+      }),
+    });
+    return mapBacktestResult(result.body);
+  }
+
+  async getMarketDataCoverage(instruments: string[]) {
+    const query = encodeURIComponent(instruments.join(","));
+    const result = await this.request<{ items: ApiMarketDataCoverageEntry[] }>(
+      `/market-data/coverage?instruments=${query}`,
+    );
+    return result.body.items.map(mapMarketDataCoverageEntry);
+  }
+
   async listFormalSnapshots() {
     const result = await this.request<ApiList<ApiFormalSnapshot>>(
       "/formal-snapshots",
@@ -584,6 +707,7 @@ export class HttpQuantApiClient implements QuantApiClient {
       "/execution/kill-switch:trip",
       {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision: "APPROVE", reason }),
       },
     );
@@ -593,7 +717,11 @@ export class HttpQuantApiClient implements QuantApiClient {
   async resetKillSwitch() {
     const result = await this.request<ApiExecutionState>(
       "/execution/kill-switch:reset",
-      { method: "POST", body: JSON.stringify({}) },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
     );
     return mapExecutionState(result.body);
   }
@@ -722,9 +850,36 @@ export function mapExperiment(input: ApiExperiment): Experiment {
     factorIrHash: input.factor_ir_hash,
     snapshotId: input.snapshot_id,
     snapshotManifestHash: input.snapshot_manifest_hash,
+    factorIr: input.factor_ir ? mapFactorIr(input.factor_ir) : null,
+    decisionTime: input.decision_time ?? null,
+    randomSeed: input.random_seed ?? null,
     latestRunId: input.latest_run_id ?? null,
     createdAt: input.created_at,
     createdBy: input.created_by,
+  };
+}
+
+function mapFactorIr(input: ApiFactorIR): FactorIR {
+  return {
+    factorId: input.factor_id,
+    version: input.version,
+    marketScope: {
+      market: input.market_scope.market,
+      frequency: input.market_scope.frequency,
+      universeRef: input.market_scope.universe_ref,
+    },
+    decisionClock: {
+      signalTime: input.decision_clock.signal_time,
+      earliestTradeTime: input.decision_clock.earliest_trade_time,
+    },
+    inputs: input.inputs.map((item) => ({
+      alias: item.alias,
+      fieldRef: item.field_ref,
+      dataType: item.data_type,
+      unit: item.unit,
+      availableTimeRule: item.available_time_rule,
+    })),
+    expression: input.expression,
   };
 }
 
@@ -851,6 +1006,10 @@ export function mapPromotion(input: ApiPromotion): PromotionSummary {
 export function mapAlphaPoolFactor(input: ApiAlphaPoolFactor): AlphaPoolFactor {
   return {
     factorIrHash: input.factor_ir_hash,
+    factorId: input.factor_id ?? null,
+    instruments: input.instruments ?? [],
+    dataStart: input.data_start ?? null,
+    dataEnd: input.data_end ?? null,
     direction: input.direction,
     market: input.market as AlphaPoolFactor["market"],
     universe: input.universe,
@@ -859,6 +1018,61 @@ export function mapAlphaPoolFactor(input: ApiAlphaPoolFactor): AlphaPoolFactor {
     riskPremium: input.risk_premium,
     lifecycleState: input.lifecycle_state,
     oosIc: input.oos_ic,
+  };
+}
+
+export function mapBacktestResult(input: ApiBacktestResult): BacktestResult {
+  return {
+    factorIrHash: input.factor_ir_hash,
+    instrumentIds: input.instrument_ids,
+    start: input.start,
+    end: input.end,
+    frequency: input.frequency ?? "1d",
+    dataSource: input.data_source ?? "snapshot",
+    artifactClass: input.artifact_class ?? null,
+    initialCash: input.initial_cash,
+    lotSize: input.lot_size,
+    grossOfFees: input.gross_of_fees,
+    metrics: {
+      totalReturn: input.metrics.total_return,
+      sharpe: input.metrics.sharpe,
+      maxDrawdown: input.metrics.max_drawdown,
+      tradeCount: input.metrics.trade_count,
+    },
+    equityCurve: input.equity_curve,
+    trades: (input.trades ?? []).map((trade) => ({
+      time: trade.time,
+      instrumentId: trade.instrument_id,
+      side: trade.side,
+      quantity: trade.quantity,
+      price: trade.price,
+    })),
+    positions: (input.positions ?? []).map((position) => ({
+      instrumentId: position.instrument_id,
+      entry: position.entry,
+      peakQty: position.peak_qty,
+      avgPxOpen: position.avg_px_open,
+      avgPxClose: position.avg_px_close,
+      realizedPnl: position.realized_pnl,
+      openedAt: position.opened_at,
+      closedAt: position.closed_at,
+    })),
+    backtestHash: input.backtest_hash,
+  };
+}
+
+export function mapMarketDataCoverageEntry(
+  input: ApiMarketDataCoverageEntry,
+): MarketDataCoverageEntry {
+  return {
+    instrumentId: input.instrument_id,
+    fieldPrefix: input.field_prefix,
+    sourceId: input.source_id,
+    licenseTag: input.license_tag,
+    artifactClass: input.artifact_class,
+    rowCount: input.row_count,
+    firstEvent: input.first_event,
+    lastEvent: input.last_event,
   };
 }
 

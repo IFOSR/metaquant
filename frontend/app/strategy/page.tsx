@@ -1,3 +1,4 @@
+import { BacktestLab } from "../../components/backtest-lab";
 import { quantApiClient } from "../../lib/client";
 import { getServerT } from "../../lib/server-locale";
 
@@ -37,7 +38,7 @@ export default async function StrategyPage() {
             {factors.map((factor) => (
               <div className="task-row" key={factor.factorIrHash}>
                 <span className="task-stage">{factor.market}</span>
-                <strong className="mono">{shortHash(factor.factorIrHash)}</strong>
+                <strong className="mono">{factor.factorId ?? shortHash(factor.factorIrHash)}</strong>
                 <span className="muted">{factor.direction}</span>
                 <span className="muted">{t("strategy.horizon", { horizon: factor.horizon })}</span>
                 <span className="muted">{t("strategy.oosIc", { value: factor.oosIc?.toFixed(4) ?? "—" })}</span>
@@ -50,6 +51,8 @@ export default async function StrategyPage() {
           </p>
         )}
       </section>
+
+      <BacktestLab factors={factors} />
 
       <section className="panel">
         <div className="panel-heading">

@@ -158,6 +158,44 @@ class IdempotencyRecordModel(Base):
     stored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class MarketDataSourceModel(Base):
+    __tablename__ = "market_data_sources"
+
+    source_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    license: Mapped[str] = mapped_column(String(255), nullable=False)
+    coverage_scope: Mapped[str] = mapped_column(String(255), nullable=False)
+    revision_capable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    pit_capable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cross_validation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    registered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class PitObservationModel(Base):
+    __tablename__ = "pit_observations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    dataset_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    field: Mapped[str] = mapped_column(String(255), nullable=False)
+    instrument_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    available_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    ingested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revision_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    license_tag: Mapped[str] = mapped_column(String(128), nullable=False)
+    value_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class ExperimentSpecModel(Base):
     __tablename__ = "experiment_specs"
 

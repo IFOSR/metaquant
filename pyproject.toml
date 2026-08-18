@@ -20,6 +20,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+data = [
+  "akshare==1.17.86",
+]
 dev = [
   "httpx==0.28.1",
   "mypy==1.17.1",
@@ -62,5 +65,5 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["dagster", "dagster.*", "minio", "minio.*", "nautilus_trader", "nautilus_trader.*"]
+module = ["minio", "minio.*", "nautilus_trader", "nautilus_trader.*"]
 ignore_missing_imports = true

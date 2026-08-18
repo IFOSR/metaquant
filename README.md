@@ -83,19 +83,6 @@ make g3-integration
 该命令验证迁移 `upgrade -> downgrade -> upgrade`、同 fingerprint 并发运行
 幂等性，以及 MinIO 内容地址的 put/get/stat/hash 往返。
 
-## 可选服务
-
-Dagster 和 MLflow 已作为 Compose profile 预留，不进入默认最小启动链路：
-
-```bash
-docker compose --profile orchestration up --build -d dagster
-docker compose --profile tracking up --build -d mlflow
-```
-
-启用后，Dagster 位于 `http://localhost:3000`，MLflow 位于
-`http://localhost:5000`。MLflow 使用独立的 `quant_mlflow` 数据库，并将
-artifact 写入 MinIO 的 `mlflow` bucket。
-
 ## 常用运维
 
 ```bash

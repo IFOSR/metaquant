@@ -25,7 +25,6 @@ COPY tests ./tests
 COPY docs ./docs
 
 RUN useradd --create-home --uid 10001 quant \
-    && mkdir -p /app/.dagster \
     && chown -R quant:quant /app
 USER quant
 

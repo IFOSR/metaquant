@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any, Never
 
 import pytest
@@ -125,6 +126,12 @@ def test_preregister_run_and_artifact_lineage_are_auditable_and_idempotent() -> 
     assert spec.json()["state"] == "PREREGISTERED"
     assert spec.json()["factor_ir_hash"]
     assert spec.json()["snapshot_manifest_hash"]
+    assert spec.json()["factor_ir"]["factor_id"]
+    assert spec.json()["factor_ir"]["expression"]
+    assert datetime.fromisoformat(
+        spec.json()["decision_time"].replace("Z", "+00:00")
+    ) == datetime.fromisoformat(preregistration["decision_time"])
+    assert spec.json()["random_seed"] == preregistration["random_seed"]
 
     execution = run_command()
     run = client.post(

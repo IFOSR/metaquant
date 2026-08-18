@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -100,4 +100,18 @@ class SignApprovalCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     decision: Literal["APPROVE", "REJECT"]
+    reason: str = Field(min_length=1)
+
+
+class RunBacktestCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    factor_ir_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    instrument_ids: list[str] | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    frequency: Literal["1d", "5m"] = "1d"
+    data_source: Literal["snapshot", "realtime"] = "snapshot"
+    lot_size: int = Field(default=1, ge=1)
+    initial_cash: float = Field(default=100_000_000.0, gt=0)
     reason: str = Field(min_length=1)

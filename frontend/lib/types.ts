@@ -168,6 +168,39 @@ export interface FormalSnapshotInfo {
   frozenAt: string | null;
 }
 
+export interface FactorIrInput {
+  alias: string;
+  fieldRef: string;
+  dataType: string;
+  unit: string;
+  availableTimeRule: string;
+}
+
+export interface FactorIrExpression {
+  ref?: string;
+  literal?: number | boolean;
+  unit?: string;
+  op?: string;
+  args?: FactorIrExpression[];
+  params?: Record<string, unknown>;
+}
+
+export interface FactorIR {
+  factorId: string;
+  version: string;
+  marketScope: {
+    market: string;
+    frequency: string;
+    universeRef: string;
+  };
+  decisionClock: {
+    signalTime: string;
+    earliestTradeTime: string;
+  };
+  inputs: FactorIrInput[];
+  expression: FactorIrExpression;
+}
+
 export interface Experiment {
   id: string;
   projectId: string;
@@ -180,6 +213,9 @@ export interface Experiment {
   factorIrHash: string;
   snapshotId: string;
   snapshotManifestHash: string;
+  factorIr: FactorIR | null;
+  decisionTime: string | null;
+  randomSeed: number | null;
   latestRunId: string | null;
   createdAt: string;
   createdBy: string;
@@ -295,6 +331,10 @@ export interface PromotionSummary {
 
 export interface AlphaPoolFactor {
   factorIrHash: string;
+  factorId: string | null;
+  instruments: string[];
+  dataStart: string | null;
+  dataEnd: string | null;
   direction: string;
   market: MarketId;
   universe: string;
@@ -303,6 +343,72 @@ export interface AlphaPoolFactor {
   riskPremium: boolean;
   lifecycleState: string;
   oosIc: number | null;
+}
+
+export interface BacktestMetrics {
+  totalReturn: number;
+  sharpe: number | null;
+  maxDrawdown: number;
+  tradeCount: number;
+}
+
+export interface BacktestTrade {
+  time: string;
+  instrumentId: string;
+  side: string;
+  quantity: number;
+  price: number;
+}
+
+export interface BacktestPosition {
+  instrumentId: string;
+  entry: string;
+  peakQty: number;
+  avgPxOpen: number;
+  avgPxClose: number | null;
+  realizedPnl: number;
+  openedAt: string;
+  closedAt: string | null;
+}
+
+export interface BacktestResult {
+  factorIrHash: string;
+  instrumentIds: string[];
+  start: string;
+  end: string;
+  frequency: string;
+  dataSource: "snapshot" | "realtime";
+  artifactClass: string | null;
+  initialCash: number;
+  lotSize: number;
+  grossOfFees: boolean;
+  metrics: BacktestMetrics;
+  equityCurve: Array<{ date: string; equity: number }>;
+  trades: BacktestTrade[];
+  positions: BacktestPosition[];
+  backtestHash: string;
+}
+
+export interface RunBacktestInput {
+  factorIrHash: string;
+  instrumentIds?: string[];
+  startDate?: string;
+  endDate?: string;
+  frequency?: "1d" | "5m";
+  dataSource?: "snapshot" | "realtime";
+  lotSize?: number;
+  initialCash?: number;
+}
+
+export interface MarketDataCoverageEntry {
+  instrumentId: string;
+  fieldPrefix: string;
+  sourceId: string;
+  licenseTag: string;
+  artifactClass: string;
+  rowCount: number;
+  firstEvent: string;
+  lastEvent: string;
 }
 
 export interface ExecutionState {

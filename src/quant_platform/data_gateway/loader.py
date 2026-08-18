@@ -8,6 +8,7 @@ revision id).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -93,7 +94,7 @@ class RawPITRow:
             raise ValueError("ingested_at must not precede available_time")
 
 
-def validate_pit_rows(rows: tuple[RawPITRow, ...]) -> None:
+def validate_pit_rows(rows: Sequence[RawPITRow]) -> None:
     """Validate a batch of raw rows before loading.
 
     Rejects future-leaking availability (available before event) and duplicate

@@ -65,5 +65,5 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["minio", "minio.*", "nautilus_trader", "nautilus_trader.*"]
+module = ["akshare", "akshare.*", "minio", "minio.*", "nautilus_trader", "nautilus_trader.*", "pandas", "pandas.*"]
 ignore_missing_imports = true

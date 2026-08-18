@@ -108,9 +108,7 @@ class TestLoad:
                 )
             ]
         )
-        rows = store.load(
-            instrument_ids=("RB2610.SHF",), field_prefix="market.eod"
-        )
+        rows = store.load(instrument_ids=("RB2610.SHF",), field_prefix="market.eod")
         assert len(rows) == 1
         assert rows[0].value == 3005.0
         assert rows[0].revision_id == "rev-2"
@@ -122,10 +120,10 @@ class TestLoad:
         object.__setattr__(exploratory, "license_tag", "exploratory")
         store.persist([exploratory])
         # FORMAL 行先入库（ingested 更早），后入的 EXPLORATORY 不应覆盖
-        store.persist([_row(value="3005.0", revision="if-1", ingested=START + timedelta(days=1))])
-        rows = store.load(
-            instrument_ids=("RB2610.SHF",), field_prefix="market.eod"
+        store.persist(
+            [_row(value="3005.0", revision="if-1", ingested=START + timedelta(days=1))]
         )
+        rows = store.load(instrument_ids=("RB2610.SHF",), field_prefix="market.eod")
         assert len(rows) == 1
         assert rows[0].value == 3005.0
         assert rows[0].source_id == "ifind-cn"
@@ -148,9 +146,7 @@ class TestLoad:
     def test_loaded_rows_are_timezone_aware_on_sqlite(self) -> None:
         store = _store()
         store.persist([_row()])
-        row = store.load(
-            instrument_ids=("RB2610.SHF",), field_prefix="market.eod"
-        )[0]
+        row = store.load(instrument_ids=("RB2610.SHF",), field_prefix="market.eod")[0]
         assert row.event_time.tzinfo is not None
 
 
@@ -168,7 +164,9 @@ class TestCoverage:
             ]
         )
         entries = store.coverage(instrument_ids=("RB2610.SHF", "AU2612.SHF"))
-        by_prefix = {(entry.instrument_id, entry.field_prefix): entry for entry in entries}
+        by_prefix = {
+            (entry.instrument_id, entry.field_prefix): entry for entry in entries
+        }
         eod = by_prefix[("RB2610.SHF", "market.eod")]
         assert eod.row_count == 3
         assert eod.first_event.startswith("2026-08-01")

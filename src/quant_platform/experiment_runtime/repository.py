@@ -27,11 +27,14 @@ from quant_platform.data_gateway import (
     SnapshotQuery,
     SourceClass,
 )
-from quant_platform.execution.safety import KillSwitch, KillSwitchState
 from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
+from quant_platform.experiment_runtime.approval_service import ApprovalService
 from quant_platform.experiment_runtime.catalog import (
     ExecutionIdentity,
     FormalSnapshotCatalog,
+)
+from quant_platform.experiment_runtime.execution_state_service import (
+    ExecutionStateService,
 )
 from quant_platform.experiments import (
     ArtifactManifest,
@@ -52,18 +55,11 @@ from quant_platform.experiments import (
 )
 from quant_platform.factor_executor import FactorInputRow, FactorTable, execute_factor
 from quant_platform.factor_ir import compile_factor_ir
-from quant_platform.governance import (
-    ApprovalDecision,
-    ApprovalWorkflow,
-    Decision,
-    WorkflowState,
-)
 from quant_platform.research.models import (
     AlphaPoolFactorModel,
     ApprovalWorkflowModel,
     AuditEventModel,
     CombinationPoolFactorModel,
-    ExecutionStateModel,
     ExperimentArtifactModel,
     ExperimentAttemptModel,
     ExperimentCommandReceiptModel,
@@ -136,6 +132,8 @@ class SqlAlchemyExperimentRepository:
         self._promotion_policy_catalog = (
             promotion_policy_catalog or InMemoryPromotionPolicyCatalog(())
         )
+        self._approval = ApprovalService(self._sessions)
+        self._execution_state = ExecutionStateService(self._sessions)
 
     def list_formal_snapshots(self) -> list[dict[str, Any]]:
         return self._snapshot_catalog.list()
@@ -1456,21 +1454,7 @@ class SqlAlchemyExperimentRepository:
             }
 
     def get_approval_workflow(self, workflow_id: str) -> dict[str, Any] | None:
-        with self._sessions() as session:
-            model = session.get(ApprovalWorkflowModel, workflow_id)
-            if model is None:
-                return None
-            workflow = self._workflow_from_model(model)
-            return {
-                "workflow_id": model.workflow_id,
-                "subject_hash": model.subject_hash,
-                "subject_kind": model.subject_kind,
-                "required_approvals": model.required_approvals,
-                "state": workflow.state(_now()).value,
-                "decisions": model.decisions,
-                "created_at": model.created_at,
-                "expires_at": model.expires_at,
-            }
+        return self._approval.get_workflow(workflow_id)
 
     def sign_approval_workflow(
         self,
@@ -1480,90 +1464,12 @@ class SqlAlchemyExperimentRepository:
         decision: str,
         reason: str,
     ) -> dict[str, Any]:
-        """Sign an approval workflow and apply promotion linkage on final state."""
-        with self._sessions.begin() as session:
-            model = session.get(ApprovalWorkflowModel, workflow_id)
-            if model is None:
-                raise ValueError("WORKFLOW_NOT_FOUND")
-            workflow = self._workflow_from_model(model)
-            now = _now()
-            record = ApprovalDecision(
-                decision_id=f"decision_{uuid4().hex}",
-                target_hash=workflow.subject_hash,
-                actor=actor_id,
-                decision=Decision(decision),
-                reason=reason,
-                decided_at=now,
-            )
-            updated = workflow.sign(record, now)
-            model.decisions = [item.payload() for item in updated.decisions]
-            state = updated.state(now)
-            if state is WorkflowState.APPROVED and model.subject_kind == "promotion":
-                self._apply_promotion_approval(session, model.subject_hash)
-            elif state is WorkflowState.REJECTED and model.subject_kind == "promotion":
-                self._apply_promotion_rejection(session, model.subject_hash)
-            return {
-                "workflow_id": workflow_id,
-                "state": state.value,
-                "decisions": model.decisions,
-            }
-
-    @staticmethod
-    def _aware(value: datetime) -> datetime:
-        if value.tzinfo is None:
-            return value.replace(tzinfo=UTC)
-        return value
-
-    @staticmethod
-    def _workflow_from_model(model: ApprovalWorkflowModel) -> ApprovalWorkflow:
-        decisions = tuple(
-            ApprovalDecision(
-                decision_id=str(item["decision_id"]),
-                target_hash=str(item["target_hash"]),
-                actor=str(item["actor"]),
-                decision=Decision(str(item["decision"])),
-                reason=str(item["reason"]),
-                decided_at=SqlAlchemyExperimentRepository._aware(
-                    datetime.fromisoformat(str(item["decided_at"]))
-                ),
-            )
-            for item in model.decisions
+        return self._approval.sign(
+            workflow_id=workflow_id,
+            actor_id=actor_id,
+            decision=decision,
+            reason=reason,
         )
-        return ApprovalWorkflow(
-            workflow_id=model.workflow_id,
-            subject_hash=model.subject_hash,
-            subject_kind=model.subject_kind,
-            required_approvals=model.required_approvals,
-            decisions=decisions,
-            created_at=SqlAlchemyExperimentRepository._aware(model.created_at),
-            expires_at=SqlAlchemyExperimentRepository._aware(model.expires_at),
-        )
-
-    @staticmethod
-    def _apply_promotion_approval(session: Session, subject_hash: str) -> None:
-        pool = session.scalar(
-            select(CombinationPoolFactorModel).where(
-                CombinationPoolFactorModel.promotion_evidence_hash == subject_hash
-            )
-        )
-        if pool is None:
-            raise ValueError("COMBINATION_POOL_ENTRY_NOT_FOUND")
-        alpha = session.get(AlphaPoolFactorModel, pool.factor_ir_hash)
-        if alpha is not None:
-            alpha.lifecycle_state = "PROMOTED"
-
-    @staticmethod
-    def _apply_promotion_rejection(session: Session, subject_hash: str) -> None:
-        pool = session.scalar(
-            select(CombinationPoolFactorModel).where(
-                CombinationPoolFactorModel.promotion_evidence_hash == subject_hash
-            )
-        )
-        if pool is None:
-            return
-        alpha = session.get(AlphaPoolFactorModel, pool.factor_ir_hash)
-        if alpha is not None:
-            alpha.lifecycle_state = "REJECTED"
 
     def list_alpha_pool(
         self, *, scopes: frozenset[tuple[str, str]]
@@ -1587,7 +1493,9 @@ class SqlAlchemyExperimentRepository:
                 context = self._latest_factor_context(session, model.factor_ir_hash)
                 if context is not None:
                     spec, factor = context
-                    factor_id = str(spec.factor_ir_payload.get("factor_id") or "") or None
+                    factor_id = (
+                        str(spec.factor_ir_payload.get("factor_id") or "") or None
+                    )
                     days = sorted(
                         {
                             item.event_time.date().isoformat()
@@ -1672,9 +1580,7 @@ class SqlAlchemyExperimentRepository:
 
         with self._sessions() as session:
             alpha = session.get(AlphaPoolFactorModel, factor_ir_hash)
-            if alpha is None or not any(
-                market == alpha.market for _, market in scopes
-            ):
+            if alpha is None or not any(market == alpha.market for _, market in scopes):
                 raise ValueError("RESOURCE_NOT_FOUND")
             context = self._latest_factor_context(session, factor_ir_hash)
             if context is None:
@@ -1725,9 +1631,7 @@ class SqlAlchemyExperimentRepository:
                 )
                 if not eod_rows:
                     raise ValueError("MARKET_DATA_NOT_INGESTED")
-                observations = _recompute_factor(
-                    dict(spec.factor_ir_payload), eod_rows
-                )
+                observations = _recompute_factor(dict(spec.factor_ir_payload), eod_rows)
                 artifact_class = (
                     "FORMAL"
                     if all(
@@ -1753,9 +1657,7 @@ class SqlAlchemyExperimentRepository:
         payload = result.payload()
         payload["data_source"] = data_source
         payload["artifact_class"] = artifact_class
-        self._artifacts.put(
-            canonical_bytes(payload), media_type="application/json"
-        )
+        self._artifacts.put(canonical_bytes(payload), media_type="application/json")
         return payload
 
     def market_data_coverage(
@@ -1766,85 +1668,13 @@ class SqlAlchemyExperimentRepository:
         return {"items": [entry.payload() for entry in entries]}
 
     def get_execution_state(self) -> dict[str, Any]:
-        with self._sessions() as session:
-            model = session.get(ExecutionStateModel, "cn-a")
-            if model is None:
-                return {
-                    "state_id": "cn-a",
-                    "kill_switch_state": "ARMED",
-                    "tripped_by": None,
-                    "tripped_at": None,
-                    "reason": None,
-                    "shadow_positions": {},
-                    "paper_positions": {},
-                }
-            return self._execution_state_payload(model)
+        return self._execution_state.get_state()
 
     def trip_kill_switch(self, *, actor_id: str, reason: str) -> dict[str, Any]:
-        with self._sessions.begin() as session:
-            model = self._ensure_execution_state(session)
-            switch = self._kill_switch_from_model(model)
-            updated = switch.trip(actor_id, reason, _now())
-            self._apply_kill_switch(model, updated)
-            return self._execution_state_payload(model)
+        return self._execution_state.trip(actor_id=actor_id, reason=reason)
 
     def reset_kill_switch(self, *, actor_id: str) -> dict[str, Any]:
-        with self._sessions.begin() as session:
-            model = self._ensure_execution_state(session)
-            switch = self._kill_switch_from_model(model)
-            updated = switch.reset(actor_id, _now())
-            self._apply_kill_switch(model, updated)
-            return self._execution_state_payload(model)
-
-    @staticmethod
-    def _ensure_execution_state(session: Session) -> ExecutionStateModel:
-        model = session.get(ExecutionStateModel, "cn-a")
-        if model is None:
-            model = ExecutionStateModel(
-                state_id="cn-a",
-                kill_switch_state="ARMED",
-                tripped_by=None,
-                tripped_at=None,
-                reason=None,
-                shadow_positions={},
-                paper_positions={},
-                updated_at=_now(),
-            )
-            session.add(model)
-        return model
-
-    @staticmethod
-    def _kill_switch_from_model(model: ExecutionStateModel) -> KillSwitch:
-        tripped_at = model.tripped_at
-        if tripped_at is not None and tripped_at.tzinfo is None:
-            tripped_at = tripped_at.replace(tzinfo=UTC)
-        return KillSwitch(
-            switch_id=model.state_id,
-            state=KillSwitchState(model.kill_switch_state),
-            tripped_by=model.tripped_by,
-            tripped_at=tripped_at,
-            reason=model.reason,
-        )
-
-    @staticmethod
-    def _apply_kill_switch(model: ExecutionStateModel, switch: KillSwitch) -> None:
-        model.kill_switch_state = switch.state.value
-        model.tripped_by = switch.tripped_by
-        model.tripped_at = switch.tripped_at
-        model.reason = switch.reason
-        model.updated_at = _now()
-
-    @staticmethod
-    def _execution_state_payload(model: ExecutionStateModel) -> dict[str, Any]:
-        return {
-            "state_id": model.state_id,
-            "kill_switch_state": model.kill_switch_state,
-            "tripped_by": model.tripped_by,
-            "tripped_at": model.tripped_at.isoformat() if model.tripped_at else None,
-            "reason": model.reason,
-            "shadow_positions": model.shadow_positions,
-            "paper_positions": model.paper_positions,
-        }
+        return self._execution_state.reset(actor_id=actor_id)
 
     def list_artifacts(
         self, run_id: str, *, scopes: frozenset[tuple[str, str]]
@@ -1917,7 +1747,9 @@ def _recompute_factor(
         field = str(input_item["field_ref"])
         for row in eod_rows:
             if row.field == field and row.value is not None:
-                by_key[(row.event_time, row.instrument_id)][alias] = float(row.value)
+                by_key[(row.event_time, row.instrument_id)][alias] = float(
+                    str(row.value)
+                )
     table = FactorTable(
         rows=tuple(
             FactorInputRow(timestamp=ts, instrument_id=instrument, values=values)

@@ -42,7 +42,9 @@ def _snapshot_rows(days: int = 10) -> tuple[PITRow, ...]:
     return tuple(rows)
 
 
-def _observations(values: dict[tuple[str, int], float | None]) -> tuple[FactorObservation, ...]:
+def _observations(
+    values: dict[tuple[str, int], float | None],
+) -> tuple[FactorObservation, ...]:
     return tuple(
         FactorObservation(instrument, START + timedelta(days=day), value)
         for (instrument, day), value in sorted(values.items())
@@ -52,11 +54,7 @@ def _observations(values: dict[tuple[str, int], float | None]) -> tuple[FactorOb
 class TestRunFactorBacktest:
     def test_long_only_when_all_signals_positive(self) -> None:
         observations = _observations(
-            {
-                (instrument, day): 0.01
-                for instrument in INSTRUMENTS
-                for day in range(9)
-            }
+            {(instrument, day): 0.01 for instrument in INSTRUMENTS for day in range(9)}
         )
         result = run_factor_backtest(
             factor_ir_hash="a" * 64,
@@ -108,13 +106,16 @@ class TestRunFactorBacktest:
                 for day in range(9)
             }
         )
-        kwargs = dict(
+        first = run_factor_backtest(
             factor_ir_hash="d" * 64,
             observations=observations,
             snapshot_rows=_snapshot_rows(),
         )
-        first = run_factor_backtest(**kwargs)
-        second = run_factor_backtest(**kwargs)
+        second = run_factor_backtest(
+            factor_ir_hash="d" * 64,
+            observations=observations,
+            snapshot_rows=_snapshot_rows(),
+        )
         assert first.backtest_hash == second.backtest_hash
         assert first.equity_curve == second.equity_curve
 

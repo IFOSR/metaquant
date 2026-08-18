@@ -145,8 +145,7 @@ class BacktestResult:
             "gross_of_fees": True,
             "metrics": self.metrics.payload(),
             "equity_curve": [
-                {"date": day, "equity": equity}
-                for day, equity in self.equity_curve
+                {"date": day, "equity": equity} for day, equity in self.equity_curve
             ],
             "trades": [trade.payload() for trade in self.trades],
             "positions": [position.payload() for position in self.positions],
@@ -182,7 +181,7 @@ def _build_bars(
         if field not in _BAR_FIELDS:
             continue
         grouped.setdefault((row.instrument_id, row.event_time), {})[field] = float(
-            row.value
+            str(row.value)
         )
     per_instrument: dict[str, list[Bar]] = {item: [] for item in instrument_ids}
     for (instrument_id, event_time), fields in grouped.items():
@@ -293,7 +292,10 @@ def _equity_curve(
         daily: dict[date, float] = {}
         for ts, value in points:
             daily[ts.date()] = value
-        points = [(datetime.combine(day, time.max, tzinfo=UTC), v) for day, v in sorted(daily.items())]
+        points = [
+            (datetime.combine(day, time.max, tzinfo=UTC), v)
+            for day, v in sorted(daily.items())
+        ]
 
     curve: list[tuple[str, float]] = []
     returns: list[float] = []
@@ -319,9 +321,12 @@ def _ns_to_iso(value: object) -> str:
     """报表时间列兼容纳秒整数与 pandas Timestamp；0/NA/NaT → 空串。"""
     if value is None or bool(pd.isna(value)):
         return ""
-    if hasattr(value, "timestamp"):
-        return datetime.fromtimestamp(value.timestamp(), tz=UTC).isoformat()  # type: ignore[union-attr]
-    ns = int(value)  # type: ignore[arg-type]
+    if isinstance(value, pd.Timestamp):
+        return datetime.fromtimestamp(value.timestamp(), tz=UTC).isoformat()
+    try:
+        ns = int(str(value))
+    except ValueError:
+        return ""
     if ns <= 0:
         return ""
     return datetime.fromtimestamp(ns / 1e9, tz=UTC).isoformat()
@@ -362,7 +367,9 @@ def _extract_positions(engine: Any) -> tuple[BacktestPosition, ...]:
                 peak_qty=float(row["peak_qty"]),
                 avg_px_open=float(row["avg_px_open"]),
                 avg_px_close=(
-                    float(avg_px_close) if has_close and float(avg_px_close) > 0 else None
+                    float(avg_px_close)
+                    if has_close and float(avg_px_close) > 0
+                    else None
                 ),
                 realized_pnl=_money_to_float(row["realized_pnl"]),
                 opened_at=str(row["ts_opened"]),
@@ -480,16 +487,15 @@ def run_factor_backtest(
     targets: dict[str, dict[datetime, int]] = {}
     for instrument_id in instrument_ids:
         contract, _ = contracts[instrument_id]
-        bar_times = tuple(
-            bar.timestamp for bar in bars_by_instrument[instrument_id]
-        )
+        bar_times = tuple(bar.timestamp for bar in bars_by_instrument[instrument_id])
         by_bar = _targets_by_bar(
             tuple(factor_by_instrument[instrument_id]), bar_times, lot_size
         )
         targets[instrument_id] = by_bar
-        target_fn = lambda bar, by_bar=by_bar: by_bar.get(  # noqa: B023
-            datetime.fromtimestamp(bar.ts_event / 1e9, tz=UTC), 0
-        )
+
+        def target_fn(bar: Any, targets: dict[datetime, int] = by_bar) -> int:
+            return targets.get(datetime.fromtimestamp(bar.ts_event / 1e9, tz=UTC), 0)
+
         engine.add_strategy(
             TargetPositionStrategy(
                 StrategyConfig(strategy_id=f"bt-{contract.id.symbol}"),

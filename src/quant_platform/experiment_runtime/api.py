@@ -431,9 +431,7 @@ def build_experiment_router(
             return repository.run_factor_backtest(
                 factor_ir_hash=command.factor_ir_hash,
                 instrument_ids=(
-                    tuple(command.instrument_ids)
-                    if command.instrument_ids
-                    else None
+                    tuple(command.instrument_ids) if command.instrument_ids else None
                 ),
                 start=command.start_date,
                 end=command.end_date,

@@ -362,7 +362,7 @@ def _promoted_factor_hash(client: TestClient) -> str:
     assert promoted.status_code == 202, promoted.text
     pool = client.get("/v1/alpha-pool", headers=headers()).json()["items"]
     assert len(pool) == 1
-    return pool[0]["factor_ir_hash"]
+    return str(pool[0]["factor_ir_hash"])
 
 
 def test_alpha_pool_items_include_factor_id_and_instruments() -> None:
@@ -431,10 +431,10 @@ def test_backtest_rejects_unknown_factor() -> None:
 
 def _seed_realtime_rows(engine: Engine) -> None:
     """往 pit_observations 预置 10 天日线 + 最后 2 天 5m 分钟线。"""
+    from sqlalchemy.orm import sessionmaker
+
     from quant_platform.data_gateway.loader import RawPITRow
     from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
-
-    from sqlalchemy.orm import sessionmaker
 
     rows: list[RawPITRow] = []
     ingested = START + timedelta(days=11)
@@ -460,8 +460,11 @@ def _seed_realtime_rows(engine: Engine) -> None:
     # 最后两天各 3 根 5m bar（仅 close）
     for day in (8, 9):
         for bar_index in range(3):
-            ts = START + timedelta(days=day) - timedelta(minutes=60) + timedelta(
-                minutes=5 * bar_index
+            ts = (
+                START
+                + timedelta(days=day)
+                - timedelta(minutes=60)
+                + timedelta(minutes=5 * bar_index)
             )
             rows.append(
                 RawPITRow(
@@ -514,7 +517,8 @@ def test_realtime_backtest_uses_ingested_data() -> None:
             for item in items
         )
         assert any(
-            item["field_prefix"] == "market.minute" and item["artifact_class"] == "EXPLORATORY"
+            item["field_prefix"] == "market.minute"
+            and item["artifact_class"] == "EXPLORATORY"
             for item in items
         )
 

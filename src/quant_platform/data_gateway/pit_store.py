@@ -84,9 +84,7 @@ def _aware(value: datetime) -> datetime:
 _FORMAL_LICENSE_TAGS = frozenset({"formal", "licensed-research"})
 
 
-def _preferred(
-    candidate: PitObservationModel, current: PitObservationModel
-) -> bool:
+def _preferred(candidate: PitObservationModel, current: PitObservationModel) -> bool:
     """同一 key 的行选取：FORMAL 源优先，其次取 ingested_at 最新者。"""
     candidate_formal = candidate.license_tag in _FORMAL_LICENSE_TAGS
     current_formal = current.license_tag in _FORMAL_LICENSE_TAGS
@@ -197,9 +195,7 @@ class SqlAlchemyPitStore:
             )
         )
 
-    def coverage(
-        self, *, instrument_ids: tuple[str, ...]
-    ) -> tuple[CoverageEntry, ...]:
+    def coverage(self, *, instrument_ids: tuple[str, ...]) -> tuple[CoverageEntry, ...]:
         """每个标的 × 字段前缀（market.eod / market.minute）的入库区间。"""
         with self._sessions() as session:
             models = session.scalars(

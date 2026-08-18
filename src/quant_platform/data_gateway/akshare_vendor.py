@@ -68,7 +68,7 @@ class AkShareVendorAdapter:
 
     def _module(self) -> Any:
         if self.module is None:
-            import akshare  # type: ignore[import-not-found]
+            import akshare
 
             self.module = akshare
         return self.module

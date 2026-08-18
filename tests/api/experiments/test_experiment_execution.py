@@ -130,7 +130,7 @@ def test_preregister_run_and_artifact_lineage_are_auditable_and_idempotent() -> 
     assert spec.json()["factor_ir"]["expression"]
     assert datetime.fromisoformat(
         spec.json()["decision_time"].replace("Z", "+00:00")
-    ) == datetime.fromisoformat(preregistration["decision_time"])
+    ) == datetime.fromisoformat(str(preregistration["decision_time"]))
     assert spec.json()["random_seed"] == preregistration["random_seed"]
 
     execution = run_command()

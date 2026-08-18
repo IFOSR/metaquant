@@ -1,4 +1,4 @@
-"""Governance contracts (G11): approval, waiver, lockbox, signed report."""
+"""Governance contracts (G11): approval and waiver."""
 
 from quant_platform.governance.approval import (
     ApprovalDecision,
@@ -7,25 +7,11 @@ from quant_platform.governance.approval import (
     Waiver,
     WorkflowState,
 )
-from quant_platform.governance.lockbox import (
-    Lockbox,
-    build_lockbox,
-    key_hash,
-)
-from quant_platform.governance.report import (
-    EvidenceRef,
-    ResearchReport,
-)
 
 __all__ = [
     "ApprovalDecision",
     "ApprovalWorkflow",
     "Decision",
-    "EvidenceRef",
-    "Lockbox",
-    "ResearchReport",
     "Waiver",
     "WorkflowState",
-    "build_lockbox",
-    "key_hash",
 ]

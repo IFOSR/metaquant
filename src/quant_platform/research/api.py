@@ -11,12 +11,14 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from quant_platform.research.paper_parse import PaperParseError, parse_paper_to_brief
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import (
     CommandMetadata,
     CreateResearchBriefVersionCommand,
     CreateResearchJobCommand,
     MarketId,
+    ParsePaperCommand,
     ResearchBriefRecord,
     ResearchJobRecord,
     ResearchJobState,
@@ -404,6 +406,28 @@ def build_research_router(
         except ValueError as exc:
             raise _problem_from_value_error(exc) from exc
         return receipt.model_dump(mode="json")
+
+    @router.post("/research-briefs:from-paper")
+    def parse_paper_brief(
+        command: ParsePaperCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.can(
+            {"research.briefs.write", "research.jobs.manage"},
+            project_id="local",
+            market=command.market,
+        ):
+            raise _not_found()
+        try:
+            brief = parse_paper_to_brief(command.paper_text)
+        except PaperParseError as exc:
+            raise ProblemError(
+                status=422,
+                code="PAPER_PARSE_FAILED",
+                title="Paper parse failed",
+                detail=str(exc),
+            ) from exc
+        return {"brief": brief.model_dump(mode="json")}
 
     return router
 

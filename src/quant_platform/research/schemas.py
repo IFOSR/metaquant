@@ -121,6 +121,13 @@ class UpdateResearchBriefVersionCommand(CreateResearchBriefVersionCommand):
     pass
 
 
+class ParsePaperCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    paper_text: str = Field(min_length=50)
+    market: MarketId
+
+
 class ResearchJobRecord(BaseModel):
     id: str
     project_id: str

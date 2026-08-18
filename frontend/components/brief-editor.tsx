@@ -3,15 +3,25 @@
 import { useState } from "react";
 
 import { quantApiClient } from "../lib/client";
-import type { ResearchBrief } from "../lib/types";
+import type { MarketId, ResearchBrief } from "../lib/types";
 import { RESEARCH_TEMPLATES, type ResearchTemplate } from "../lib/research-templates";
 import { useI18n } from "./i18n-provider";
 
-export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
+export function BriefEditor({
+  initialBrief,
+  market,
+}: {
+  initialBrief: ResearchBrief;
+  market: MarketId;
+}) {
   const { t } = useI18n();
   const [brief, setBrief] = useState(initialBrief);
   const [saved, setSaved] = useState(false);
   const [freezing, setFreezing] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [paperText, setPaperText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const disabled = brief.status !== "DRAFT";
 
   async function save() {
@@ -32,6 +42,37 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
       uncertainties: template.brief.uncertainties,
     });
     setSaved(false);
+  }
+
+  async function importFromPaper() {
+    if (!paperText.trim()) return;
+    setParsing(true);
+    setParseError(null);
+    try {
+      const draft = await quantApiClient.parsePaperToBrief(
+        paperText.trim(),
+        market,
+      );
+      setBrief({
+        ...brief,
+        hypothesis: draft.hypothesis,
+        economicMechanism: draft.economicMechanism,
+        expectedDirection: draft.expectedDirection,
+        falsificationConditions: draft.falsificationConditions,
+        allowedDataDomains: draft.allowedDataDomains,
+        forbiddenDataDomains: draft.forbiddenDataDomains,
+        constraints: draft.constraints,
+        evidenceRefIds: draft.evidenceRefIds,
+        uncertainties: draft.uncertainties,
+      });
+      setSaved(false);
+      setImportOpen(false);
+      setPaperText("");
+    } catch (cause) {
+      setParseError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setParsing(false);
+    }
   }
 
   async function freeze() {
@@ -69,8 +110,51 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
               {template.name}
             </button>
           ))}
+          <button
+            type="button"
+            className="button button-secondary button-small"
+            disabled={disabled}
+            onClick={() => setImportOpen((open) => !open)}
+          >
+            {t("brief.importFromPaper")}
+          </button>
         </div>
       </div>
+      {importOpen ? (
+        <div className="paper-import panel">
+          <label className="field field-wide">
+            <span>{t("brief.paperText")}</span>
+            <textarea
+              value={paperText}
+              onChange={(event) => setPaperText(event.target.value)}
+              rows={8}
+              placeholder={t("brief.paperPlaceholder")}
+            />
+          </label>
+          {parseError ? (
+            <div className="form-errors" role="alert">
+              <span>{parseError}</span>
+            </div>
+          ) : null}
+          <div className="form-actions">
+            <button
+              className="button button-primary"
+              type="button"
+              disabled={parsing || !paperText.trim()}
+              onClick={importFromPaper}
+            >
+              {parsing ? t("brief.parsing") : t("brief.parse")}
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => setImportOpen(false)}
+            >
+              {t("brief.cancel")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="brief-grid">
         <label className="field field-wide">
           <span>{t("brief.hypothesis")}</span>

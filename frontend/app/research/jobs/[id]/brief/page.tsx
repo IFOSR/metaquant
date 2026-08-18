@@ -15,7 +15,7 @@ export default async function ResearchBriefPage({
   const { id } = await params;
   const versions = await quantApiClient.listBriefVersions(id);
   const brief = selectLatestBriefVersion(versions);
-  const job = brief ? null : await quantApiClient.getResearchJob(id);
+  const job = await quantApiClient.getResearchJob(id);
   return (
     <div className="page">
       <div className="breadcrumb">
@@ -38,7 +38,7 @@ export default async function ResearchBriefPage({
         </div>
       </div>
       {brief ? (
-        <BriefEditor initialBrief={brief} />
+        <BriefEditor initialBrief={brief} market={job.market} />
       ) : (
         <CreateBriefPanel jobId={id} jobVersion={Number(job?.version ?? "1")} />
       )}

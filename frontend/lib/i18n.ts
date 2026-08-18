@@ -207,6 +207,12 @@ const zh = {
   "brief.freeze": "冻结简报版本",
   "brief.freezing": "正在冻结…",
   "brief.footnote": "冻结会生成不可变内容哈希；此后的修改需要新建版本。",
+  "brief.importFromPaper": "从论文导入",
+  "brief.paperText": "论文文本",
+  "brief.paperPlaceholder": "粘贴论文摘要或正文，LLM 将抽取假设、机制、证伪条件等字段…",
+  "brief.parse": "解析并填充",
+  "brief.parsing": "解析中…",
+  "brief.cancel": "取消",
 
   "briefCreate.title": "尚无简报",
   "briefCreate.detail":

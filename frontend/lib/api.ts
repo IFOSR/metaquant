@@ -126,6 +126,18 @@ interface ApiResearchBrief {
   frozen_by: string | null;
 }
 
+interface ApiBriefDraft {
+  hypothesis: string;
+  economic_mechanism: string;
+  expected_direction: ResearchBrief["expectedDirection"];
+  falsification_conditions: string[];
+  allowed_data_domains: string[];
+  forbidden_data_domains: string[];
+  constraints: string[];
+  evidence_ref_ids: string[];
+  uncertainties: string[];
+}
+
 interface ApiProblem {
   type?: string;
   title?: string;
@@ -391,6 +403,10 @@ export interface QuantApiClient {
   ): Promise<ResearchBrief>;
   updateBrief(id: string, brief: ResearchBrief): Promise<ResearchBrief>;
   freezeBrief(id: string, resourceVersion?: number): Promise<ResearchBrief>;
+  parsePaperToBrief(
+    paperText: string,
+    market: MarketId,
+  ): Promise<BriefDraftInput>;
   createResearchJob(input: CreateResearchJobInput): Promise<ResearchJob>;
   preregisterExperiment(input: PreregisterExperimentInput): Promise<Experiment>;
   getExperiment(id: string): Promise<Experiment>;
@@ -532,6 +548,18 @@ export class HttpQuantApiClient implements QuantApiClient {
       body: JSON.stringify(commandMetadata("Freeze a research brief version")),
     });
     return this.getBrief(id);
+  }
+
+  async parsePaperToBrief(paperText: string, market: MarketId) {
+    const result = await this.request<{ brief: ApiBriefDraft }>(
+      "/research-briefs:from-paper",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paper_text: paperText, market }),
+      },
+    );
+    return mapBriefDraft(result.body.brief);
   }
 
   async createResearchJob(input: CreateResearchJobInput) {
@@ -1132,6 +1160,20 @@ function commandMetadata(reason: string) {
       wall_clock_minutes: 60,
     },
     schema_version: "1.0",
+  };
+}
+
+function mapBriefDraft(input: ApiBriefDraft): BriefDraftInput {
+  return {
+    hypothesis: input.hypothesis,
+    economicMechanism: input.economic_mechanism,
+    expectedDirection: input.expected_direction,
+    falsificationConditions: input.falsification_conditions,
+    allowedDataDomains: input.allowed_data_domains,
+    forbiddenDataDomains: input.forbidden_data_domains,
+    constraints: input.constraints,
+    evidenceRefIds: input.evidence_ref_ids,
+    uncertainties: input.uncertainties,
   };
 }
 

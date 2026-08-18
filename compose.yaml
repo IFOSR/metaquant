@@ -6,6 +6,8 @@ x-app-environment: &app-environment
   MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-quant_minio_dev}
   MINIO_BUCKET: ${MINIO_BUCKET:-artifacts}
   IFIND_REFRESH_TOKEN: ${IFIND_REFRESH_TOKEN:-}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
   FORMAL_SNAPSHOT_CATALOG_PATH: /app/config/formal-snapshots.json
   VALIDATION_POLICY_CATALOG_PATH: /app/config/validation-policies.json
   LABEL_SNAPSHOT_CATALOG_PATH: /app/config/label-snapshots.json

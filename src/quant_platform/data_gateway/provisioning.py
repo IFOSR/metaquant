@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import os
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from uuid import uuid4
@@ -232,3 +234,45 @@ class DataProvisioning:
         return futures_daily_to_pit_rows(
             market_data, source_id="ifind-cn", ingested_at=datetime.now(UTC)
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ProvisioningTask:
+    task_id: str
+    status: str  # PENDING / RUNNING / SUCCEEDED / FAILED
+    result: ProvisionResult | None
+    error: str | None
+
+
+class ProvisioningTaskManager:
+    """内存任务注册表：后台线程跑采集，前端轮询状态。"""
+
+    def __init__(self) -> None:
+        self._tasks: dict[str, ProvisioningTask] = {}
+        self._lock = threading.Lock()
+
+    def start(self, fn: Callable[[], ProvisionResult]) -> str:
+        task_id = uuid4().hex
+        with self._lock:
+            self._tasks[task_id] = ProvisioningTask(task_id, "PENDING", None, None)
+        threading.Thread(target=self._run, args=(task_id, fn), daemon=True).start()
+        return task_id
+
+    def _run(self, task_id: str, fn: Callable[[], ProvisionResult]) -> None:
+        with self._lock:
+            self._tasks[task_id] = ProvisioningTask(task_id, "RUNNING", None, None)
+        try:
+            result = fn()
+            with self._lock:
+                self._tasks[task_id] = ProvisioningTask(
+                    task_id, "SUCCEEDED", result, None
+                )
+        except Exception as exc:  # noqa: BLE001
+            with self._lock:
+                self._tasks[task_id] = ProvisioningTask(
+                    task_id, "FAILED", None, str(exc)
+                )
+
+    def get(self, task_id: str) -> ProvisioningTask | None:
+        with self._lock:
+            return self._tasks.get(task_id)

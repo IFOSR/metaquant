@@ -7,7 +7,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header
 
-from quant_platform.data_gateway.provisioning import DataProvisioning
+from quant_platform.data_gateway.provisioning import (
+    DataProvisioning,
+    ProvisioningTaskManager,
+    ProvisionResult,
+)
 from quant_platform.data_gateway.universe import UniverseResolver
 from quant_platform.experiment_runtime.repository import (
     SqlAlchemyExperimentRepository,
@@ -36,6 +40,7 @@ def build_experiment_router(
     repository: SqlAlchemyExperimentRepository,
     principal_provider: ResearchPrincipalProvider,
     provisioning: DataProvisioning | None = None,
+    task_manager: ProvisioningTaskManager | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1", tags=["Experiments"])
 
@@ -108,7 +113,7 @@ def build_experiment_router(
             raise _not_found()
         return {"items": repository.list_formal_snapshots()}
 
-    @router.post("/data-provisioning")
+    @router.post("/data-provisioning", status_code=202)
     def provision_data(
         command: ProvisionCommand,
         actor: ResearchPrincipal = Depends(principal),  # noqa: B008
@@ -119,7 +124,7 @@ def build_experiment_router(
             market="CN_COMMODITY_FUTURES",
         ):
             raise _not_found()
-        if provisioning is None:
+        if provisioning is None or task_manager is None:
             raise ProblemError(
                 status=503,
                 code="DATA_PROVISIONING_UNAVAILABLE",
@@ -132,8 +137,6 @@ def build_experiment_router(
                 explicit=tuple(command.explicit_instruments),
                 exchange_scope=tuple(command.exchange_scope),
             )
-            result = provisioning.provision(spec, start=command.start, end=command.end)
-            repository.register_snapshot(result.formal_snapshot, result.label_snapshot)
         except ValueError as exc:
             raise ProblemError(
                 status=422,
@@ -141,14 +144,54 @@ def build_experiment_router(
                 title="Data provisioning failed",
                 detail=str(exc),
             ) from exc
+
+        def work() -> ProvisionResult:
+            result = provisioning.provision(spec, start=command.start, end=command.end)
+            repository.register_snapshot(result.formal_snapshot, result.label_snapshot)
+            return result
+
+        task_id = task_manager.start(work)
+        return {"task_id": task_id, "status": "PENDING"}
+
+    @router.get("/data-provisioning/{task_id}")
+    def get_provisioning_task(
+        task_id: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.can(
+            {"research.experiments.preregister", "research.jobs.manage"},
+            project_id="local",
+            market="CN_COMMODITY_FUTURES",
+        ):
+            raise _not_found()
+        if task_manager is None:
+            raise ProblemError(
+                status=503,
+                code="DATA_PROVISIONING_UNAVAILABLE",
+                title="Data provisioning unavailable",
+                detail="Data provisioning is not configured for this deployment.",
+            )
+        task = task_manager.get(task_id)
+        if task is None:
+            raise _not_found()
+        result = task.result
         return {
-            "snapshot_id": result.snapshot_id,
-            "snapshot_manifest_hash": result.snapshot_manifest_hash,
-            "decision_time": result.decision_time,
-            "instrument_count": result.instrument_count,
-            "row_count": result.row_count,
-            "label_snapshot_id": str(result.label_snapshot["snapshot_id"]),
-            "label_snapshot_manifest_hash": result.label_manifest_hash,
+            "task_id": task.task_id,
+            "status": task.status,
+            "error": task.error,
+            "snapshot_id": result.snapshot_id if result else None,
+            "snapshot_manifest_hash": (
+                result.snapshot_manifest_hash if result else None
+            ),
+            "decision_time": result.decision_time if result else None,
+            "instrument_count": result.instrument_count if result else None,
+            "row_count": result.row_count if result else None,
+            "label_snapshot_id": (
+                str(result.label_snapshot["snapshot_id"]) if result else None
+            ),
+            "label_snapshot_manifest_hash": (
+                result.label_manifest_hash if result else None
+            ),
         }
 
     @router.get("/experiments/{experiment_id}")

@@ -186,6 +186,19 @@ export interface ProvisionResult {
   labelSnapshotManifestHash: string;
 }
 
+export interface ProvisioningTaskStatus {
+  taskId: string;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
+  error: string | null;
+  snapshotId: string | null;
+  snapshotManifestHash: string | null;
+  decisionTime: string | null;
+  instrumentCount: number | null;
+  rowCount: number | null;
+  labelSnapshotId: string | null;
+  labelSnapshotManifestHash: string | null;
+}
+
 export interface FactorIrInput {
   alias: string;
   fieldRef: string;

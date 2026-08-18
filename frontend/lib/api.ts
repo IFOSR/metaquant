@@ -19,6 +19,7 @@ import type {
   PromotionSummary,
   ProvisionInput,
   ProvisionResult,
+  ProvisioningTaskStatus,
   ResearchBrief,
   ResearchJob,
   RunBacktestInput,
@@ -58,6 +59,19 @@ interface ApiProvisionResult {
   row_count: number;
   label_snapshot_id: string;
   label_snapshot_manifest_hash: string;
+}
+
+interface ApiProvisioningTaskStatus {
+  task_id: string;
+  status: string;
+  error: string | null;
+  snapshot_id: string | null;
+  snapshot_manifest_hash: string | null;
+  decision_time: string | null;
+  instrument_count: number | null;
+  row_count: number | null;
+  label_snapshot_id: string | null;
+  label_snapshot_manifest_hash: string | null;
 }
 
 interface ApiBudget {
@@ -434,7 +448,8 @@ export interface QuantApiClient {
     instruments: string[],
   ): Promise<MarketDataCoverageEntry[]>;
   listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
-  provisionData(input: ProvisionInput): Promise<ProvisionResult>;
+  provisionData(input: ProvisionInput): Promise<{ taskId: string }>;
+  getProvisioningTask(taskId: string): Promise<ProvisioningTaskStatus>;
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
@@ -739,7 +754,7 @@ export class HttpQuantApiClient implements QuantApiClient {
   }
 
   async provisionData(input: ProvisionInput) {
-    const result = await this.request<ApiProvisionResult>(
+    const result = await this.request<{ task_id: string; status: string }>(
       "/data-provisioning",
       {
         method: "POST",
@@ -753,7 +768,14 @@ export class HttpQuantApiClient implements QuantApiClient {
         }),
       },
     );
-    return mapProvisionResult(result.body);
+    return { taskId: result.body.task_id };
+  }
+
+  async getProvisioningTask(taskId: string) {
+    const result = await this.request<ApiProvisioningTaskStatus>(
+      `/data-provisioning/${taskId}`,
+    );
+    return mapProvisioningTaskStatus(result.body);
   }
 
   async getExecutionState() {
@@ -845,6 +867,23 @@ export class HttpQuantApiClient implements QuantApiClient {
 
 function mapProvisionResult(input: ApiProvisionResult): ProvisionResult {
   return {
+    snapshotId: input.snapshot_id,
+    snapshotManifestHash: input.snapshot_manifest_hash,
+    decisionTime: input.decision_time,
+    instrumentCount: input.instrument_count,
+    rowCount: input.row_count,
+    labelSnapshotId: input.label_snapshot_id,
+    labelSnapshotManifestHash: input.label_snapshot_manifest_hash,
+  };
+}
+
+function mapProvisioningTaskStatus(
+  input: ApiProvisioningTaskStatus,
+): ProvisioningTaskStatus {
+  return {
+    taskId: input.task_id,
+    status: input.status as ProvisioningTaskStatus["status"],
+    error: input.error,
     snapshotId: input.snapshot_id,
     snapshotManifestHash: input.snapshot_manifest_hash,
     decisionTime: input.decision_time,

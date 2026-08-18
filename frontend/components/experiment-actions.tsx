@@ -146,27 +146,41 @@ export function ExperimentActions({
     setProvisioning(true);
     setError(null);
     try {
-      const result = await quantApiClient.provisionData({
+      const { taskId } = await quantApiClient.provisionData({
         universeRef: "futures:explicit",
         explicitInstruments: instruments,
         exchangeScope: [],
         start: provStart,
         end: provEnd,
       });
-      const fresh: FormalSnapshotInfo = {
-        snapshotId: result.snapshotId,
-        manifestHash: result.snapshotManifestHash,
-        market: "CN_COMMODITY_FUTURES",
-        universeRef: "futures:explicit",
-        frequency: "1d",
-        decisionClock: "T_CLOSE+30m",
-        tradeClock: "T+1_OPEN",
-        frozenAt: null,
-      };
-      setSnapshots((prev) => [...prev, fresh]);
-      setSnapshotId(result.snapshotId);
-      setDecisionTime(result.decisionTime);
-      setProvOpen(false);
+      // 后台采集，轮询直到完成
+      for (;;) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const status = await quantApiClient.getProvisioningTask(taskId);
+        if (status.status === "SUCCEEDED" && status.snapshotId) {
+          const fresh: FormalSnapshotInfo = {
+            snapshotId: status.snapshotId,
+            manifestHash: status.snapshotManifestHash ?? "",
+            market: "CN_COMMODITY_FUTURES",
+            universeRef: "futures:explicit",
+            frequency: "1d",
+            decisionClock: "T_CLOSE+30m",
+            tradeClock: "T+1_OPEN",
+            frozenAt: null,
+          };
+          setSnapshots((prev) => [...prev, fresh]);
+          setSnapshotId(status.snapshotId);
+          setDecisionTime(
+            status.decisionTime ?? new Date().toISOString(),
+          );
+          setProvOpen(false);
+          break;
+        }
+        if (status.status === "FAILED") {
+          setError(status.error ?? "数据供给失败");
+          break;
+        }
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {

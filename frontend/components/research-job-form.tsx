@@ -12,6 +12,7 @@ import type {
   FrequencyId,
   MarketId,
 } from "../lib/types";
+import { RESEARCH_TEMPLATES, type ResearchTemplate } from "../lib/research-templates";
 import { useI18n } from "./i18n-provider";
 
 const FREQUENCIES: FrequencyId[] = ["1d", "1m", "5m", "15m", "30m", "60m"];
@@ -40,6 +41,16 @@ export function ResearchJobForm() {
     Array<{ field: keyof CreateResearchJobInput; message: MessageKey }>
   >([]);
   const [submitted, setSubmitted] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ResearchTemplate | null>(
+    null,
+  );
+
+  function pickTemplate(template: ResearchTemplate) {
+    setSelectedTemplate(template);
+    setForm(template.job);
+    setErrors([]);
+    setSubmitted(false);
+  }
 
   function update<K extends keyof CreateResearchJobInput>(
     field: K,
@@ -58,9 +69,23 @@ export function ResearchJobForm() {
       return;
     }
     setSubmitted(true);
-    void quantApiClient.createResearchJob(form).then((job) => {
-      router.push(`/research/jobs/${job.id}`);
-    });
+    void (async () => {
+      try {
+        const job = await quantApiClient.createResearchJob(form);
+        if (selectedTemplate) {
+          await quantApiClient.createBrief(
+            job.id,
+            selectedTemplate.brief,
+            parseInt(job.version, 10),
+          );
+          router.push(`/research/jobs/${job.id}/brief`);
+        } else {
+          router.push(`/research/jobs/${job.id}`);
+        }
+      } catch {
+        setSubmitted(false);
+      }
+    })();
   }
 
   const errorFor = (field: keyof CreateResearchJobInput) => {
@@ -70,6 +95,33 @@ export function ResearchJobForm() {
 
   return (
     <form className="research-form" onSubmit={submit} noValidate>
+      <div className="form-section template-picker-section">
+        <div className="form-section-heading">
+          <span className="section-number">00</span>
+          <div>
+            <span className="eyebrow">快速开始</span>
+            <h2>选一个研究方向，字段自动填充</h2>
+          </div>
+        </div>
+        <div className="template-grid">
+          {RESEARCH_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              className={`template-card ${
+                selectedTemplate?.id === template.id ? "is-selected" : ""
+              }`}
+              onClick={() => pickTemplate(template)}
+            >
+              <strong>{template.name}</strong>
+              <span>{template.description}</span>
+            </button>
+          ))}
+        </div>
+        <p className="muted">
+          选一个模板会自动填好下面的市场/时钟/合约字段，并在创建后自动生成研究简报，你只需微调。
+        </p>
+      </div>
       <div className="form-section">
         <div className="form-section-heading">
           <span className="section-number">01</span>

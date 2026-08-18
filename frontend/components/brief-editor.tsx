@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { quantApiClient } from "../lib/client";
 import type { ResearchBrief } from "../lib/types";
+import { RESEARCH_TEMPLATES, type ResearchTemplate } from "../lib/research-templates";
 import { useI18n } from "./i18n-provider";
 
 export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
@@ -18,6 +19,19 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
     setBrief(result);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2000);
+  }
+
+  function applyTemplate(template: ResearchTemplate) {
+    setBrief({
+      ...brief,
+      hypothesis: template.brief.hypothesis,
+      economicMechanism: template.brief.economicMechanism,
+      expectedDirection: template.brief.expectedDirection,
+      falsificationConditions: template.brief.falsificationConditions,
+      constraints: template.brief.constraints,
+      uncertainties: template.brief.uncertainties,
+    });
+    setSaved(false);
   }
 
   async function freeze() {
@@ -40,6 +54,22 @@ export function BriefEditor({ initialBrief }: { initialBrief: ResearchBrief }) {
           })}
         </span>
         {brief.contentHash ? <span className="mono">{brief.contentHash}</span> : null}
+      </div>
+      <div className="brief-template-row">
+        <span className="eyebrow">用预置模板填充</span>
+        <div className="brief-template-buttons">
+          {RESEARCH_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              className="button button-secondary button-small"
+              disabled={disabled}
+              onClick={() => applyTemplate(template)}
+            >
+              {template.name}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="brief-grid">
         <label className="field field-wide">

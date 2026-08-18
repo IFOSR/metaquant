@@ -333,3 +333,32 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+.template-picker-section { border-color: var(--amber); }
+.template-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin: 0 0 16px; }
+.template-card {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 15px;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.template-card:hover { border-color: var(--line-dark); }
+.template-card.is-selected { background: rgba(231, 166, 59, 0.12); border-color: var(--amber); }
+.template-card strong { font-size: 0.95rem; }
+.template-card span { color: var(--muted); font-size: 0.84rem; }
+
+.next-step-bar { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--amber); display: flex; align-items: center; gap: 14px; justify-content: space-between; margin-bottom: 18px; padding: 14px 18px; }
+.next-step-bar .next-step-text { display: grid; gap: 3px; }
+.next-step-bar .next-step-text strong { font-size: 0.92rem; }
+.next-step-bar .next-step-text span { color: var(--muted); font-size: 0.84rem; }
+
+.brief-template-row { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.brief-template-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.button-small { font-size: 0.8rem; min-height: 34px; padding: 6px 12px; }

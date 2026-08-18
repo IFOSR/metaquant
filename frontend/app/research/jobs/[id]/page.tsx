@@ -5,6 +5,7 @@ import { ExperimentMonitor } from "../../../../components/experiment-monitor";
 import { FactorValidationReportPanel } from "../../../../components/factor-validation-report";
 import { IndependencePanel } from "../../../../components/independence-panel";
 import { LineagePanel } from "../../../../components/lineage-panel";
+import { NextStepGuide } from "../../../../components/next-step-guide";
 import { PromotionPanel } from "../../../../components/promotion-panel";
 import { ResearchJobSnapshot } from "../../../../components/research-job-snapshot";
 import { StatusChip } from "../../../../components/status-chip";
@@ -72,6 +73,13 @@ export default async function ResearchJobDetailPage({
           )}
         </div>
       </div>
+      <NextStepGuide
+        job={job}
+        hasBrief={briefVersions.length > 0}
+        hasFrozenBrief={frozenBrief !== null}
+        hasExperiment={experiment !== null}
+        hasRun={run !== null}
+      />
       {isStale ? (
         <div className="freshness-banner" role="alert">
           <strong>{t("detail.readOnlyUntilRefresh")}</strong>

@@ -9,7 +9,7 @@ import { useI18n } from "./i18n-provider";
 
 const CN_A_TEMPLATE = {
   schema_version: "factor-ir/v1",
-  factor_id: "classic.cn_a.momentum_1d",
+  factor_id: "classic.cn_a.momentum_5d",
   version: "1.0.0",
   market_scope: {
     market: "CN_A",
@@ -32,40 +32,40 @@ const CN_A_TEMPLATE = {
   expression: {
     op: "returns",
     args: [{ ref: "close" }],
-    params: { periods: 1 },
+    params: { periods: 5 },
   },
   validation_policy_ref: "policy://cn-a-daily-factor/v1",
 };
 
 const FUTURES_TEMPLATE = {
   schema_version: "factor-ir/v1",
-  factor_id: "classic.cn_futures.minute_momentum_60m",
+  factor_id: "classic.cn_futures.momentum_5d",
   version: "1.0.0",
   market_scope: {
     market: "CN_COMMODITY_FUTURES",
-    frequency: "5m",
+    frequency: "1d",
     universe_ref: "universe://cn-commodity-liquid-pit/v1",
     exchange_scope: ["SHFE", "INE", "DCE", "CZCE", "GFEX"],
     contract_chain_ref: "chain://commodity/main-volume-pit/v1",
     roll_policy_ref: "policy://roll/volume-no-future/v1",
   },
   decision_clock: {
-    signal_time: "T_BAR+1m",
-    earliest_trade_time: "T_BAR+2m",
+    signal_time: "T_CLOSE+30m",
+    earliest_trade_time: "T+1_OPEN",
   },
   inputs: [
     {
       alias: "close",
-      field_ref: "market.minute.close",
+      field_ref: "market.eod.close",
       data_type: "ScalarSeries",
       unit: "CNY",
-      available_time_rule: "T_BAR+1m",
+      available_time_rule: "T_CLOSE+20m",
     },
   ],
   expression: {
     op: "returns",
     args: [{ ref: "close" }],
-    params: { periods: 12 },
+    params: { periods: 5 },
   },
   validation_policy_ref: "policy://cn-commodity-daily-factor/v1",
 };

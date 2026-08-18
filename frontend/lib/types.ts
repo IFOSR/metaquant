@@ -168,6 +168,24 @@ export interface FormalSnapshotInfo {
   frozenAt: string | null;
 }
 
+export interface ProvisionInput {
+  universeRef: string;
+  explicitInstruments: string[];
+  exchangeScope: string[];
+  start: string;
+  end: string;
+}
+
+export interface ProvisionResult {
+  snapshotId: string;
+  snapshotManifestHash: string;
+  decisionTime: string;
+  instrumentCount: number;
+  rowCount: number;
+  labelSnapshotId: string;
+  labelSnapshotManifestHash: string;
+}
+
 export interface FactorIrInput {
   alias: string;
   fieldRef: string;

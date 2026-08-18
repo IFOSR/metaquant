@@ -111,6 +111,11 @@ export function ExperimentActions({
   const [seed, setSeed] = useState(42);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provOpen, setProvOpen] = useState(false);
+  const [provInstruments, setProvInstruments] = useState("");
+  const [provStart, setProvStart] = useState("2026-06-01");
+  const [provEnd, setProvEnd] = useState("2026-08-15");
+  const [provisioning, setProvisioning] = useState(false);
 
   useEffect(() => {
     quantApiClient
@@ -133,6 +138,40 @@ export function ExperimentActions({
     setDecisionTime(defaultDecisionTime(match?.frozenAt ?? null));
     setError(null);
     setOpen(true);
+  }
+
+  async function provisionAndSelect() {
+    const instruments = provInstruments.split(/[,\s]+/).filter(Boolean);
+    if (!instruments.length) return;
+    setProvisioning(true);
+    setError(null);
+    try {
+      const result = await quantApiClient.provisionData({
+        universeRef: "futures:explicit",
+        explicitInstruments: instruments,
+        exchangeScope: [],
+        start: provStart,
+        end: provEnd,
+      });
+      const fresh: FormalSnapshotInfo = {
+        snapshotId: result.snapshotId,
+        manifestHash: result.snapshotManifestHash,
+        market: "CN_COMMODITY_FUTURES",
+        universeRef: "futures:explicit",
+        frequency: "1d",
+        decisionClock: "T_CLOSE+30m",
+        tradeClock: "T+1_OPEN",
+        frozenAt: null,
+      };
+      setSnapshots((prev) => [...prev, fresh]);
+      setSnapshotId(result.snapshotId);
+      setDecisionTime(result.decisionTime);
+      setProvOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setProvisioning(false);
+    }
   }
 
   async function submitPreregister() {
@@ -225,6 +264,58 @@ export function ExperimentActions({
         </div>
       ) : (
         <div className="research-form">
+          <div className="provision-block">
+            <button
+              type="button"
+              className="button button-secondary button-small"
+              onClick={() => setProvOpen((open) => !open)}
+            >
+              {t("expAction.provision")}
+            </button>
+            {provOpen ? (
+              <div className="paper-import panel">
+                <label className="field field-wide">
+                  <span>{t("expAction.provInstruments")}</span>
+                  <textarea
+                    value={provInstruments}
+                    onChange={(event) => setProvInstruments(event.target.value)}
+                    rows={2}
+                    placeholder="RB2610.SHF, AU2612.SHF, …"
+                  />
+                </label>
+                <div className="field-grid">
+                  <label className="field">
+                    <span>{t("expAction.provStart")}</span>
+                    <input
+                      type="date"
+                      value={provStart}
+                      onChange={(event) => setProvStart(event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>{t("expAction.provEnd")}</span>
+                    <input
+                      type="date"
+                      value={provEnd}
+                      onChange={(event) => setProvEnd(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="form-actions">
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    disabled={provisioning || !provInstruments.trim()}
+                    onClick={provisionAndSelect}
+                  >
+                    {provisioning
+                      ? t("expAction.provisioning")
+                      : t("expAction.provisionRun")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
           <div className="field-grid">
             <label className="field">
               <span>{t("expAction.snapshot")}</span>

@@ -17,6 +17,8 @@ import type {
   MarketId,
   PreregisterExperimentInput,
   PromotionSummary,
+  ProvisionInput,
+  ProvisionResult,
   ResearchBrief,
   ResearchJob,
   RunBacktestInput,
@@ -46,6 +48,16 @@ interface ApiFormalSnapshot {
   decision_clock?: string | null;
   trade_clock?: string | null;
   frozen_at?: string | null;
+}
+
+interface ApiProvisionResult {
+  snapshot_id: string;
+  snapshot_manifest_hash: string;
+  decision_time: string;
+  instrument_count: number;
+  row_count: number;
+  label_snapshot_id: string;
+  label_snapshot_manifest_hash: string;
 }
 
 interface ApiBudget {
@@ -422,6 +434,7 @@ export interface QuantApiClient {
     instruments: string[],
   ): Promise<MarketDataCoverageEntry[]>;
   listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
+  provisionData(input: ProvisionInput): Promise<ProvisionResult>;
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
@@ -725,6 +738,24 @@ export class HttpQuantApiClient implements QuantApiClient {
     );
   }
 
+  async provisionData(input: ProvisionInput) {
+    const result = await this.request<ApiProvisionResult>(
+      "/data-provisioning",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          universe_ref: input.universeRef,
+          explicit_instruments: input.explicitInstruments,
+          exchange_scope: input.exchangeScope,
+          start: input.start,
+          end: input.end,
+        }),
+      },
+    );
+    return mapProvisionResult(result.body);
+  }
+
   async getExecutionState() {
     const result = await this.request<ApiExecutionState>("/execution/state");
     return mapExecutionState(result.body);
@@ -810,6 +841,18 @@ export class HttpQuantApiClient implements QuantApiClient {
     }
     return { body: body as T, response };
   }
+}
+
+function mapProvisionResult(input: ApiProvisionResult): ProvisionResult {
+  return {
+    snapshotId: input.snapshot_id,
+    snapshotManifestHash: input.snapshot_manifest_hash,
+    decisionTime: input.decision_time,
+    instrumentCount: input.instrument_count,
+    rowCount: input.row_count,
+    labelSnapshotId: input.label_snapshot_id,
+    labelSnapshotManifestHash: input.label_snapshot_manifest_hash,
+  };
 }
 
 export function mapResearchJob(input: ApiResearchJob): ResearchJob {

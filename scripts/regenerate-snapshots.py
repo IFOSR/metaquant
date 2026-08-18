@@ -77,16 +77,31 @@ def _snapshot_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     ]
 
 
-def _label_rows(rows: list[dict[str, object]], horizon: int = 5) -> list[dict[str, object]]:
+def _label_rows(
+    rows: list[dict[str, object]], horizon: int = 5
+) -> tuple[list[dict[str, object]], object]:
     closes: dict[str, list[dict[str, object]]] = {}
     for row in rows:
         if row["field"] == "market.eod.close":
             closes.setdefault(str(row["instrument_id"]), []).append(row)
+
+    # 全市场交易日序列；决策时点取数据末尾前 2*horizon 个交易日，
+    # 保证既有足够历史算因子，又给未来收益留出 horizon 天的空间。
+    all_times = sorted({r["event_time"] for r in rows})
+    if len(all_times) <= 2 * horizon:
+        decision_time = all_times[horizon] if len(all_times) > horizon else all_times[-1]
+    else:
+        decision_time = all_times[-(2 * horizon)]
+    decision_index = all_times.index(decision_time)
+    valid = set(all_times[decision_index - horizon + 1 : decision_index + 1])
+
     label_rows: list[dict[str, object]] = []
     for series in closes.values():
         series.sort(key=lambda r: r["event_time"])  # type: ignore[arg-type, return-value]
         for i in range(len(series) - horizon):
             t0 = series[i]
+            if t0["event_time"] not in valid:
+                continue
             t5 = series[i + horizon]
             c0 = float(t0["value"])  # type: ignore[arg-type]
             c5 = float(t5["value"])  # type: ignore[arg-type]
@@ -100,7 +115,7 @@ def _label_rows(rows: list[dict[str, object]], horizon: int = 5) -> list[dict[st
                     "value": (c5 - c0) / c0,
                 }
             )
-    return label_rows
+    return label_rows, decision_time
 
 
 def build_formal_snapshot(rows: list[dict[str, object]]) -> dict[str, object]:
@@ -143,21 +158,27 @@ def build_formal_snapshot(rows: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
-def build_label_snapshot(rows: list[dict[str, object]]) -> dict[str, object]:
-    return {
-        "schema_version": "label-snapshot/v1",
-        "snapshot_id": "label-snapshot-cn-futures-001",
-        "sealed": True,
-        "artifact_class": "FORMAL_LABEL",
-        "label": {
-            "label_id": "label://cn-futures-fwd-5d/v1",
-            "market": "CN_COMMODITY_FUTURES",
-            "horizon": 5,
-            "field_ref": "market.eod.forward_return_5d",
-            "return_definition": "close_to_close",
+def build_label_snapshot(
+    rows: list[dict[str, object]],
+) -> tuple[dict[str, object], object]:
+    label_rows, decision_time = _label_rows(rows)
+    return (
+        {
+            "schema_version": "label-snapshot/v1",
+            "snapshot_id": "label-snapshot-cn-futures-001",
+            "sealed": True,
+            "artifact_class": "FORMAL_LABEL",
+            "label": {
+                "label_id": "label://cn-futures-fwd-5d/v1",
+                "market": "CN_COMMODITY_FUTURES",
+                "horizon": 5,
+                "field_ref": "market.eod.forward_return_5d",
+                "return_definition": "close_to_close",
+            },
+            "rows": label_rows,
         },
-        "rows": _label_rows(rows),
-    }
+        decision_time,
+    )
 
 
 def main() -> None:
@@ -167,7 +188,7 @@ def main() -> None:
         raise SystemExit("数据库中没有 formal 日频数据，请先运行 ingest-market-data.py")
 
     formal = build_formal_snapshot(rows)
-    label = build_label_snapshot(rows)
+    label, decision_time = build_label_snapshot(rows)
 
     existing_formal = json.loads(FORMAL_PATH.read_text())
     kept = [
@@ -187,7 +208,7 @@ def main() -> None:
     label_rows = label["rows"]
     assert isinstance(formal_rows, list) and isinstance(label_rows, list)
     print(f"[formal] 快照 rows={len(formal_rows)}")
-    print(f"[label] 标签 rows={len(label_rows)}")
+    print(f"[label] 标签 rows={len(label_rows)}，decision_time={_iso(decision_time)}")
     print("已写入 config/formal-snapshots.json 和 config/label-snapshots.json")
 
 

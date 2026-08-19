@@ -20,6 +20,15 @@ const FORWARDED_RESPONSE_HEADERS = [
   "retry-after",
 ] as const;
 
+// LLM-backed endpoints (paper parsing / factor extraction) run synchronously
+// for 30-120s; give them a longer upstream timeout than the default 15s.
+const LONG_RUNNING_PATHS = new Set([
+  "research-pipelines:from-paper",
+  "research-pipelines:from-paper-file",
+  "research-briefs:from-paper",
+  "research-briefs:extract-factor",
+]);
+
 async function proxy(request: NextRequest, path: string[]) {
   if (!isLocalDemoRequest(request.headers)) {
     return Response.json(
@@ -79,6 +88,7 @@ async function proxy(request: NextRequest, path: string[]) {
     if (value) headers.set(name, value);
   }
   const target = buildProxyTarget(upstream, path, request.nextUrl.search);
+  const timeoutMs = LONG_RUNNING_PATHS.has(path[1]) ? 180_000 : 15_000;
   let response: Response;
   try {
     response = await fetch(target, {
@@ -89,7 +99,7 @@ async function proxy(request: NextRequest, path: string[]) {
           ? undefined
           : await request.arrayBuffer(),
       cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     return Response.json(

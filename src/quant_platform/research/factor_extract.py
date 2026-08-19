@@ -299,13 +299,13 @@ def _read_zhipu_key() -> str:
 
 
 def _default_runner() -> Runner:
-    if shutil.which("pi") and os.environ.get("CODE_CLI_API_KEY"):
-        return _pi_complete
-    if os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key():
-        return _zhipu_complete
     if os.environ.get("DEEPSEEK_API_KEY"):
         return _deepseek_complete
+    if os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key():
+        return _zhipu_complete
+    if shutil.which("pi") and os.environ.get("CODE_CLI_API_KEY"):
+        return _pi_complete
     raise FactorExtractionError(
-        "no agent runner configured: set CODE_CLI_API_KEY (pi), "
-        "ZHIPU_API_KEY, or DEEPSEEK_API_KEY"
+        "no agent runner configured: set DEEPSEEK_API_KEY, ZHIPU_API_KEY, "
+        "or CODE_CLI_API_KEY (pi)"
     )

@@ -201,6 +201,14 @@ export interface ProvisioningTaskStatus {
   instruments: string[] | null;
 }
 
+export interface LabelSnapshotInfo {
+  snapshotId: string;
+  manifestHash: string;
+  market: string;
+  horizon: number;
+  labelId: string;
+}
+
 export interface FactorIrInput {
   alias: string;
   fieldRef: string;

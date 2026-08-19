@@ -422,6 +422,7 @@ const zh = {
 
   "expAction.preregister": "预注册实验",
   "expAction.run": "运行实验",
+  "expAction.validate": "验证因子",
   "expAction.busy": "正在提交…",
   "expAction.snapshot": "正式快照",
   "expAction.factorIr": "因子 IR（JSON）",

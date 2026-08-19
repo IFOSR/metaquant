@@ -113,6 +113,20 @@ def build_experiment_router(
             raise _not_found()
         return {"items": repository.list_formal_snapshots()}
 
+    @router.get("/label-snapshots")
+    def list_label_snapshots(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.scopes(
+            {
+                "research.experiments.read",
+                "research.jobs.read",
+                "research.jobs.manage",
+            }
+        ):
+            raise _not_found()
+        return {"items": repository.list_label_snapshots()}
+
     @router.post("/data-provisioning", status_code=202)
     def provision_data(
         command: ProvisionCommand,

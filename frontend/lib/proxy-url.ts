@@ -11,6 +11,7 @@ export function isAllowedQuantApiPath(path: string[]) {
   if (path[0] !== "v1") return false;
   if (path[1] === "session") return path.length === 2;
   if (path[1] === "formal-snapshots") return path.length === 2;
+  if (path[1] === "label-snapshots") return path.length === 2;
   if (path[1] === "data-provisioning") {
     return path.length === 2 || path.length === 3;
   }

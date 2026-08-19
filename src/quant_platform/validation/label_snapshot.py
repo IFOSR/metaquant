@@ -136,6 +136,7 @@ class FormalLabelSnapshot:
 class LabelSnapshotCatalog(Protocol):
     def resolve(self, snapshot_id: str, manifest_hash: str) -> FormalLabelSnapshot: ...
     def register(self, snapshot: FormalLabelSnapshot) -> None: ...
+    def list(self) -> list[dict[str, Any]]: ...
 
 
 class InMemoryLabelSnapshotCatalog:
@@ -156,6 +157,18 @@ class InMemoryLabelSnapshotCatalog:
     def register(self, snapshot: FormalLabelSnapshot) -> None:
         """运行时注册一个密封 label 快照（按需数据供给用）。"""
         self._snapshots[str(snapshot.snapshot_id)] = snapshot
+
+    def list(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "snapshot_id": snapshot_id,
+                "manifest_hash": snapshot.content_hash(),
+                "market": snapshot.label.market,
+                "horizon": snapshot.label.horizon,
+                "label_id": snapshot.label.label_id,
+            }
+            for snapshot_id, snapshot in sorted(self._snapshots.items())
+        ]
 
 
 class JsonLabelSnapshotCatalog(InMemoryLabelSnapshotCatalog):

@@ -13,6 +13,7 @@ import type {
   FactorValidationReport,
   FormalSnapshotInfo,
   IndependenceSummary,
+  LabelSnapshotInfo,
   MarketDataCoverageEntry,
   MarketId,
   PreregisterExperimentInput,
@@ -50,6 +51,14 @@ interface ApiFormalSnapshot {
   trade_clock?: string | null;
   frozen_at?: string | null;
   instruments?: string[] | null;
+}
+
+interface ApiLabelSnapshot {
+  snapshot_id: string;
+  manifest_hash: string;
+  market: string;
+  horizon: number;
+  label_id: string;
 }
 
 interface ApiProvisionResult {
@@ -452,6 +461,13 @@ export interface QuantApiClient {
   listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
   provisionData(input: ProvisionInput): Promise<{ taskId: string }>;
   getProvisioningTask(taskId: string): Promise<ProvisioningTaskStatus>;
+  listLabelSnapshots(): Promise<LabelSnapshotInfo[]>;
+  validateExperiment(
+    runId: string,
+    policyId: string,
+    labelSnapshotId: string,
+    labelSnapshotManifestHash: string,
+  ): Promise<ExperimentRun>;
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
@@ -781,6 +797,35 @@ export class HttpQuantApiClient implements QuantApiClient {
     return mapProvisioningTaskStatus(result.body);
   }
 
+  async listLabelSnapshots() {
+    const result = await this.request<ApiList<ApiLabelSnapshot>>(
+      "/label-snapshots",
+    );
+    return result.body.items.map(mapLabelSnapshot);
+  }
+
+  async validateExperiment(
+    runId: string,
+    policyId: string,
+    labelSnapshotId: string,
+    labelSnapshotManifestHash: string,
+  ) {
+    await this.request<ApiCommandReceipt>(`/experiment-runs/${runId}:validate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": this.idempotencyKey(),
+      },
+      body: JSON.stringify({
+        metadata: commandMetadata("Validate factor predictive power"),
+        policy_id: policyId,
+        label_snapshot_id: labelSnapshotId,
+        label_snapshot_manifest_hash: labelSnapshotManifestHash,
+      }),
+    });
+    return this.getExperimentRun(runId);
+  }
+
   async getExecutionState() {
     const result = await this.request<ApiExecutionState>("/execution/state");
     return mapExecutionState(result.body);
@@ -895,6 +940,16 @@ function mapProvisioningTaskStatus(
     labelSnapshotId: input.label_snapshot_id,
     labelSnapshotManifestHash: input.label_snapshot_manifest_hash,
     instruments: input.instruments,
+  };
+}
+
+function mapLabelSnapshot(input: ApiLabelSnapshot): LabelSnapshotInfo {
+  return {
+    snapshotId: input.snapshot_id,
+    manifestHash: input.manifest_hash,
+    market: input.market,
+    horizon: input.horizon,
+    labelId: input.label_id,
   };
 }
 

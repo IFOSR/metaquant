@@ -255,7 +255,51 @@ export function ExperimentActions({
     }
   }
 
-  if (experimentId && hasRun) return null;
+  async function validate() {
+    if (!experimentId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const experiment = await quantApiClient.getExperiment(experimentId);
+      if (!experiment.latestRunId) return;
+      const labels = await quantApiClient.listLabelSnapshots();
+      const label = labels.find((item) => item.market === market);
+      if (!label) throw new Error("无可用标签快照");
+      const policyId =
+        market === "CN_A"
+          ? "policy://cn-a-daily-factor/v1"
+          : "policy://cn-futures-daily-factor/v1";
+      await quantApiClient.validateExperiment(
+        experiment.latestRunId,
+        policyId,
+        label.snapshotId,
+        label.manifestHash,
+      );
+      setBusy(false);
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setBusy(false);
+    }
+  }
+
+  if (experimentId && hasRun) {
+    return (
+      <section className="panel">
+        <div className="form-actions">
+          <button
+            className="button button-primary"
+            type="button"
+            disabled={busy}
+            onClick={validate}
+          >
+            {busy ? t("expAction.busy") : t("expAction.validate")}
+          </button>
+          {error ? <span className="form-footnote">{error}</span> : null}
+        </div>
+      </section>
+    );
+  }
 
   if (experimentId) {
     return (

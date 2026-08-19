@@ -131,7 +131,7 @@ export function ExperimentActions({
       .catch(() => setSnapshots([]));
   }, []);
 
-  function openForm() {
+  async function openForm() {
     setIrText(
       JSON.stringify(
         market === "CN_A" ? CN_A_TEMPLATE : FUTURES_TEMPLATE,
@@ -145,6 +145,14 @@ export function ExperimentActions({
     setDecisionTime(defaultDecisionTime(match?.frozenAt ?? null));
     setError(null);
     setOpen(true);
+    // 用 label 快照的配套决策时点覆盖默认值，保证验证阶段标签不泄漏
+    try {
+      const labels = await quantApiClient.listLabelSnapshots();
+      const label = labels.find((item) => item.market === market);
+      if (label?.decisionTime) setDecisionTime(label.decisionTime);
+    } catch {
+      // 拿不到 label 时保留默认值
+    }
   }
 
   async function provisionAndSelect() {

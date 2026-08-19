@@ -207,6 +207,7 @@ export interface LabelSnapshotInfo {
   market: string;
   horizon: number;
   labelId: string;
+  decisionTime: string | null;
 }
 
 export interface FactorIrInput {

@@ -59,6 +59,7 @@ interface ApiLabelSnapshot {
   market: string;
   horizon: number;
   label_id: string;
+  decision_time: string | null;
 }
 
 interface ApiProvisionResult {
@@ -950,6 +951,7 @@ function mapLabelSnapshot(input: ApiLabelSnapshot): LabelSnapshotInfo {
     market: input.market,
     horizon: input.horizon,
     labelId: input.label_id,
+    decisionTime: input.decision_time,
   };
 }
 

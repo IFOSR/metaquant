@@ -47,6 +47,7 @@ class FormalLabelSnapshot:
     snapshot_id: str
     label: ForwardReturnLabel
     rows: tuple[LabelSnapshotRow, ...]
+    decision_time: datetime | None = None
 
     def __post_init__(self) -> None:
         _require_identifier(self.snapshot_id, "snapshot_id")
@@ -77,7 +78,17 @@ class FormalLabelSnapshot:
             )
             for row in cast(list[dict[str, Any]], payload["rows"])
         )
-        return cls(snapshot_id=str(payload["snapshot_id"]), label=label, rows=rows)
+        decision_time_raw = payload.get("decision_time")
+        return cls(
+            snapshot_id=str(payload["snapshot_id"]),
+            label=label,
+            rows=rows,
+            decision_time=(
+                datetime.fromisoformat(str(decision_time_raw))
+                if decision_time_raw
+                else None
+            ),
+        )
 
     def to_label_series(self) -> LabelSeries:
         return LabelSeries(
@@ -111,6 +122,9 @@ class FormalLabelSnapshot:
             "snapshot_id": self.snapshot_id,
             "sealed": True,
             "artifact_class": "FORMAL_LABEL",
+            "decision_time": (
+                self.decision_time.isoformat() if self.decision_time else None
+            ),
             "label": {
                 "label_id": self.label.label_id,
                 "market": self.label.market,
@@ -166,6 +180,11 @@ class InMemoryLabelSnapshotCatalog:
                 "market": snapshot.label.market,
                 "horizon": snapshot.label.horizon,
                 "label_id": snapshot.label.label_id,
+                "decision_time": (
+                    snapshot.decision_time.isoformat()
+                    if snapshot.decision_time
+                    else None
+                ),
             }
             for snapshot_id, snapshot in sorted(self._snapshots.items())
         ]
@@ -185,32 +204,5 @@ class JsonLabelSnapshotCatalog(InMemoryLabelSnapshotCatalog):
                 raise ValueError(
                     "label snapshot catalog accepts only FORMAL_LABEL snapshots"
                 )
-            label_payload = cast(dict[str, Any], item["label"])
-            label = ForwardReturnLabel(
-                label_id=str(label_payload["label_id"]),
-                market=str(label_payload["market"]),
-                horizon=int(label_payload["horizon"]),
-                field_ref=str(label_payload["field_ref"]),
-                return_definition=str(
-                    label_payload.get("return_definition", "close_to_close")
-                ),
-            )
-            rows = tuple(
-                LabelSnapshotRow(
-                    instrument_id=str(row["instrument_id"]),
-                    event_time=datetime.fromisoformat(str(row["event_time"])),
-                    available_time=datetime.fromisoformat(str(row["available_time"])),
-                    value=(
-                        float(row["value"]) if row.get("value") is not None else None
-                    ),
-                )
-                for row in cast(list[dict[str, Any]], item["rows"])
-            )
-            snapshots.append(
-                FormalLabelSnapshot(
-                    snapshot_id=str(item["snapshot_id"]),
-                    label=label,
-                    rows=rows,
-                )
-            )
+            snapshots.append(FormalLabelSnapshot.from_payload(item))
         return cls(tuple(snapshots))

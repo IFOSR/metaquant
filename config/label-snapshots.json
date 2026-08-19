@@ -31,6 +31,7 @@
     "snapshot_id": "label-snapshot-cn-futures-001",
     "sealed": true,
     "artifact_class": "FORMAL_LABEL",
+    "decision_time": "2026-08-03T07:00:00+00:00",
     "label": {
       "label_id": "label://cn-futures-fwd-5d/v1",
       "market": "CN_COMMODITY_FUTURES",

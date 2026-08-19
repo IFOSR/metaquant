@@ -168,6 +168,7 @@ def build_label_snapshot(
             "snapshot_id": "label-snapshot-cn-futures-001",
             "sealed": True,
             "artifact_class": "FORMAL_LABEL",
+            "decision_time": _iso(decision_time),
             "label": {
                 "label_id": "label://cn-futures-fwd-5d/v1",
                 "market": "CN_COMMODITY_FUTURES",

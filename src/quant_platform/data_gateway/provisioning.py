@@ -204,7 +204,7 @@ class DataProvisioning:
 
         sid = snapshot_id or f"snapshot-cn-futures-{uuid4().hex[:12]}"
         formal = build_formal_snapshot(
-            rows, snapshot_id=sid, universe_ref=spec.universe_ref
+            rows, snapshot_id=sid, universe_ref="futures:liquid-initial"
         )
         label, decision_time = build_label_snapshot(rows, snapshot_id=f"label-{sid}")
 

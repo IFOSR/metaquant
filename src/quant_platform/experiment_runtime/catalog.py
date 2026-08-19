@@ -47,6 +47,12 @@ class InMemoryFormalSnapshotCatalog:
                 "decision_clock": payload.get("decision_clock"),
                 "trade_clock": payload.get("trade_clock"),
                 "frozen_at": payload.get("frozen_at"),
+                "instruments": sorted(
+                    {
+                        str(row["instrument_id"])
+                        for row in payload.get("rows", [])
+                    }
+                ),
             }
             for snapshot_id, payload in sorted(self._snapshots.items())
         ]

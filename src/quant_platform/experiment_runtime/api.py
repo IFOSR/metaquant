@@ -192,6 +192,7 @@ def build_experiment_router(
             "label_snapshot_manifest_hash": (
                 result.label_manifest_hash if result else None
             ),
+            "instruments": list(result.instruments) if result else None,
         }
 
     @router.get("/experiments/{experiment_id}")

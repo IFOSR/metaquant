@@ -53,6 +53,7 @@ class ProvisionResult:
     decision_time: str
     instrument_count: int
     row_count: int
+    instruments: tuple[str, ...]
     formal_snapshot: dict[str, object]
     label_snapshot: dict[str, object]
     label_manifest_hash: str
@@ -213,6 +214,7 @@ class DataProvisioning:
             decision_time=decision_time,
             instrument_count=len({row.instrument_id for row in rows}),
             row_count=len(rows),
+            instruments=tuple(sorted({row.instrument_id for row in rows})),
             formal_snapshot=formal,
             label_snapshot=label,
             label_manifest_hash=canonical_hash(label),

@@ -49,6 +49,7 @@ interface ApiFormalSnapshot {
   decision_clock?: string | null;
   trade_clock?: string | null;
   frozen_at?: string | null;
+  instruments?: string[] | null;
 }
 
 interface ApiProvisionResult {
@@ -72,6 +73,7 @@ interface ApiProvisioningTaskStatus {
   row_count: number | null;
   label_snapshot_id: string | null;
   label_snapshot_manifest_hash: string | null;
+  instruments: string[] | null;
 }
 
 interface ApiBudget {
@@ -749,6 +751,7 @@ export class HttpQuantApiClient implements QuantApiClient {
         decisionClock: item.decision_clock ?? null,
         tradeClock: item.trade_clock ?? null,
         frozenAt: item.frozen_at ?? null,
+        instruments: item.instruments ?? null,
       }),
     );
   }
@@ -891,6 +894,7 @@ function mapProvisioningTaskStatus(
     rowCount: input.row_count,
     labelSnapshotId: input.label_snapshot_id,
     labelSnapshotManifestHash: input.label_snapshot_manifest_hash,
+    instruments: input.instruments,
   };
 }
 

@@ -166,6 +166,7 @@ export interface FormalSnapshotInfo {
   decisionClock: string | null;
   tradeClock: string | null;
   frozenAt: string | null;
+  instruments: string[] | null;
 }
 
 export interface ProvisionInput {
@@ -197,6 +198,7 @@ export interface ProvisioningTaskStatus {
   rowCount: number | null;
   labelSnapshotId: string | null;
   labelSnapshotManifestHash: string | null;
+  instruments: string[] | null;
 }
 
 export interface FactorIrInput {

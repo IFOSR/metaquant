@@ -119,6 +119,7 @@ export function ExperimentActions({
   const [provStatus, setProvStatus] = useState<string | null>(null);
   const [provSummary, setProvSummary] = useState<{
     instruments: number;
+    instrumentsList: string[];
     rows: number;
     snapshotId: string;
   } | null>(null);
@@ -176,12 +177,14 @@ export function ExperimentActions({
             decisionClock: "T_CLOSE+30m",
             tradeClock: "T+1_OPEN",
             frozenAt: null,
+            instruments: status.instruments ?? [],
           };
           setSnapshots((prev) => [...prev, fresh]);
           setSnapshotId(status.snapshotId);
           setDecisionTime(status.decisionTime ?? new Date().toISOString());
           setProvSummary({
             instruments: status.instrumentCount ?? 0,
+            instrumentsList: status.instruments ?? [],
             rows: status.rowCount ?? 0,
             snapshotId: status.snapshotId,
           });
@@ -353,6 +356,11 @@ export function ExperimentActions({
                       rows: String(provSummary.rows),
                     })}
                     <span className="mono">{provSummary.snapshotId}</span>
+                    {provSummary.instrumentsList.length ? (
+                      <span className="mono">
+                        {provSummary.instrumentsList.join(", ")}
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -366,10 +374,16 @@ export function ExperimentActions({
                 onChange={(event) => setSnapshotId(event.target.value)}
               >
                 {snapshots.map((item) => (
-                  <option key={item.snapshotId} value={item.snapshotId}>
+                  <option
+                    key={item.snapshotId}
+                    value={item.snapshotId}
+                    title={item.instruments?.join(", ")}
+                  >
                     {item.snapshotId}
                     {item.market ? ` · ${item.market}` : ""}
-                    {item.frequency ? ` · ${item.frequency}` : ""}
+                    {item.instruments?.length
+                      ? ` · ${item.instruments.length} 个合约（${item.instruments.slice(0, 3).join(", ")}${item.instruments.length > 3 ? "…" : ""}）`
+                      : ""}
                   </option>
                 ))}
               </select>

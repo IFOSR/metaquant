@@ -23,9 +23,9 @@ const initial: CreateResearchJobInput = {
   environment: "RESEARCH",
   universeRef: "futures:liquid-initial",
   frequency: "1d",
-  decisionClock: "T close",
-  tradeClock: "T+1 open",
-  settlementClock: "T+1 settlement",
+  decisionClock: "T_CLOSE+30m",
+  tradeClock: "T+1_OPEN",
+  settlementClock: "T+1_SETTLEMENT",
   exchangeScope: ["SHFE"],
   contractSelection: "ACTUAL_CONTRACTS_ONLY",
   rollPolicy: "roll-policy://oi-confirmed-3d/v1",
@@ -149,7 +149,7 @@ export function ResearchJobForm() {
                   update("rollPolicy", "");
                 } else {
                   update("universeRef", "futures:liquid-initial");
-                  update("settlementClock", "T+1 settlement");
+                  update("settlementClock", "T+1_SETTLEMENT");
                   update("exchangeScope", ["SHFE"]);
                   update("contractSelection", "ACTUAL_CONTRACTS_ONLY");
                   update("rollPolicy", "roll-policy://oi-confirmed-3d/v1");

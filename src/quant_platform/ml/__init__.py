@@ -48,6 +48,14 @@ def _rows_to_frame(rows: list[dict[str, Any]], fields: list[str]) -> pd.DataFram
     return df[[column for column in fields if column in df.columns]]
 
 
+def _label_rows_to_series(rows: list[dict[str, Any]]) -> pd.Series:
+    """Reconstruct the label Series the sandbox driver passes to ``train``."""
+    if not rows:
+        return pd.Series(dtype="float64")
+    df = pd.DataFrame(rows).set_index(["instrument_id", "event_time"])
+    return df["label"].astype(float)
+
+
 def _base(base_url: str | None) -> str:
     return (base_url or os.environ.get("ML_DATA_SERVICE_URL", "") or "").rstrip("/")
 

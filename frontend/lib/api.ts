@@ -27,6 +27,12 @@ import type {
   Session,
   FactorExtractionResult,
   FromPaperPipelineResult,
+  FactorBuildSpec,
+  FactorBuildSpecExtraction,
+  FactorBuildSpecRecord,
+  FactorBuildRunRecord,
+  FactorCodeBundleDraft,
+  ModelFactorValidationReport,
 } from "./types";
 
 type Fetcher = typeof fetch;
@@ -493,6 +499,51 @@ export interface QuantApiClient {
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
+
+  // 因子构建
+  extractBuildSpec(
+    paperText: string,
+    market: MarketId,
+  ): Promise<FactorBuildSpecExtraction>;
+  generateCodeDraft(spec: FactorBuildSpec): Promise<FactorCodeBundleDraft>;
+  smokeSpec(spec: FactorBuildSpec): Promise<FactorCodeBundleDraft>;
+  createFactorBuildSpec(spec: FactorBuildSpec): Promise<FactorBuildSpecRecord>;
+  freezeFactorBuildSpec(
+    specId: string,
+    resourceVersion: number,
+  ): Promise<FactorBuildSpecRecord>;
+  registerCodeBundle(
+    specId: string,
+    specHash: string,
+    draft: FactorCodeBundleDraft,
+  ): Promise<Record<string, unknown>>;
+  trainFactor(input: {
+    spec_hash: string;
+    bundle_hash: string;
+    instrument_ids: string[];
+    decision_time: string;
+  }): Promise<{ run: FactorBuildRunRecord; weights_hash: string }>;
+  inferFactor(input: {
+    spec_hash: string;
+    bundle_hash: string;
+    weights_hash: string;
+    instrument_ids: string[];
+    decision_time: string;
+  }): Promise<{
+    run: FactorBuildRunRecord;
+    factor_values_hash: string;
+    output_hash: string;
+    observation_count: number;
+  }>;
+  validateFactor(input: {
+    spec_hash: string;
+    factor_values_hash: string;
+    instrument_ids: string[];
+    price_field: string;
+    horizon: number;
+    decision_time: string;
+  }): Promise<ModelFactorValidationReport>;
+  getFactorBuildRun(runId: string): Promise<FactorBuildRunRecord>;
 }
 
 export class QuantApiProblem extends Error {
@@ -944,6 +995,190 @@ export class HttpQuantApiClient implements QuantApiClient {
       },
     );
     return mapExecutionState(result.body);
+  }
+
+  // ── 因子构建 ──────────────────────────────────────────────────────
+
+  async extractBuildSpec(paperText: string, market: MarketId) {
+    const result = await this.request<{
+      spec: FactorBuildSpec;
+      spec_hash: string;
+    }>("/factor-build-specs:extract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paper_text: paperText, market }),
+    });
+    return { spec: result.body.spec, spec_hash: result.body.spec_hash };
+  }
+
+  async generateCodeDraft(spec: FactorBuildSpec) {
+    const result = await this.request<{
+      files: Record<string, string>;
+      manifest: Record<string, unknown>;
+      bundle_hash: string;
+    }>("/factor-build-specs:generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spec }),
+    });
+    return {
+      files: result.body.files,
+      manifest: result.body.manifest,
+      bundle_hash: result.body.bundle_hash,
+    };
+  }
+
+  async smokeSpec(spec: FactorBuildSpec) {
+    const result = await this.request<{
+      files: Record<string, string>;
+      manifest: Record<string, unknown>;
+      bundle_hash: string;
+      smoke: { exit_code: number; timed_out: boolean; stderr: string };
+    }>("/factor-build-specs:smoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spec }),
+    });
+    return {
+      files: result.body.files,
+      manifest: result.body.manifest,
+      bundle_hash: result.body.bundle_hash,
+      smoke: result.body.smoke,
+    };
+  }
+
+  async createFactorBuildSpec(spec: FactorBuildSpec) {
+    const result = await this.request<FactorBuildSpecRecord>(
+      "/factor-build-specs",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": this.idempotencyKey(),
+        },
+        body: JSON.stringify({
+          metadata: commandMetadata("Create a factor build spec"),
+          spec,
+        }),
+      },
+    );
+    return result.body;
+  }
+
+  async freezeFactorBuildSpec(specId: string, resourceVersion: number) {
+    const result = await this.request<FactorBuildSpecRecord>(
+      `/factor-build-specs/${specId}:freeze`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": this.idempotencyKey(),
+          "If-Match": `"${resourceVersion}"`,
+        },
+        body: JSON.stringify(commandMetadata("Freeze a factor build spec")),
+      },
+    );
+    return result.body;
+  }
+
+  async registerCodeBundle(
+    specId: string,
+    specHash: string,
+    draft: FactorCodeBundleDraft,
+  ) {
+    const result = await this.request<Record<string, unknown>>(
+      `/factor-build-specs/${specId}:generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": this.idempotencyKey(),
+        },
+        body: JSON.stringify({
+          metadata: commandMetadata("Register a generated code bundle"),
+          spec_hash: specHash,
+          bundle_hash: draft.bundle_hash,
+          manifest: draft.manifest,
+          files: draft.files,
+        }),
+      },
+    );
+    return result.body;
+  }
+
+  async trainFactor(input: {
+    spec_hash: string;
+    bundle_hash: string;
+    instrument_ids: string[];
+    decision_time: string;
+  }) {
+    const result = await this.request<{
+      run: FactorBuildRunRecord;
+      weights_hash: string;
+    }>("/factor-build-specs:train", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": this.idempotencyKey(),
+      },
+      body: JSON.stringify({
+        metadata: commandMetadata("Train a factor build"),
+        ...input,
+      }),
+    });
+    return result.body;
+  }
+
+  async inferFactor(input: {
+    spec_hash: string;
+    bundle_hash: string;
+    weights_hash: string;
+    instrument_ids: string[];
+    decision_time: string;
+  }) {
+    const result = await this.request<{
+      run: FactorBuildRunRecord;
+      factor_values_hash: string;
+      output_hash: string;
+      observation_count: number;
+    }>("/factor-build-specs:infer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": this.idempotencyKey(),
+      },
+      body: JSON.stringify({
+        metadata: commandMetadata("Infer factor values"),
+        ...input,
+      }),
+    });
+    return result.body;
+  }
+
+  async validateFactor(input: {
+    spec_hash: string;
+    factor_values_hash: string;
+    instrument_ids: string[];
+    price_field: string;
+    horizon: number;
+    decision_time: string;
+  }) {
+    const result = await this.request<ModelFactorValidationReport>(
+      "/factor-build-specs:validate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    );
+    return result.body;
+  }
+
+  async getFactorBuildRun(runId: string) {
+    const result = await this.request<FactorBuildRunRecord>(
+      `/factor-build-runs/${runId}`,
+    );
+    return result.body;
   }
 
   private commandHeaders(id: string, resourceVersion?: number) {

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 from quant_platform.factor_construction.generator import generate_and_smoke
 from quant_platform.factor_construction.runner import (
+    DockerSandboxRunner,
     SandboxResult,
     SubprocessSandboxRunner,
     scan_forbidden,
@@ -103,6 +105,35 @@ def test_subprocess_runner_times_out() -> None:
         )
     assert result.timed_out
     assert result.exit_code == 124
+
+
+def test_docker_runner_builds_sandbox_command(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class _Completed:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    def fake_run(args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return _Completed()
+
+    import quant_platform.factor_construction.runner as runner_module
+
+    monkeypatch.setattr(runner_module.subprocess, "run", fake_run)
+    docker = DockerSandboxRunner("quant-sandbox:latest", memory_mb=1024, cpus=0.5)
+    with tempfile.TemporaryDirectory() as tmp:
+        result = docker.run(
+            cwd=Path(tmp), command=["python", "train_driver.py"], timeout_seconds=60
+        )
+    assert result.exit_code == 0
+    args = captured["args"]
+    assert args[0] == "docker"
+    assert "--network=none" in args
+    assert "--read-only" in args
+    assert "quant-sandbox:latest" in args
 
 
 def _code_ok(_prompt: str) -> str:

@@ -98,6 +98,7 @@ export default async function ResearchJobDetailPage({
               </div>
             </div>
             <Link className="text-link" href={`/research/jobs/${job.id}/brief`}>{t("detail.openBriefEditor")}</Link>
+            <Link className="text-link" href={`/research/jobs/${job.id}/factor-build`}>因子构建（研报 → 可执行模型）</Link>
           </section>
           {job.blockers.length ? (
             <section className="panel panel-warning">

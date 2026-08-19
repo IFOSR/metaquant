@@ -115,8 +115,9 @@ def build_model(hyperparams: dict):
 
 # file: train.py
 ```python
-def train(data, spec: dict):
-    # data is a PITFrame; train and return serializable weights (e.g. state_dict)
+def train(data, labels, spec):
+    # data is a PITFrame, labels is a pd.Series (or None), spec is a dict.
+    # Train and return pickle-serializable weights (e.g. a state_dict or dict).
     ...
 ```
 
@@ -129,12 +130,15 @@ def infer(data, weights):
 
 Hard rules:
 - model.py MUST define top-level `def build_model(hyperparams)`.
-- train.py MUST define top-level `def train(data, spec)`.
-- infer.py MUST define top-level `def infer(data, weights)`.
+- train.py MUST define top-level `def train(data, labels, spec)`, where `data`
+  is a PITFrame, `labels` is a pandas Series (or None), and `spec` is a dict.
+  Return a pickle-serializable weights object (e.g. a state_dict or a dict).
+- infer.py MUST define top-level `def infer(data, weights)` returning a list of
+  floats aligned to `data.data.index` (one value per row).
 - Features come only from `data.data` (a DataFrame returned by
-  quant_platform.ml.load_pit_frame); labels come only from
-  quant_platform.ml.load_label_frame.
-- No network imports, no subprocess, no os, no file writing.
+  quant_platform.ml.load_pit_frame); labels come only from the `labels`
+  argument (never load them yourself).
+- No network imports, no subprocess, no os, no file writing, no eval/exec/open.
 """
 
 

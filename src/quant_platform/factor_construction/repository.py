@@ -13,7 +13,11 @@ from uuid import uuid4
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from quant_platform.artifacts.store import ArtifactStore
 from quant_platform.factor_construction.schemas import (
+    FactorBuildRunKind,
+    FactorBuildRunRecord,
+    FactorBuildRunState,
     FactorBuildSpecRecord,
     FactorBuildSpecState,
     FactorCodeBundleRecord,
@@ -21,6 +25,7 @@ from quant_platform.factor_construction.schemas import (
 from quant_platform.factor_construction.spec import FactorBuildSpec, build_spec_hash
 from quant_platform.research.models import (
     AuditEventModel,
+    FactorBuildRunModel,
     FactorBuildSpecModel,
     FactorCodeBundleModel,
 )
@@ -114,14 +119,19 @@ class SqlAlchemyFactorConstructionRepository:
         spec_hash: str,
         bundle_hash: str,
         manifest: dict[str, Any],
+        files: dict[str, bytes] | None = None,
+        artifact_store: ArtifactStore | None = None,
     ) -> FactorCodeBundleRecord:
+        if files is not None and artifact_store is not None:
+            for payload in files.values():
+                artifact_store.put(payload, media_type="text/x-python")
         with self._sessions.begin() as session:
             spec = self._spec_by_hash(session, spec_hash)
             if spec is None:
                 raise ValueError("RESOURCE_NOT_FOUND")
             if spec.state != FactorBuildSpecState.FROZEN:
                 raise ValueError("SPEC_NOT_FROZEN")
-            if session.get(FactorCodeBundleModel, bundle_hash) is not None:
+            if self._bundle_by_hash(session, bundle_hash) is not None:
                 raise ValueError("BUNDLE_ALREADY_EXISTS")
             if manifest.get("spec_hash") != spec_hash:
                 raise ValueError("BUNDLE_SPEC_MISMATCH")
@@ -135,6 +145,96 @@ class SqlAlchemyFactorConstructionRepository:
             )
             session.add(model)
         return self._bundle_record(model)
+
+    def get_bundle_files(
+        self, bundle_hash: str, artifact_store: ArtifactStore
+    ) -> dict[str, bytes]:
+        bundle = self.get_bundle(bundle_hash)
+        if bundle is None:
+            raise ValueError("RESOURCE_NOT_FOUND")
+        files: dict[str, bytes] = {}
+        for name, entry in bundle.manifest["files"].items():
+            files[name] = artifact_store.get(entry["sha256"])
+        return files
+
+    def record_run(
+        self,
+        *,
+        spec_hash: str,
+        bundle_hash: str,
+        kind: FactorBuildRunKind,
+    ) -> FactorBuildRunRecord:
+        timestamp = _now()
+        model = FactorBuildRunModel(
+            id=f"fbr_{uuid4().hex}",
+            spec_hash=spec_hash,
+            bundle_hash=bundle_hash,
+            kind=kind.value,
+            state=FactorBuildRunState.QUEUED,
+            run_fingerprint=None,
+            weights_hash=None,
+            factor_values_hash=None,
+            error=None,
+            logs_ref=None,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        with self._sessions.begin() as session:
+            session.add(model)
+        return self._run_record(model)
+
+    def mark_run_running(self, run_id: str) -> FactorBuildRunRecord:
+        with self._sessions.begin() as session:
+            model = session.scalar(
+                select(FactorBuildRunModel)
+                .where(FactorBuildRunModel.id == run_id)
+                .with_for_update()
+            )
+            if model is None:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            model.state = FactorBuildRunState.RUNNING
+            model.updated_at = _now()
+        return self._run_record(model)
+
+    def complete_run(
+        self,
+        run_id: str,
+        *,
+        weights_hash: str | None = None,
+        factor_values_hash: str | None = None,
+    ) -> FactorBuildRunRecord:
+        with self._sessions.begin() as session:
+            model = session.scalar(
+                select(FactorBuildRunModel)
+                .where(FactorBuildRunModel.id == run_id)
+                .with_for_update()
+            )
+            if model is None:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            model.state = FactorBuildRunState.SUCCEEDED
+            model.weights_hash = weights_hash
+            model.factor_values_hash = factor_values_hash
+            model.updated_at = _now()
+        return self._run_record(model)
+
+    def fail_run(self, run_id: str, error: str) -> FactorBuildRunRecord:
+        with self._sessions.begin() as session:
+            model = session.scalar(
+                select(FactorBuildRunModel)
+                .where(FactorBuildRunModel.id == run_id)
+                .with_for_update()
+            )
+            if model is None:
+                raise ValueError("RESOURCE_NOT_FOUND")
+            model.state = FactorBuildRunState.FAILED
+            model.error = error
+            model.updated_at = _now()
+        return self._run_record(model)
+
+    def get_run(self, run_id: str) -> FactorBuildRunRecord | None:
+        with self._sessions() as session:
+            model = session.get(FactorBuildRunModel, run_id)
+            return self._run_record(model) if model is not None else None
 
     def get_spec(self, spec_id: str) -> FactorBuildSpecRecord | None:
         with self._sessions() as session:
@@ -181,6 +281,16 @@ class SqlAlchemyFactorConstructionRepository:
         )
 
     @staticmethod
+    def _bundle_by_hash(
+        session: Session, bundle_hash: str
+    ) -> FactorCodeBundleModel | None:
+        return session.scalar(
+            select(FactorCodeBundleModel).where(
+                FactorCodeBundleModel.bundle_hash == bundle_hash
+            )
+        )
+
+    @staticmethod
     def _bundle_record(model: FactorCodeBundleModel) -> FactorCodeBundleRecord:
         return FactorCodeBundleRecord(
             id=model.id,
@@ -189,4 +299,21 @@ class SqlAlchemyFactorConstructionRepository:
             manifest=model.manifest_payload,
             created_at=model.created_at,
             created_by=model.created_by,
+        )
+
+    @staticmethod
+    def _run_record(model: FactorBuildRunModel) -> FactorBuildRunRecord:
+        return FactorBuildRunRecord(
+            id=model.id,
+            spec_hash=model.spec_hash,
+            bundle_hash=model.bundle_hash,
+            kind=FactorBuildRunKind(model.kind),
+            state=FactorBuildRunState(model.state),
+            run_fingerprint=model.run_fingerprint,
+            weights_hash=model.weights_hash,
+            factor_values_hash=model.factor_values_hash,
+            error=model.error,
+            logs_ref=model.logs_ref,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
         )

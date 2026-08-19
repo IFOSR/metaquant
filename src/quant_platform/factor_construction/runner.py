@@ -92,6 +92,68 @@ class SubprocessSandboxRunner:
         )
 
 
+class DockerSandboxRunner:
+    """Production runner: executes the bundle in a sandbox image.
+
+    The image ships ``quant_platform.ml`` + PyTorch; the bundle directory is
+    bind-mounted, the root filesystem is read-only, and the container has no
+    network egress (``--network=none``).
+    """
+
+    def __init__(
+        self,
+        image: str,
+        *,
+        network: str = "none",
+        memory_mb: int = 2048,
+        cpus: float = 1.0,
+    ) -> None:
+        self._image = image
+        self._network = network
+        self._memory_mb = memory_mb
+        self._cpus = cpus
+
+    def run(
+        self, *, cwd: Path, command: list[str], timeout_seconds: int
+    ) -> SandboxResult:
+        args = [
+            "docker",
+            "run",
+            "--rm",
+            f"--network={self._network}",
+            f"--memory={self._memory_mb}m",
+            f"--cpus={self._cpus}",
+            "--read-only",
+            "-v",
+            f"{cwd}:/workspace:rw",
+            "-w",
+            "/workspace",
+            self._image,
+            *command,
+        ]
+        try:
+            completed = subprocess.run(
+                args,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return SandboxResult(
+                exit_code=124,
+                stdout=_decode(exc.stdout),
+                stderr=_decode(exc.stderr),
+                timed_out=True,
+            )
+        return SandboxResult(
+            exit_code=completed.returncode,
+            stdout=completed.stdout or "",
+            stderr=completed.stderr or "",
+            timed_out=False,
+        )
+
+
 def _forbidden_module(module: str) -> bool:
     return module.split(".")[0] in _FORBIDDEN_MODULES
 

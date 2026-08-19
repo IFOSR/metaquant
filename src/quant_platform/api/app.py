@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from quant_platform import __version__
 from quant_platform.artifacts import MinioArtifactStore
-from quant_platform.config import get_settings
+from quant_platform.config import Settings, get_settings
 from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
 from quant_platform.data_gateway.provisioning import (
     DataProvisioning,
@@ -29,6 +29,7 @@ from quant_platform.factor_construction.data_service import (
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
 )
+from quant_platform.factor_construction.service import FactorBuildService
 from quant_platform.health import ReadinessProbe, build_readiness_probe
 from quant_platform.research.api import (
     ResearchPrincipal,
@@ -103,6 +104,22 @@ def _default_principal_provider(token: str) -> ResearchPrincipal | None:
     return adapt_security_principal_provider(provider)(token)
 
 
+def _minio_artifact_store(settings: Settings) -> MinioArtifactStore:
+    minio_endpoint = settings.minio_endpoint.removeprefix("http://").removeprefix(
+        "https://"
+    )
+    return MinioArtifactStore(
+        Minio(
+            minio_endpoint,
+            access_key=settings.minio_access_key,
+            secret_key=settings.minio_secret_key.get_secret_value(),
+            secure=settings.minio_secure
+            or settings.minio_endpoint.startswith("https://"),
+        ),
+        bucket=settings.minio_bucket,
+    )
+
+
 def create_app(
     readiness_probe: ReadinessProbe | None = None,
     research_repository: SqlAlchemyResearchRepository | None = None,
@@ -111,6 +128,7 @@ def create_app(
         SqlAlchemyFactorConstructionRepository | None
     ) = None,
     pit_data_service: PitDataService | None = None,
+    factor_build_service: FactorBuildService | None = None,
     research_principal_provider: ResearchPrincipalProvider | None = None,
 ) -> FastAPI:
     settings = get_settings()
@@ -128,24 +146,17 @@ def create_app(
     data_service = pit_data_service or PitDataService(
         SqlAlchemyPitStore(sessionmaker(create_engine(str(settings.database_url))))
     )
+    build_service = factor_build_service or FactorBuildService(
+        factor_repository,
+        _minio_artifact_store(settings),
+        data_service,
+    )
     if experiment_repository is None:
         engine = create_engine(str(settings.database_url), pool_pre_ping=True)
-        minio_endpoint = settings.minio_endpoint.removeprefix("http://").removeprefix(
-            "https://"
-        )
         experiment_repository = SqlAlchemyExperimentRepository(
             engine,
             research_repository=repository,
-            artifact_store=MinioArtifactStore(
-                Minio(
-                    minio_endpoint,
-                    access_key=settings.minio_access_key,
-                    secret_key=settings.minio_secret_key.get_secret_value(),
-                    secure=settings.minio_secure
-                    or settings.minio_endpoint.startswith("https://"),
-                ),
-                bucket=settings.minio_bucket,
-            ),
+            artifact_store=_minio_artifact_store(settings),
             snapshot_catalog=JsonFormalSnapshotCatalog.from_path(
                 Path(settings.formal_snapshot_catalog_path)
             ),
@@ -178,7 +189,9 @@ def create_app(
     install_problem_handlers(application)
     application.include_router(build_research_router(repository, principal_provider))
     application.include_router(
-        build_factor_construction_router(factor_repository, principal_provider)
+        build_factor_construction_router(
+            factor_repository, principal_provider, build_service
+        )
     )
     application.include_router(
         build_data_service_router(data_service, principal_provider)

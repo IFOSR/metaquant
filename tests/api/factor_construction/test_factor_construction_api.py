@@ -9,10 +9,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from quant_platform.api.app import create_app
+from quant_platform.artifacts.store import InMemoryArtifactStore
 from quant_platform.factor_construction.artifacts import build_code_bundle, bundle_hash
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
 )
+from quant_platform.factor_construction.service import FactorBuildService
 from quant_platform.research.api import (
     ResearchGrant,
     ResearchPrincipal,
@@ -51,6 +53,25 @@ _FILES = {
 }
 
 
+class _FakeData:
+    def pit_frame(
+        self, *, instrument_ids, fields, decision_time, field_prefix="market.eod."
+    ):
+        return {"rows": []}
+
+    def label_frame(
+        self,
+        *,
+        instrument_ids,
+        price_field,
+        horizon,
+        decision_time,
+        field_prefix="market.eod.",
+        return_type="simple",
+    ):
+        return {"rows": []}
+
+
 def make_client(
     principal_provider: Callable[[str], ResearchPrincipal | None] | None = None,
 ) -> TestClient:
@@ -60,6 +81,7 @@ def make_client(
         poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
+    repository = SqlAlchemyFactorConstructionRepository(engine)
     provider = principal_provider or (
         lambda token: ResearchPrincipal(
             actor_id="researcher-1",
@@ -76,7 +98,12 @@ def make_client(
     app = create_app(
         readiness_probe=lambda: {"postgres": True, "minio": True},
         research_repository=SqlAlchemyResearchRepository(engine),
-        factor_construction_repository=SqlAlchemyFactorConstructionRepository(engine),
+        factor_construction_repository=repository,
+        factor_build_service=FactorBuildService(
+            repository,
+            InMemoryArtifactStore(),
+            _FakeData(),  # type: ignore[arg-type]
+        ),
         research_principal_provider=provider,
     )
     return TestClient(app)
@@ -151,6 +178,7 @@ def test_generate_bundle_requires_frozen_spec() -> None:
             "spec_hash": spec_hash,
             "bundle_hash": bundle_hash(manifest),
             "manifest": manifest,
+            "files": _files_text(),
         },
         headers=_auth(),
     )
@@ -181,11 +209,16 @@ def test_generate_bundle_against_frozen_spec() -> None:
             "spec_hash": spec_hash,
             "bundle_hash": bundle_hash(manifest),
             "manifest": manifest,
+            "files": _files_text(),
         },
         headers=_auth(),
     )
     assert response.status_code == 202
     assert response.json()["bundle_hash"].startswith("sha256:")
+
+
+def _files_text() -> dict[str, str]:
+    return {name: payload.decode() for name, payload in _FILES.items()}
 
 
 def _metadata() -> dict[str, object]:

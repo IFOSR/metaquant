@@ -477,3 +477,71 @@ export interface ExecutionState {
   shadowPositions: Record<string, number>;
   paperPositions: Record<string, number>;
 }
+
+// ── 因子构建（研报 → 可执行模型） ─────────────────────────────────────
+
+export type FactorArchitecture = "MLP" | "LSTM" | "TRANSFORMER" | "LINEAR";
+export type SampleWeighting = "EQUAL" | "INVERSE_SIZE" | "CAP_WEIGHTED";
+
+export interface FactorBuildSpec {
+  factor_id: string;
+  factor_name: string;
+  market: MarketId;
+  universe_ref: string;
+  frequency?: string;
+  inputs: string[];
+  label: {
+    name: string;
+    price_field: string;
+    horizon: number;
+    return_type?: string;
+    style_neutralize?: string[];
+  };
+  architecture: FactorArchitecture;
+  style_neutralize: string[];
+  sample_weighting: SampleWeighting;
+  expected_direction: string;
+  hyperparameters?: Record<string, unknown>;
+}
+
+export interface FactorBuildSpecExtraction {
+  spec: FactorBuildSpec;
+  spec_hash: string;
+}
+
+export interface FactorCodeBundleDraft {
+  files: Record<string, string>;
+  manifest: Record<string, unknown>;
+  bundle_hash: string;
+  smoke?: { exit_code: number; timed_out: boolean; stderr: string };
+}
+
+export interface FactorBuildSpecRecord {
+  id: string;
+  spec_hash: string;
+  state: "DRAFT" | "FROZEN";
+  resource_version: number;
+  spec: FactorBuildSpec;
+}
+
+export interface FactorBuildRunRecord {
+  id: string;
+  spec_hash: string;
+  bundle_hash: string;
+  kind: "SMOKE" | "TRAIN" | "INFER";
+  state: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
+  weights_hash: string | null;
+  factor_values_hash: string | null;
+  error: string | null;
+}
+
+export interface ModelFactorValidationReport {
+  observation_count: number;
+  finite_count: number;
+  coverage_ratio: number;
+  cross_sections: number;
+  pearson_ic: number | null;
+  rank_ic: number | null;
+  icir: number | null;
+  output_hash: string;
+}

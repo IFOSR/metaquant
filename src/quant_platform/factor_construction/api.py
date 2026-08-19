@@ -27,7 +27,11 @@ from quant_platform.factor_construction.schemas import (
     FreezeFactorBuildSpecCommand,
     GenerateCodeBundleCommand,
     GenerateCodeDraftCommand,
+    InferFactorCommand,
+    TrainFactorCommand,
+    ValidateFactorCommand,
 )
+from quant_platform.factor_construction.service import FactorBuildService
 from quant_platform.factor_construction.spec import build_spec_hash
 from quant_platform.research.api import (
     ProblemError,
@@ -43,6 +47,7 @@ _BUNDLE_CAPS = {"factor_construction.bundles.generate"}
 def build_factor_construction_router(
     repository: SqlAlchemyFactorConstructionRepository,
     principal_provider: ResearchPrincipalProvider,
+    service: FactorBuildService | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1", tags=["FactorConstruction"])
 
@@ -186,12 +191,14 @@ def build_factor_construction_router(
                 title="Bundle hash mismatch",
                 detail="The bundle_hash does not match the supplied manifest.",
             )
+        svc = _require_service(service)
         try:
-            record = repository.create_bundle(
+            record = svc.register_bundle(
                 actor_id=actor.actor_id,
                 spec_hash=existing.spec_hash,
                 bundle_hash=command.bundle_hash,
                 manifest=command.manifest,
+                files_text=command.files,
             )
         except ValueError as exc:
             raise _problem_from_value_error(exc) from exc
@@ -221,6 +228,88 @@ def build_factor_construction_router(
             raise _not_found()
         return record.model_dump(mode="json")
 
+    @router.post("/factor-build-specs:train", status_code=202)
+    def train_factor(
+        command: TrainFactorCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        svc = _require_service(service)
+        _require_caps(
+            actor,
+            {"factor_construction.train"},
+            _market(repository, command.spec_hash),
+        )
+        result = svc.train(
+            spec_hash=command.spec_hash,
+            bundle_hash=command.bundle_hash,
+            instrument_ids=command.instrument_ids,
+            decision_time=command.decision_time.isoformat(),
+            field_prefix=command.field_prefix,
+        )
+        return {
+            "run": result.run.model_dump(mode="json"),
+            "weights_hash": result.weights_hash,
+        }
+
+    @router.post("/factor-build-specs:infer", status_code=202)
+    def infer_factor(
+        command: InferFactorCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        svc = _require_service(service)
+        _require_caps(
+            actor,
+            {"factor_construction.train"},
+            _market(repository, command.spec_hash),
+        )
+        result = svc.infer(
+            spec_hash=command.spec_hash,
+            bundle_hash=command.bundle_hash,
+            weights_hash=command.weights_hash,
+            instrument_ids=command.instrument_ids,
+            decision_time=command.decision_time.isoformat(),
+            field_prefix=command.field_prefix,
+        )
+        return {
+            "run": result.run.model_dump(mode="json"),
+            "factor_values_hash": result.factor_values_hash,
+            "output_hash": result.output_hash,
+            "observation_count": len(result.observations),
+        }
+
+    @router.post("/factor-build-specs:validate")
+    def validate_factor(
+        command: ValidateFactorCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        svc = _require_service(service)
+        _require_caps(
+            actor,
+            {"factor_construction.train"},
+            _market(repository, command.spec_hash),
+        )
+        report = svc.validate(
+            factor_values_hash=command.factor_values_hash,
+            instrument_ids=command.instrument_ids,
+            price_field=command.price_field,
+            horizon=command.horizon,
+            decision_time=command.decision_time.isoformat(),
+            field_prefix=command.field_prefix,
+            return_type=command.return_type,
+        )
+        return report.payload()
+
+    @router.get("/factor-build-runs/{run_id}")
+    def get_run(
+        run_id: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        del actor
+        record = repository.get_run(run_id)
+        if record is None:
+            raise _not_found()
+        return record.model_dump(mode="json")
+
     return router
 
 
@@ -231,6 +320,24 @@ def _agent_failed(exc: Exception) -> ProblemError:
         title="Agent generation failed",
         detail=str(exc),
     )
+
+
+def _require_service(service: FactorBuildService | None) -> FactorBuildService:
+    if service is None:
+        raise ProblemError(
+            status=503,
+            code="SERVICE_UNAVAILABLE",
+            title="Factor build service unavailable",
+            detail="The factor build execution service is not configured.",
+        )
+    return service
+
+
+def _market(repository: SqlAlchemyFactorConstructionRepository, spec_hash: str) -> str:
+    record = repository.get_spec_by_hash(spec_hash)
+    if record is None:
+        raise _not_found()
+    return record.spec.market
 
 
 def _require_caps(

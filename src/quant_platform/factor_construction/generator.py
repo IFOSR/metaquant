@@ -138,6 +138,27 @@ Hard rules:
 """
 
 
+def _code_prompt(spec: FactorBuildSpec) -> str:
+    spec_payload = json.dumps(
+        spec.model_dump(mode="json"), ensure_ascii=False, indent=2
+    )
+    return f"{_CODE_SYSTEM_PROMPT}\n\nBuild spec:\n{spec_payload}"
+
+
+def _generate_once(
+    spec: FactorBuildSpec,
+    complete: Runner,
+    *,
+    hint: str = "",
+) -> tuple[dict[str, bytes], dict[str, Any]]:
+    suffix = f"\n\nPrevious attempt failed: {hint}" if hint else ""
+    raw = complete(_code_prompt(spec) + suffix)
+    files = _parse_code_files(raw)
+    validate_bundle_contract(files)
+    manifest = build_code_bundle(files, spec_hash=build_spec_hash(spec))
+    return files, manifest
+
+
 def generate_code_bundle(
     spec: FactorBuildSpec,
     *,
@@ -147,24 +168,50 @@ def generate_code_bundle(
     complete = runner or default_runner(
         system_prompt=_CODE_SYSTEM_PROMPT, json_mode=False
     )
-    spec_payload = json.dumps(
-        spec.model_dump(mode="json"), ensure_ascii=False, indent=2
-    )
-    prompt = f"{_CODE_SYSTEM_PROMPT}\n\nBuild spec:\n{spec_payload}"
     last_error = ""
     for _ in range(_MAX_CODE_ROUNDS):
-        suffix = f"\n\nPrevious attempt failed: {last_error}" if last_error else ""
-        raw = complete(prompt + suffix)
         try:
-            files = _parse_code_files(raw)
-            validate_bundle_contract(files)
+            return _generate_once(spec, complete, hint=last_error)
+        except (CodeBundleError, ValueError) as exc:
+            last_error = str(exc)
+    raise CodeBundleError(
+        f"code generation failed after {_MAX_CODE_ROUNDS} rounds: {last_error}"
+    )
+
+
+def generate_and_smoke(
+    spec: FactorBuildSpec,
+    *,
+    agent_runner: Runner | None = None,
+    sandbox: Any | None = None,
+    max_rounds: int = _MAX_CODE_ROUNDS,
+) -> tuple[dict[str, bytes], dict[str, Any], Any]:
+    """Generate a bundle and smoke-run it, feeding errors back to the agent."""
+    from quant_platform.factor_construction.runner import (
+        SubprocessSandboxRunner,
+        smoke_bundle,
+    )
+
+    complete = agent_runner or default_runner(
+        system_prompt=_CODE_SYSTEM_PROMPT, json_mode=False
+    )
+    active_sandbox = sandbox or SubprocessSandboxRunner()
+    last_error = ""
+    for _ in range(max_rounds):
+        try:
+            files, manifest = _generate_once(spec, complete, hint=last_error)
         except (CodeBundleError, ValueError) as exc:
             last_error = str(exc)
             continue
-        manifest = build_code_bundle(files, spec_hash=build_spec_hash(spec))
-        return files, manifest
+        result = smoke_bundle(files, active_sandbox)
+        if result.exit_code == 0 and not result.timed_out:
+            return files, manifest, result
+        last_error = (
+            f"smoke run failed (exit {result.exit_code}): "
+            f"{result.stderr.strip()[:2000]}"
+        )
     raise CodeBundleError(
-        f"code generation failed after {_MAX_CODE_ROUNDS} rounds: {last_error}"
+        f"generate + smoke failed after {max_rounds} rounds: {last_error}"
     )
 
 

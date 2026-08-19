@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, Response
 from quant_platform.factor_construction.artifacts import CodeBundleError, bundle_hash
 from quant_platform.factor_construction.generator import (
     extract_build_spec,
+    generate_and_smoke,
     generate_code_bundle,
 )
 from quant_platform.factor_construction.repository import (
@@ -99,6 +100,29 @@ def build_factor_construction_router(
             },
             "manifest": manifest,
             "bundle_hash": bundle_hash(manifest),
+        }
+
+    @router.post("/factor-build-specs:smoke")
+    def smoke_spec_draft(
+        command: GenerateCodeDraftCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        del actor
+        try:
+            files, manifest, result = generate_and_smoke(command.spec)
+        except (FactorExtractionError, CodeBundleError) as exc:
+            raise _agent_failed(exc) from exc
+        return {
+            "files": {
+                name: manifest["files"][name]["sha256"] for name in sorted(files)
+            },
+            "manifest": manifest,
+            "bundle_hash": bundle_hash(manifest),
+            "smoke": {
+                "exit_code": result.exit_code,
+                "timed_out": result.timed_out,
+                "stderr": result.stderr,
+            },
         }
 
     @router.post("/factor-build-specs", status_code=202)

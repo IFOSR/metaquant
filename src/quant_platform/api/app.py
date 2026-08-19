@@ -22,6 +22,10 @@ from quant_platform.experiment_runtime import (
     build_experiment_router,
 )
 from quant_platform.factor_construction.api import build_factor_construction_router
+from quant_platform.factor_construction.data_service import (
+    PitDataService,
+    build_data_service_router,
+)
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
 )
@@ -67,6 +71,7 @@ def _default_principal_provider(token: str) -> ResearchPrincipal | None:
         "factor_construction.specs.write",
         "factor_construction.specs.freeze",
         "factor_construction.bundles.generate",
+        "factor_construction.train",
         # 前端导航与操作边界使用的能力
         "research.jobs.propose",
         "strategy.read",
@@ -105,6 +110,7 @@ def create_app(
     factor_construction_repository: (
         SqlAlchemyFactorConstructionRepository | None
     ) = None,
+    pit_data_service: PitDataService | None = None,
     research_principal_provider: ResearchPrincipalProvider | None = None,
 ) -> FastAPI:
     settings = get_settings()
@@ -118,6 +124,9 @@ def create_app(
         SqlAlchemyFactorConstructionRepository(
             create_engine(str(settings.database_url), pool_pre_ping=True)
         )
+    )
+    data_service = pit_data_service or PitDataService(
+        SqlAlchemyPitStore(sessionmaker(create_engine(str(settings.database_url))))
     )
     if experiment_repository is None:
         engine = create_engine(str(settings.database_url), pool_pre_ping=True)
@@ -170,6 +179,9 @@ def create_app(
     application.include_router(build_research_router(repository, principal_provider))
     application.include_router(
         build_factor_construction_router(factor_repository, principal_provider)
+    )
+    application.include_router(
+        build_data_service_router(data_service, principal_provider)
     )
     application.include_router(
         build_experiment_router(

@@ -75,3 +75,14 @@ class GenerateCodeDraftCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     spec: FactorBuildSpec
+
+
+class LabelFrameCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instrument_ids: list[str] = Field(min_length=1)
+    price_field: str = Field(min_length=1)
+    horizon: int = Field(ge=1)
+    decision_time: datetime
+    field_prefix: str = "market.eod."
+    return_type: str = "simple"

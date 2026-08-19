@@ -362,3 +362,31 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 .brief-template-row { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
 .brief-template-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .button-small { font-size: 0.8rem; min-height: 34px; padding: 6px 12px; }
+
+.provision-status {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.84rem;
+  gap: 6px;
+  margin-top: 10px;
+}
+.provision-status.provision-done {
+  color: #2f9e44;
+}
+.provision-status .mono {
+  font-size: 0.78rem;
+}
+.provision-spinner {
+  animation: provision-spin 0.9s linear infinite;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  border-top-color: var(--amber);
+  display: inline-block;
+  height: 13px;
+  width: 13px;
+}
+@keyframes provision-spin {
+  to { transform: rotate(360deg); }
+}

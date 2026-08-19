@@ -433,6 +433,8 @@ const zh = {
   "expAction.provEnd": "结束日期",
   "expAction.provisioning": "采集中…",
   "expAction.provisionRun": "拉取并密封",
+  "expAction.provRunning": "正在后台采集数据，请稍候…",
+  "expAction.provDone": "采集完成：{instruments} 个合约 · {rows} 行，快照已自动选中",
   "expAction.seed": "随机种子",
   "expAction.cancel": "取消",
   "expAction.submit": "提交预注册",

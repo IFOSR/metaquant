@@ -116,6 +116,12 @@ export function ExperimentActions({
   const [provStart, setProvStart] = useState("2026-06-01");
   const [provEnd, setProvEnd] = useState("2026-08-15");
   const [provisioning, setProvisioning] = useState(false);
+  const [provStatus, setProvStatus] = useState<string | null>(null);
+  const [provSummary, setProvSummary] = useState<{
+    instruments: number;
+    rows: number;
+    snapshotId: string;
+  } | null>(null);
 
   useEffect(() => {
     quantApiClient
@@ -144,6 +150,8 @@ export function ExperimentActions({
     const instruments = provInstruments.split(/[,\s]+/).filter(Boolean);
     if (!instruments.length) return;
     setProvisioning(true);
+    setProvStatus("PENDING");
+    setProvSummary(null);
     setError(null);
     try {
       const { taskId } = await quantApiClient.provisionData({
@@ -157,6 +165,7 @@ export function ExperimentActions({
       for (;;) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const status = await quantApiClient.getProvisioningTask(taskId);
+        setProvStatus(status.status);
         if (status.status === "SUCCEEDED" && status.snapshotId) {
           const fresh: FormalSnapshotInfo = {
             snapshotId: status.snapshotId,
@@ -170,10 +179,12 @@ export function ExperimentActions({
           };
           setSnapshots((prev) => [...prev, fresh]);
           setSnapshotId(status.snapshotId);
-          setDecisionTime(
-            status.decisionTime ?? new Date().toISOString(),
-          );
-          setProvOpen(false);
+          setDecisionTime(status.decisionTime ?? new Date().toISOString());
+          setProvSummary({
+            instruments: status.instrumentCount ?? 0,
+            rows: status.rowCount ?? 0,
+            snapshotId: status.snapshotId,
+          });
           break;
         }
         if (status.status === "FAILED") {
@@ -327,6 +338,22 @@ export function ExperimentActions({
                       : t("expAction.provisionRun")}
                   </button>
                 </div>
+                {provStatus === "RUNNING" || provStatus === "PENDING" ? (
+                  <div className="provision-status" role="status">
+                    <span className="provision-spinner" aria-hidden="true" />
+                    {t("expAction.provRunning")}
+                  </div>
+                ) : null}
+                {provSummary ? (
+                  <div className="provision-status provision-done" role="status">
+                    <span aria-hidden="true">✓</span>{" "}
+                    {t("expAction.provDone", {
+                      instruments: String(provSummary.instruments),
+                      rows: String(provSummary.rows),
+                    })}
+                    <span className="mono">{provSummary.snapshotId}</span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

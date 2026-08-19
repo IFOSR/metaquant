@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { quantApiClient } from "../lib/client";
 import type { MarketId } from "../lib/types";
@@ -10,20 +10,30 @@ import { useI18n } from "./i18n-provider";
 export function PaperPipeline() {
   const { t } = useI18n();
   const router = useRouter();
-  const [paperText, setPaperText] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [prompt, setPrompt] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [market, setMarket] = useState<MarketId>("CN_COMMODITY_FUTURES");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function pickFile(files: FileList | null) {
+    const first = files?.[0];
+    if (first) setFile(first);
+  }
+
   async function create() {
-    if (!paperText.trim()) return;
+    if (!prompt.trim() && !file) return;
     setBusy(true);
     setError(null);
     try {
-      const result = await quantApiClient.createResearchFromPaper(
-        paperText.trim(),
-        market,
-      );
+      const result = file
+        ? await quantApiClient.createResearchFromPaperFile(
+            file,
+            prompt.trim(),
+            market,
+          )
+        : await quantApiClient.createResearchFromPaper(prompt.trim(), market);
       router.push(`/research/jobs/${result.jobId}`);
       router.refresh();
     } catch (cause) {
@@ -38,16 +48,16 @@ export function PaperPipeline() {
       <h2>{t("pipeline.title")}</h2>
       <p className="lede">{t("pipeline.lede")}</p>
       <label className="field field-wide">
-        <span>{t("brief.paperText")}</span>
+        <span>{t("pipeline.prompt")}</span>
         <textarea
-          value={paperText}
-          onChange={(event) => setPaperText(event.target.value)}
-          rows={8}
-          placeholder={t("brief.paperPlaceholder")}
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          rows={5}
+          placeholder={t("pipeline.promptPlaceholder")}
         />
       </label>
-      <div className="field-grid">
-        <label className="field">
+      <div className="brief-template-row">
+        <div className="field">
           <span>{t("pipeline.market")}</span>
           <select
             value={market}
@@ -56,7 +66,21 @@ export function PaperPipeline() {
             <option value="CN_COMMODITY_FUTURES">商品期货</option>
             <option value="CN_A">A 股</option>
           </select>
-        </label>
+        </div>
+        <div className="field">
+          <span>{t("pipeline.attachment")}</span>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".pdf,.docx,.txt,.md"
+            onChange={(event) => pickFile(event.target.files)}
+          />
+        </div>
+        {file ? (
+          <span className="mono provision-status provision-done">
+            ✓ {file.name}
+          </span>
+        ) : null}
       </div>
       {error ? (
         <div className="form-errors" role="alert">
@@ -67,7 +91,7 @@ export function PaperPipeline() {
         <button
           className="button button-primary"
           type="button"
-          disabled={busy || !paperText.trim()}
+          disabled={busy || (!prompt.trim() && !file)}
           onClick={create}
         >
           {busy ? t("pipeline.busy") : t("pipeline.create")}

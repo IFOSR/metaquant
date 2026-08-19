@@ -84,12 +84,17 @@ def extract_factor_from_paper(
     market: str,
     *,
     runner: Runner | None = None,
+    user_prompt: str | None = None,
 ) -> FactorExtraction:
     """Translate a report into a factor IR + brief draft via the agent."""
     complete = runner or _default_runner()
-    raw = complete(
-        f"Report text:\n\n{paper_text}\n\nTarget market: {market}"
-    )
+    if user_prompt:
+        material = (
+            f"User request: {user_prompt}\n\nReport text:\n\n{paper_text}"
+        )
+    else:
+        material = f"Report text:\n\n{paper_text}"
+    raw = complete(f"{material}\n\nTarget market: {market}")
     data = _extract_json(raw)
     try:
         return _build_extraction(data, market)

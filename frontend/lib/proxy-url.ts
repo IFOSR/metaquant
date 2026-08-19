@@ -18,6 +18,7 @@ export function isAllowedQuantApiPath(path: string[]) {
   if (path[1] === "research-briefs:from-paper") return path.length === 2;
   if (path[1] === "research-briefs:extract-factor") return path.length === 2;
   if (path[1] === "research-pipelines:from-paper") return path.length === 2;
+  if (path[1] === "research-pipelines:from-paper-file") return path.length === 2;
   if (path[1] === "experiments:preregister") return path.length === 2;
   if (path[1] === "alpha-pool") return path.length === 2;
   if (path[1] === "backtests") return path.length === 2;

@@ -15,6 +15,9 @@ dependencies = [
   "nautilus_trader==1.231.0",
   "psycopg[binary]==3.2.9",
   "pydantic-settings==2.10.1",
+  "pypdf==5.6.0",
+  "python-docx==1.2.0",
+  "python-multipart==0.0.20",
   "sqlalchemy==2.0.42",
   "uvicorn[standard]==0.35.0",
 ]
@@ -65,5 +68,5 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["akshare", "akshare.*", "minio", "minio.*", "nautilus_trader", "nautilus_trader.*", "pandas", "pandas.*"]
+module = ["akshare", "akshare.*", "docx", "minio", "minio.*", "nautilus_trader", "nautilus_trader.*", "pandas", "pandas.*", "pypdf"]
 ignore_missing_imports = true

@@ -11,12 +11,17 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from quant_platform.research.factor_extract import (
+    FactorExtractionError,
+    extract_factor_from_paper,
+)
 from quant_platform.research.paper_parse import PaperParseError, parse_paper_to_brief
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.research.schemas import (
     CommandMetadata,
     CreateResearchBriefVersionCommand,
     CreateResearchJobCommand,
+    ExtractFactorCommand,
     MarketId,
     ParsePaperCommand,
     ResearchBriefRecord,
@@ -428,6 +433,34 @@ def build_research_router(
                 detail=str(exc),
             ) from exc
         return {"brief": brief.model_dump(mode="json")}
+
+    @router.post("/research-briefs:extract-factor")
+    def extract_factor(
+        command: ExtractFactorCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        if not actor.can(
+            {"research.briefs.write", "research.jobs.manage"},
+            project_id="local",
+            market=command.market,
+        ):
+            raise _not_found()
+        try:
+            extraction = extract_factor_from_paper(
+                command.paper_text, command.market
+            )
+        except FactorExtractionError as exc:
+            raise ProblemError(
+                status=422,
+                code="FACTOR_EXTRACTION_FAILED",
+                title="Factor extraction failed",
+                detail=str(exc),
+            ) from exc
+        return {
+            "brief": extraction.brief.model_dump(mode="json"),
+            "factor_ir": extraction.factor_ir,
+            "explanation": extraction.explanation,
+        }
 
     return router
 

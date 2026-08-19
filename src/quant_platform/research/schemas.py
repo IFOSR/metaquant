@@ -73,6 +73,13 @@ class BriefContent(BaseModel):
     uncertainties: list[str] = Field(default_factory=list)
 
 
+class ExtractFactorCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    paper_text: str = Field(min_length=20)
+    market: MarketId
+
+
 class CreateResearchJobCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -157,6 +157,12 @@ export interface BriefDraftInput {
   uncertainties: string[];
 }
 
+export interface FactorExtractionResult {
+  brief: BriefDraftInput;
+  factorIr: Record<string, unknown>;
+  explanation: string;
+}
+
 export interface FormalSnapshotInfo {
   snapshotId: string;
   manifestHash: string;

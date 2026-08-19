@@ -429,6 +429,8 @@ const zh = {
   "expAction.decisionTime": "决策时间",
   "expAction.decisionTimeHint": "研究时点：因子只用该时点之前的数据，标签只用该时点之后的数据。",
   "expAction.provision": "按需拉取数据",
+  "expAction.fromPaper": "从研报抽取因子",
+  "expAction.extract": "抽取因子",
   "expAction.provInstruments": "合约代码",
   "expAction.provStart": "开始日期",
   "expAction.provEnd": "结束日期",

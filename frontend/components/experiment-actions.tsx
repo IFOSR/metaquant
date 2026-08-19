@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { quantApiClient } from "../lib/client";
-import type { FormalSnapshotInfo, MarketId } from "../lib/types";
+import type {
+  FactorExtractionResult,
+  FormalSnapshotInfo,
+  MarketId,
+} from "../lib/types";
 import { useI18n } from "./i18n-provider";
 
 const CN_A_TEMPLATE = {
@@ -123,6 +127,12 @@ export function ExperimentActions({
     rows: number;
     snapshotId: string;
   } | null>(null);
+  const [paperOpen, setPaperOpen] = useState(false);
+  const [paperText, setPaperText] = useState("");
+  const [extracting, setExtracting] = useState(false);
+  const [extraction, setExtraction] = useState<FactorExtractionResult | null>(
+    null,
+  );
 
   useEffect(() => {
     quantApiClient
@@ -208,6 +218,25 @@ export function ExperimentActions({
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setProvisioning(false);
+    }
+  }
+
+  async function extractFromPaper() {
+    if (!paperText.trim()) return;
+    setExtracting(true);
+    setError(null);
+    try {
+      const result = await quantApiClient.extractFactor(
+        paperText.trim(),
+        market,
+      );
+      setIrText(JSON.stringify(result.factorIr, null, 2));
+      setExtraction(result);
+      setPaperOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setExtracting(false);
     }
   }
 
@@ -463,6 +492,43 @@ export function ExperimentActions({
                 onChange={(event) => setSeed(Number(event.target.value))}
               />
             </label>
+            <div className="provision-block">
+              <button
+                type="button"
+                className="button button-secondary button-small"
+                onClick={() => setPaperOpen((open) => !open)}
+              >
+                {t("expAction.fromPaper")}
+              </button>
+              {paperOpen ? (
+                <div className="paper-import panel">
+                  <label className="field field-wide">
+                    <span>{t("brief.paperText")}</span>
+                    <textarea
+                      value={paperText}
+                      onChange={(event) => setPaperText(event.target.value)}
+                      rows={6}
+                      placeholder={t("brief.paperPlaceholder")}
+                    />
+                  </label>
+                  <div className="form-actions">
+                    <button
+                      className="button button-primary"
+                      type="button"
+                      disabled={extracting || !paperText.trim()}
+                      onClick={extractFromPaper}
+                    >
+                      {extracting ? t("brief.parsing") : t("expAction.extract")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {extraction ? (
+                <div className="provision-status provision-done" role="status">
+                  ✓ {extraction.explanation}
+                </div>
+              ) : null}
+            </div>
             <label className="field field-wide">
               <span>{t("expAction.factorIr")}</span>
               <textarea

@@ -183,9 +183,35 @@ def _build_factor_ir(data: Mapping[str, Any], market: str) -> dict[str, Any]:
     }
 
 
+_OPERATOR_ALIASES: dict[str, str] = {
+    "return": "returns",
+    "ret": "returns",
+    "momentum": "returns",
+    "pct_change": "returns",
+    "rank": "cs_rank",
+    "cross_rank": "cs_rank",
+    "mean": "rolling_mean",
+    "average": "rolling_mean",
+    "rolling_average": "rolling_mean",
+    "std": "rolling_std",
+    "stdev": "rolling_std",
+    "minimum": "rolling_min",
+    "maximum": "rolling_max",
+    "correlation": "ts_corr",
+    "time_rank": "ts_rank",
+    "minus": "sub",
+    "times": "mul",
+    "plus": "add",
+    "divide": "div",
+    "absolute": "abs",
+    "logarithm": "log",
+}
+
+
 def _normalize_expression(expression: dict[str, Any]) -> dict[str, Any]:
     """Coerce agent output to the executor's parameter conventions."""
-    op = str(expression.get("op", ""))
+    op = str(expression.get("op", "")).strip()
+    op = _OPERATOR_ALIASES.get(op, op)
     params = dict(expression.get("params", {}))
     if (
         op in {"returns", "lag", "delta"}

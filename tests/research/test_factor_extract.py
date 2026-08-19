@@ -103,6 +103,21 @@ def test_normalize_expression_returns_window_to_periods() -> None:
     assert expr["params"] == {"periods": 5}
 
 
+def test_normalize_expression_alias_return() -> None:
+    expr = _normalize_expression(
+        {"op": "return", "args": [{"ref": "close"}], "params": {"periods": 5}}
+    )
+    assert expr["op"] == "returns"
+    assert expr["params"] == {"periods": 5}
+
+
+def test_normalize_expression_alias_rank() -> None:
+    expr = _normalize_expression(
+        {"op": "rank", "args": [{"ref": "close"}], "params": {}}
+    )
+    assert expr["op"] == "cs_rank"
+
+
 def test_extract_json_rejects_non_object() -> None:
     with pytest.raises(FactorExtractionError):
         _extract_json("[1, 2, 3]")

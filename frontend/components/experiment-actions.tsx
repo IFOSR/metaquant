@@ -193,6 +193,7 @@ export function ExperimentActions({
         }
       }
     } catch (cause) {
+      setProvStatus("FAILED");
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setProvisioning(false);

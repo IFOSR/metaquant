@@ -231,6 +231,7 @@ export function ExperimentActions({
         snapshotId: snapshot.snapshotId,
         snapshotManifestHash: snapshot.manifestHash,
       });
+      setBusy(false);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -246,6 +247,7 @@ export function ExperimentActions({
       // Refresh the etag on this client instance before the write command.
       await quantApiClient.getExperiment(experimentId);
       await quantApiClient.runExperiment(experimentId);
+      setBusy(false);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));

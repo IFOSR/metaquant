@@ -298,10 +298,14 @@ export function ExperimentActions({
     setError(null);
     try {
       const experiment = await quantApiClient.getExperiment(experimentId);
-      if (!experiment.latestRunId) return;
+      if (!experiment.latestRunId) {
+        setError(t("expAction.needRun"));
+        setBusy(false);
+        return;
+      }
       const labels = await quantApiClient.listLabelSnapshots();
       const label = labels.find((item) => item.market === market);
-      if (!label) throw new Error("无可用标签快照");
+      if (!label) throw new Error(t("expAction.noLabel"));
       const policyId =
         market === "CN_A"
           ? "policy://cn-a-daily-factor/v1"

@@ -37,6 +37,7 @@ from quant_platform.research.api import (
 )
 from quant_platform.research.attachment import (
     parse_attachment,
+    resolve_material,
 )
 from quant_platform.research.factor_extract import (
     FactorExtractionError,
@@ -60,8 +61,9 @@ def _pipeline_from_paper(
     snapshot_manifest_hash: str | None,
 ) -> dict[str, Any]:
     """Extract a factor from a report and drive it to a preregistered experiment."""
+    material, resolved_prompt = resolve_material(paper_text, user_prompt)
     extraction = extract_factor_from_paper(
-        paper_text, market, user_prompt=user_prompt
+        material, market, user_prompt=resolved_prompt
     )
     factor_ir = extraction.factor_ir
     scope = factor_ir["market_scope"]

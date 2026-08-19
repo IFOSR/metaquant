@@ -59,6 +59,14 @@ describe("buildProxyTarget", () => {
     expect(isAllowedQuantApiPath(["v1", "session", "extra"])).toBe(false);
     expect(isAllowedQuantApiPath(["v1", "formal-snapshots"])).toBe(true);
     expect(isAllowedQuantApiPath(["v1", "formal-snapshots", "x"])).toBe(false);
+    expect(isAllowedQuantApiPath(["v1", "data-provisioning"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "data-provisioning", "t_1"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "data-provisioning", "t_1", "x"])).toBe(
+      false,
+    );
+    expect(isAllowedQuantApiPath(["v1", "research-briefs:from-paper"])).toBe(
+      true,
+    );
     expect(isAllowedQuantApiPath(["v1", "execution", "orders"])).toBe(false);
     expect(isAllowedQuantApiPath(["v1", "execution", "state"])).toBe(true);
     expect(isAllowedQuantApiPath(["v1", "execution", "kill-switch:trip"])).toBe(

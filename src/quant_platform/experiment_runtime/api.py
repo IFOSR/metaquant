@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -19,6 +20,7 @@ from quant_platform.experiment_runtime.repository import (
 from quant_platform.experiment_runtime.schemas import (
     AssessIndependenceCommand,
     AssessRobustnessCommand,
+    FromPaperPipelineCommand,
     PreregisterExperimentCommand,
     PromoteCommand,
     ProvisionCommand,
@@ -32,6 +34,10 @@ from quant_platform.research.api import (
     ProblemError,
     ResearchPrincipal,
     ResearchPrincipalProvider,
+)
+from quant_platform.research.factor_extract import (
+    FactorExtractionError,
+    extract_factor_from_paper,
 )
 from quant_platform.validation import CandidateEvidence, ICSign
 
@@ -63,6 +69,132 @@ def build_experiment_router(
                 detail="The supplied access token is not recognized.",
             )
         return resolved
+
+    @router.post("/research-pipelines:from-paper", status_code=202)
+    def create_research_from_paper(
+        command: FromPaperPipelineCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+        idempotency_key: str = Header(alias="Idempotency-Key", min_length=16),
+    ) -> dict[str, Any]:
+        if not actor.can(
+            {"research.jobs.manage", "research.experiments.preregister"},
+            project_id="local",
+            market=command.market,
+        ):
+            raise _not_found()
+        try:
+            extraction = extract_factor_from_paper(
+                command.paper_text, command.market.value
+            )
+        except FactorExtractionError as exc:
+            raise ProblemError(
+                status=422,
+                code="FACTOR_EXTRACTION_FAILED",
+                title="Factor extraction failed",
+                detail=str(exc),
+            ) from exc
+        factor_ir = extraction.factor_ir
+        scope = factor_ir["market_scope"]
+        clocks = factor_ir["decision_clock"]
+        try:
+            job = repository._research.create_job(
+                actor_id=actor.actor_id,
+                project_id="local",
+                title=str(factor_ir.get("factor_id", "extracted-factor")),
+                market=command.market.value,
+                universe_ref=str(scope["universe_ref"]),
+                frequency=str(scope.get("frequency", "1d")),
+                decision_clock=str(clocks["signal_time"]),
+                trade_clock=str(clocks["earliest_trade_time"]),
+                settlement_clock=(
+                    "T+1_SETTLEMENT"
+                    if command.market.value == "CN_COMMODITY_FUTURES"
+                    else None
+                ),
+                exchange_scope=list(scope.get("exchange_scope", [])),
+                contract_selection="ACTUAL_CONTRACTS_ONLY",
+                roll_policy=str(scope.get("roll_policy_ref", "")),
+                horizon=command.horizon,
+                research_brief_version_id="placeholder",
+                budget={
+                    "candidate_limit": 20,
+                    "llm_token_limit": 120000,
+                    "cpu_hours": 24,
+                    "wall_clock_minutes": 60,
+                },
+            )
+            brief = repository._research.create_brief_version(
+                job_id=job.id,
+                actor_id=actor.actor_id,
+                content=extraction.brief,
+                expected_job_version=job.resource_version,
+            )
+            brief = repository._research.freeze_brief(
+                brief.id,
+                actor_id=actor.actor_id,
+                expected_resource_version=brief.resource_version,
+            )
+            snapshot_id = command.snapshot_id
+            snapshot_manifest_hash = command.snapshot_manifest_hash
+            if not snapshot_id or not snapshot_manifest_hash:
+                match = next(
+                    (
+                        item
+                        for item in repository.list_formal_snapshots()
+                        if item.get("market") == command.market.value
+                    ),
+                    None,
+                )
+                if match is None:
+                    raise ValueError("NO_SNAPSHOT_FOR_MARKET")
+                snapshot_id = str(match["snapshot_id"])
+                snapshot_manifest_hash = str(match["manifest_hash"])
+            label = next(
+                (
+                    item
+                    for item in repository.list_label_snapshots()
+                    if item.get("market") == command.market.value
+                    and item.get("decision_time")
+                ),
+                None,
+            )
+            decision_time = (
+                datetime.fromisoformat(str(label["decision_time"]))
+                if label
+                else datetime.now(UTC)
+            )
+            receipt = repository.preregister(
+                actor_id=actor.actor_id,
+                project_id="local",
+                market=command.market.value,
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(command.model_dump(mode="json")),
+                reason="from-paper pipeline",
+                parent_artifact_id=None,
+                research_job_id=job.id,
+                brief_version_id=brief.id,
+                decision_time=decision_time,
+                random_seed=command.random_seed,
+                resource_budget=ResourceBudget(
+                    cpu_seconds=3600,
+                    wall_clock_seconds=1800,
+                    memory_mb=2048,
+                    max_observations=100000,
+                ),
+                factor_ir_payload=factor_ir,
+                snapshot_id=snapshot_id,
+                snapshot_manifest_hash=snapshot_manifest_hash,
+            )
+        except ValueError as exc:
+            raise _problem(exc) from exc
+        return {
+            "job_id": job.id,
+            "brief_id": brief.id,
+            "experiment_id": receipt.resource_id,
+            "brief": extraction.brief.model_dump(mode="json"),
+            "factor_ir": factor_ir,
+            "explanation": extraction.explanation,
+        }
 
     @router.post("/experiments:preregister", status_code=202)
     def preregister(

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PaperPipeline } from "../../../../components/paper-pipeline";
 import { ResearchJobForm } from "../../../../components/research-job-form";
 import { getServerT } from "../../../../lib/server-locale";
 
@@ -26,6 +27,7 @@ export default async function NewResearchJobPage() {
           <span className="mono">{t("jobNew.contractNote")}</span>
         </div>
       </div>
+      <PaperPipeline />
       <ResearchJobForm />
     </div>
   );

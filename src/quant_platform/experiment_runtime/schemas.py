@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from quant_platform.research.schemas import CommandMetadata
+from quant_platform.research.schemas import CommandMetadata, MarketId
 
 
 class ResourceBudgetCommand(BaseModel):
@@ -15,6 +15,17 @@ class ResourceBudgetCommand(BaseModel):
     wall_clock_seconds: int = Field(gt=0)
     memory_mb: int = Field(gt=0)
     max_observations: int = Field(gt=0)
+
+
+class FromPaperPipelineCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    paper_text: str = Field(min_length=20)
+    market: MarketId
+    horizon: str = "5 trading days"
+    snapshot_id: str | None = None
+    snapshot_manifest_hash: str | None = None
+    random_seed: int = 42
 
 
 class PreregisterExperimentCommand(BaseModel):

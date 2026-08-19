@@ -26,6 +26,7 @@ import type {
   RunBacktestInput,
   Session,
   FactorExtractionResult,
+  FromPaperPipelineResult,
 } from "./types";
 
 type Fetcher = typeof fetch;
@@ -456,6 +457,10 @@ export interface QuantApiClient {
     paperText: string,
     market: MarketId,
   ): Promise<FactorExtractionResult>;
+  createResearchFromPaper(
+    paperText: string,
+    market: MarketId,
+  ): Promise<FromPaperPipelineResult>;
   createResearchJob(input: CreateResearchJobInput): Promise<ResearchJob>;
   preregisterExperiment(input: PreregisterExperimentInput): Promise<Experiment>;
   getExperiment(id: string): Promise<Experiment>;
@@ -630,6 +635,32 @@ export class HttpQuantApiClient implements QuantApiClient {
       },
     );
     return mapFactorExtraction(result.body);
+  }
+
+  async createResearchFromPaper(paperText: string, market: MarketId) {
+    const result = await this.request<{
+      job_id: string;
+      brief_id: string;
+      experiment_id: string;
+      brief: ApiBriefDraft;
+      factor_ir: Record<string, unknown>;
+      explanation: string;
+    }>("/research-pipelines:from-paper", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": this.idempotencyKey(),
+      },
+      body: JSON.stringify({ paper_text: paperText, market }),
+    });
+    return {
+      jobId: result.body.job_id,
+      briefId: result.body.brief_id,
+      experimentId: result.body.experiment_id,
+      brief: mapBriefDraft(result.body.brief),
+      factorIr: result.body.factor_ir,
+      explanation: result.body.explanation,
+    } satisfies FromPaperPipelineResult;
   }
 
   async createResearchJob(input: CreateResearchJobInput) {

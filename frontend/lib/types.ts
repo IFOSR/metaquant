@@ -163,6 +163,15 @@ export interface FactorExtractionResult {
   explanation: string;
 }
 
+export interface FromPaperPipelineResult {
+  jobId: string;
+  briefId: string;
+  experimentId: string;
+  brief: BriefDraftInput;
+  factorIr: Record<string, unknown>;
+  explanation: string;
+}
+
 export interface FormalSnapshotInfo {
   snapshotId: string;
   manifestHash: string;

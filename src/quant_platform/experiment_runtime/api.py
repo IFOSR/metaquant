@@ -105,16 +105,19 @@ def _pipeline_from_paper(
         expected_resource_version=brief.resource_version,
     )
     if not snapshot_id or not snapshot_manifest_hash:
-        match = next(
-            (
-                item
-                for item in repository.list_formal_snapshots()
-                if item.get("market") == market
-            ),
-            None,
-        )
-        if match is None:
+        candidates = [
+            item
+            for item in repository.list_formal_snapshots()
+            if item.get("market") == market
+        ]
+        if not candidates:
             raise ValueError("NO_SNAPSHOT_FOR_MARKET")
+        # Prefer the broadest snapshot: cross-sectional IC needs many
+        # instruments, and single-contract ad-hoc snapshots produce null ICs.
+        match = max(
+            candidates,
+            key=lambda item: len(item.get("instruments") or []),
+        )
         snapshot_id = str(match["snapshot_id"])
         snapshot_manifest_hash = str(match["manifest_hash"])
     label = next(

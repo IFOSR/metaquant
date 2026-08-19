@@ -474,3 +474,62 @@ class SnapshotRegistryModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class FactorBuildSpecModel(Base):
+    __tablename__ = "factor_build_specs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        String(128), nullable=False, default="local", index=True
+    )
+    research_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("research_jobs.id", ondelete="SET NULL"), nullable=True
+    )
+    brief_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    spec_hash: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    spec_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    resource_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    frozen_by: Mapped[str | None] = mapped_column(String(255))
+
+
+class FactorCodeBundleModel(Base):
+    __tablename__ = "factor_code_bundles"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    spec_hash: Mapped[str] = mapped_column(
+        ForeignKey("factor_build_specs.spec_hash"), nullable=False, index=True
+    )
+    bundle_hash: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    manifest_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class FactorBuildRunModel(Base):
+    __tablename__ = "factor_build_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    spec_hash: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    bundle_hash: Mapped[str] = mapped_column(String(80), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    run_fingerprint: Mapped[str | None] = mapped_column(String(64), unique=True)
+    weights_hash: Mapped[str | None] = mapped_column(String(80))
+    factor_values_hash: Mapped[str | None] = mapped_column(String(80))
+    error: Mapped[str | None] = mapped_column(Text)
+    logs_ref: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

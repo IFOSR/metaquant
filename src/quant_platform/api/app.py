@@ -21,6 +21,10 @@ from quant_platform.experiment_runtime import (
     SqlAlchemyExperimentRepository,
     build_experiment_router,
 )
+from quant_platform.factor_construction.api import build_factor_construction_router
+from quant_platform.factor_construction.repository import (
+    SqlAlchemyFactorConstructionRepository,
+)
 from quant_platform.health import ReadinessProbe, build_readiness_probe
 from quant_platform.research.api import (
     ResearchPrincipal,
@@ -59,6 +63,10 @@ def _default_principal_provider(token: str) -> ResearchPrincipal | None:
         "research.experiments.run",
         "research.strategy.read",
         "research.governance.approve",
+        # 因子构建（研报 → 可执行模型）能力
+        "factor_construction.specs.write",
+        "factor_construction.specs.freeze",
+        "factor_construction.bundles.generate",
         # 前端导航与操作边界使用的能力
         "research.jobs.propose",
         "strategy.read",
@@ -94,6 +102,9 @@ def create_app(
     readiness_probe: ReadinessProbe | None = None,
     research_repository: SqlAlchemyResearchRepository | None = None,
     experiment_repository: SqlAlchemyExperimentRepository | None = None,
+    factor_construction_repository: (
+        SqlAlchemyFactorConstructionRepository | None
+    ) = None,
     research_principal_provider: ResearchPrincipalProvider | None = None,
 ) -> FastAPI:
     settings = get_settings()
@@ -103,6 +114,11 @@ def create_app(
     )
     provisioning: DataProvisioning | None = None
     task_manager: ProvisioningTaskManager | None = None
+    factor_repository = factor_construction_repository or (
+        SqlAlchemyFactorConstructionRepository(
+            create_engine(str(settings.database_url), pool_pre_ping=True)
+        )
+    )
     if experiment_repository is None:
         engine = create_engine(str(settings.database_url), pool_pre_ping=True)
         minio_endpoint = settings.minio_endpoint.removeprefix("http://").removeprefix(
@@ -152,6 +168,9 @@ def create_app(
     )
     install_problem_handlers(application)
     application.include_router(build_research_router(repository, principal_provider))
+    application.include_router(
+        build_factor_construction_router(factor_repository, principal_provider)
+    )
     application.include_router(
         build_experiment_router(
             experiment_repository, principal_provider, provisioning, task_manager

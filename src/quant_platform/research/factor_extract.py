@@ -89,9 +89,7 @@ def extract_factor_from_paper(
     """Translate a report into a factor IR + brief draft via the agent."""
     complete = runner or _default_runner()
     if user_prompt:
-        material = (
-            f"User request: {user_prompt}\n\nReport text:\n\n{paper_text}"
-        )
+        material = f"User request: {user_prompt}\n\nReport text:\n\n{paper_text}"
     else:
         material = f"Report text:\n\n{paper_text}"
     raw = complete(f"{material}\n\nTarget market: {market}")
@@ -159,9 +157,7 @@ def _build_factor_ir(data: Mapping[str, Any], market: str) -> dict[str, Any]:
             "field_ref": str(item.get("field_ref", "")),
             "data_type": "ScalarSeries",
             "unit": str(item.get("unit", "CNY")),
-            "available_time_rule": str(
-                item.get("available_time_rule", "T_CLOSE+20m")
-            ),
+            "available_time_rule": str(item.get("available_time_rule", "T_CLOSE+20m")),
         }
         for item in inputs
     ]
@@ -257,14 +253,14 @@ def _pi_complete(prompt: str) -> str:
     return result.stdout.strip()
 
 
-def _zhipu_complete(prompt: str) -> str:
+def _zhipu_complete(prompt: str, *, system_prompt: str = _SYSTEM_PROMPT) -> str:
     api_key = os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key()
     if not api_key:
         raise FactorExtractionError("ZHIPU_API_KEY is not configured")
     payload = {
         "model": "glm-4.6",
         "messages": [
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ],
         "temperature": 0,
@@ -286,22 +282,26 @@ def _zhipu_complete(prompt: str) -> str:
     return content
 
 
-def _deepseek_complete(prompt: str) -> str:
+def _deepseek_complete(
+    prompt: str, *, system_prompt: str = _SYSTEM_PROMPT, json_mode: bool = True
+) -> str:
     api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if not api_key:
         raise FactorExtractionError("DEEPSEEK_API_KEY is not configured")
+    payload: dict[str, object] = {
+        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
     response = httpx.post(
         "https://api.deepseek.com/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
-            "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0,
-        },
+        json=payload,
         timeout=180,
     )
     response.raise_for_status()
@@ -329,14 +329,29 @@ def _read_zhipu_key() -> str:
     return ""
 
 
-def _default_runner() -> Runner:
+def default_runner(
+    system_prompt: str | None = None, *, json_mode: bool = True
+) -> Runner:
+    """Select an agent backend, injecting ``system_prompt`` into the call.
+
+    Kept as a factory (rather than returning the raw HTTP functions) so callers
+    that need a *different* system prompt (e.g. factor construction) can reuse
+    the backend selection without inheriting the factor-ir prompt.
+    """
+    prompt = system_prompt or _SYSTEM_PROMPT
     if os.environ.get("DEEPSEEK_API_KEY"):
-        return _deepseek_complete
+        return lambda user: _deepseek_complete(
+            user, system_prompt=prompt, json_mode=json_mode
+        )
     if os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key():
-        return _zhipu_complete
+        return lambda user: _zhipu_complete(user, system_prompt=prompt)
     if shutil.which("pi") and os.environ.get("CODE_CLI_API_KEY"):
-        return _pi_complete
+        return lambda user: _pi_complete(f"{prompt}\n\n{user}")
     raise FactorExtractionError(
         "no agent runner configured: set DEEPSEEK_API_KEY, ZHIPU_API_KEY, "
         "or CODE_CLI_API_KEY (pi)"
     )
+
+
+def _default_runner() -> Runner:
+    return default_runner()

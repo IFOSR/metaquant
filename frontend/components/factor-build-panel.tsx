@@ -30,6 +30,10 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
   const [weightsHash, setWeightsHash] = useState<string | null>(null);
   const [factorValuesHash, setFactorValuesHash] = useState<string | null>(null);
   const [report, setReport] = useState<ModelFactorValidationReport | null>(null);
+  const [instrumentIds, setInstrumentIds] = useState(
+    "A2611.DCE,AG2702.SHF,AU2612.SHF,B2611.DCE,C2611.DCE,EG2609.DCE,HC2701.SHF,I2701.DCE,JD2611.DCE,JM2701.DCE,L2701.DCE,LH2611.DCE,M2701.DCE,RB2610.SHF,RB2701.SHF,SC2609.INE,V2701.DCE,Y2701.DCE",
+  );
+  const [decisionTime, setDecisionTime] = useState("2026-08-20T07:00:00Z");
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
@@ -115,8 +119,8 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
       quantApiClient.trainFactor({
         spec_hash: specHash,
         bundle_hash: draft.bundle_hash,
-        instrument_ids: ["600000.SH", "000001.SZ"],
-        decision_time: "2026-08-03T07:00:00Z",
+        instrument_ids: instrumentIds.split(",").map((s) => s.trim()).filter(Boolean),
+        decision_time: decisionTime,
       }),
     );
     if (result) {
@@ -132,8 +136,8 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
         spec_hash: specHash,
         bundle_hash: draft.bundle_hash,
         weights_hash: weightsHash,
-        instrument_ids: ["600000.SH", "000001.SZ"],
-        decision_time: "2026-08-03T07:00:00Z",
+        instrument_ids: instrumentIds.split(",").map((s) => s.trim()).filter(Boolean),
+        decision_time: decisionTime,
       }),
     );
     if (result) {
@@ -148,10 +152,10 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
       quantApiClient.validateFactor({
         spec_hash: specHash,
         factor_values_hash: factorValuesHash,
-        instrument_ids: ["600000.SH", "000001.SZ"],
+        instrument_ids: instrumentIds.split(",").map((s) => s.trim()).filter(Boolean),
         price_field: spec.label.price_field,
         horizon: spec.label.horizon,
-        decision_time: "2026-08-03T07:00:00Z",
+        decision_time: decisionTime,
       }),
     );
     if (result) {
@@ -179,6 +183,23 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
           placeholder="粘贴研报文本（例如 StableAlpha 的标签/权重/中性化设定）"
         />
       </label>
+
+      <div className="brief-template-row">
+        <label className="field field-wide">
+          <span>训练/推理标的（逗号分隔）</span>
+          <input
+            value={instrumentIds}
+            onChange={(event) => setInstrumentIds(event.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>决策时点（decision_time）</span>
+          <input
+            value={decisionTime}
+            onChange={(event) => setDecisionTime(event.target.value)}
+          />
+        </label>
+      </div>
 
       <div className="button-row">
         <button

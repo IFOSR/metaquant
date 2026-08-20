@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, Response
 
 from quant_platform.factor_construction.artifacts import CodeBundleError, bundle_hash
+from quant_platform.factor_construction.executor import FactorBuildExecutionError
 from quant_platform.factor_construction.generator import (
     extract_build_spec,
     generate_and_smoke,
@@ -100,9 +101,7 @@ def build_factor_construction_router(
         except (FactorExtractionError, CodeBundleError) as exc:
             raise _agent_failed(exc) from exc
         return {
-            "files": {
-                name: manifest["files"][name]["sha256"] for name in sorted(files)
-            },
+            "files": {name: payload.decode() for name, payload in files.items()},
             "manifest": manifest,
             "bundle_hash": bundle_hash(manifest),
         }
@@ -118,9 +117,7 @@ def build_factor_construction_router(
         except (FactorExtractionError, CodeBundleError) as exc:
             raise _agent_failed(exc) from exc
         return {
-            "files": {
-                name: manifest["files"][name]["sha256"] for name in sorted(files)
-            },
+            "files": {name: payload.decode() for name, payload in files.items()},
             "manifest": manifest,
             "bundle_hash": bundle_hash(manifest),
             "smoke": {
@@ -200,8 +197,8 @@ def build_factor_construction_router(
                 manifest=command.manifest,
                 files_text=command.files,
             )
-        except ValueError as exc:
-            raise _problem_from_value_error(exc) from exc
+        except (FactorBuildExecutionError, ValueError) as exc:
+            raise _execution_problem(exc) from exc
         return record.model_dump(mode="json")
 
     @router.get("/factor-build-specs/{spec_id}")
@@ -239,13 +236,16 @@ def build_factor_construction_router(
             {"factor_construction.train"},
             _market(repository, command.spec_hash),
         )
-        result = svc.train(
-            spec_hash=command.spec_hash,
-            bundle_hash=command.bundle_hash,
-            instrument_ids=command.instrument_ids,
-            decision_time=command.decision_time.isoformat(),
-            field_prefix=command.field_prefix,
-        )
+        try:
+            result = svc.train(
+                spec_hash=command.spec_hash,
+                bundle_hash=command.bundle_hash,
+                instrument_ids=command.instrument_ids,
+                decision_time=command.decision_time.isoformat(),
+                field_prefix=command.field_prefix,
+            )
+        except (FactorBuildExecutionError, ValueError) as exc:
+            raise _execution_problem(exc) from exc
         return {
             "run": result.run.model_dump(mode="json"),
             "weights_hash": result.weights_hash,
@@ -262,14 +262,17 @@ def build_factor_construction_router(
             {"factor_construction.train"},
             _market(repository, command.spec_hash),
         )
-        result = svc.infer(
-            spec_hash=command.spec_hash,
-            bundle_hash=command.bundle_hash,
-            weights_hash=command.weights_hash,
-            instrument_ids=command.instrument_ids,
-            decision_time=command.decision_time.isoformat(),
-            field_prefix=command.field_prefix,
-        )
+        try:
+            result = svc.infer(
+                spec_hash=command.spec_hash,
+                bundle_hash=command.bundle_hash,
+                weights_hash=command.weights_hash,
+                instrument_ids=command.instrument_ids,
+                decision_time=command.decision_time.isoformat(),
+                field_prefix=command.field_prefix,
+            )
+        except (FactorBuildExecutionError, ValueError) as exc:
+            raise _execution_problem(exc) from exc
         return {
             "run": result.run.model_dump(mode="json"),
             "factor_values_hash": result.factor_values_hash,
@@ -288,15 +291,18 @@ def build_factor_construction_router(
             {"factor_construction.train"},
             _market(repository, command.spec_hash),
         )
-        report = svc.validate(
-            factor_values_hash=command.factor_values_hash,
-            instrument_ids=command.instrument_ids,
-            price_field=command.price_field,
-            horizon=command.horizon,
-            decision_time=command.decision_time.isoformat(),
-            field_prefix=command.field_prefix,
-            return_type=command.return_type,
-        )
+        try:
+            report = svc.validate(
+                factor_values_hash=command.factor_values_hash,
+                instrument_ids=command.instrument_ids,
+                price_field=command.price_field,
+                horizon=command.horizon,
+                decision_time=command.decision_time.isoformat(),
+                field_prefix=command.field_prefix,
+                return_type=command.return_type,
+            )
+        except (FactorBuildExecutionError, ValueError) as exc:
+            raise _execution_problem(exc) from exc
         return report.payload()
 
     @router.get("/factor-build-runs/{run_id}")
@@ -319,6 +325,34 @@ def _agent_failed(exc: Exception) -> ProblemError:
         code="AGENT_GENERATION_FAILED",
         title="Agent generation failed",
         detail=str(exc),
+    )
+
+
+def _execution_problem(exc: Exception) -> ProblemError:
+    if isinstance(exc, ValueError):
+        return _problem_from_value_error(exc)
+    text = str(exc)
+    code = text.partition(":")[0]
+    if code == "RESOURCE_NOT_FOUND":
+        return ProblemError(
+            status=404,
+            code="RESOURCE_NOT_FOUND",
+            title="Resource not found",
+            detail="The spec or code bundle is not registered. "
+            "Freeze the spec and register the code bundle before training.",
+        )
+    if code == "BUNDLE_HASH_MISMATCH":
+        return ProblemError(
+            status=422,
+            code="BUNDLE_HASH_MISMATCH",
+            title="Bundle hash mismatch",
+            detail="The supplied files do not match the bundle manifest.",
+        )
+    return ProblemError(
+        status=422,
+        code="FACTOR_BUILD_FAILED",
+        title="Factor build failed",
+        detail=text,
     )
 
 

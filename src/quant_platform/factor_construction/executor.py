@@ -52,15 +52,20 @@ spec = json.loads(Path(sys.argv[1]).read_text())
 payload = json.loads(Path(sys.argv[2]).read_text())
 label_payload = json.loads(Path(sys.argv[3]).read_text())
 
-data = ml.PITFrame(
-    data=ml._rows_to_frame(payload["rows"], payload["fields"]),
-    decision_time=payload["decision_time"],
-)
+frame = ml._rows_to_frame(payload["rows"], payload["fields"])
 labels = (
     ml._label_rows_to_series(label_payload["rows"])
     if label_payload["rows"]
     else None
 )
+
+# Align features to realized labels so the generated train() sees matching rows.
+if labels is not None and len(labels):
+    common = frame.index.intersection(labels.index)
+    frame = frame.loc[common]
+    labels = labels.reindex(common)
+
+data = ml.PITFrame(data=frame, decision_time=payload["decision_time"])
 
 weights = train_mod.train(data, labels, spec)
 Path(sys.argv[4]).write_bytes(pickle.dumps(weights))

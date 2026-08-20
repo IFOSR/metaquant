@@ -26,6 +26,11 @@ mlruns/
 
 # Env & secrets
 .env
+.env.*.local
+frontend/.env.local
+
+# Next.js build output
+frontend/.next/
 
 # Agent runtime state
 .deepseek/

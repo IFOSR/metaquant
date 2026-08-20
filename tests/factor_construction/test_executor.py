@@ -80,3 +80,26 @@ def test_run_infer_returns_factor_observations() -> None:
     assert by_instrument["A"] == 3.0  # 1 + 2
     assert by_instrument["B"] == 7.0  # 3 + 4
     assert len(outcome.output_hash) == 64
+
+
+def test_run_train_aligns_features_to_labels() -> None:
+    import pickle
+
+    bundle = dict(_BUNDLE)
+    bundle["train.py"] = b"""import numpy as np
+
+def train(data, labels, spec):
+    return {"n_labels": 0 if labels is None else len(labels)}
+"""
+    outcome = run_train(
+        bundle_files=bundle,
+        spec=_spec(),
+        data_rows=_DATA_ROWS,
+        fields=["a", "b"],
+        label_rows=[
+            {"instrument_id": "A", "event_time": "2026-08-01T07:00:00Z", "label": 0.05}
+        ],
+        decision_time="2026-08-02T07:00:00Z",
+    )
+    weights = pickle.loads(outcome.weights)
+    assert weights["n_labels"] == 1

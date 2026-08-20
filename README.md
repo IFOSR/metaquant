@@ -65,6 +65,30 @@ docker compose run --rm migrate alembic current
 应用使用非超级用户 `quant_app`。PostgreSQL 数据保存在 Compose named volume
 `postgres_data`，不会写入容器临时文件系统。
 
+## 因子构建（研报 → 可执行模型）
+
+从研报中挖掘深度学习因子：agent 抽取构建规格 → 生成 model/train/infer 代码 →
+沙箱训练/推理 → 因子值 → IC 验证。
+
+前提：后端镜像含 CPU 版 PyTorch（默认 `INSTALL_TORCH=true`），并配置了
+DeepSeek/Zhipu 的 agent 后端（`.env` 中的 `DEEPSEEK_API_KEY` 或 `ZHIPU_API_KEY`）。
+
+```bash
+# 构建/验证 torch 沙箱（含一个真实 torch 训练→推理→IC 的 smoke）
+make sandbox-verify
+
+# 用真实 PIT 数据（pit_observations）跑通 torch 全链路
+docker compose run --rm --no-deps api python scripts/verify-real-torch.py
+```
+
+前端入口：研究任务详情页的「因子构建」链接，或直接访问
+`http://localhost:3090/research/jobs/<job-id>/factor-build`，按 8 步走
+「抽取规格 → 生成代码 → 试运行 → 冻结规格 → 注册代码包 → 训练 → 推理 → 验证」。
+
+隔离方式：本地默认用子进程沙箱（AST 安全扫描 + 资源限制）；生产多租户设置
+`SANDBOX_USE_DOCKER=true`（`docker/sandbox/Dockerfile` 构建的隔离镜像，
+`--network=none` + 只读根文件系统）。
+
 ## 工程检查
 
 ```bash

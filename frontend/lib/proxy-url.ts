@@ -22,6 +22,23 @@ export function isAllowedQuantApiPath(path: string[]) {
   if (path[1] === "experiments:preregister") return path.length === 2;
   if (path[1] === "alpha-pool") return path.length === 2;
   if (path[1] === "backtests") return path.length === 2;
+  if (path[1] === "factor-build-specs:extract") return path.length === 2;
+  if (path[1] === "factor-build-specs:generate") return path.length === 2;
+  if (path[1] === "factor-build-specs:smoke") return path.length === 2;
+  if (path[1] === "factor-build-specs:train") return path.length === 2;
+  if (path[1] === "factor-build-specs:infer") return path.length === 2;
+  if (path[1] === "factor-build-specs:validate") return path.length === 2;
+  if (path[1] === "factor-build-specs") {
+    if (path.length === 2) return true;
+    return (
+      path.length === 3 &&
+      Boolean(path[2]) &&
+      (path[2].endsWith(":freeze") || path[2].endsWith(":generate"))
+    );
+  }
+  if (path[1] === "factor-build-runs") {
+    return path.length === 3 && Boolean(path[2]);
+  }
   if (path[1] === "market-data") {
     return path.length === 3 && path[2] === "coverage";
   }

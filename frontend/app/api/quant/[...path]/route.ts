@@ -27,6 +27,12 @@ const LONG_RUNNING_PATHS = new Set([
   "research-pipelines:from-paper-file",
   "research-briefs:from-paper",
   "research-briefs:extract-factor",
+  "factor-build-specs:extract",
+  "factor-build-specs:generate",
+  "factor-build-specs:smoke",
+  "factor-build-specs:train",
+  "factor-build-specs:infer",
+  "factor-build-specs:validate",
 ]);
 
 async function proxy(request: NextRequest, path: string[]) {

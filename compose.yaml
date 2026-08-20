@@ -19,6 +19,8 @@ x-app-environment: &app-environment
   EXECUTION_DEPENDENCY_LOCK_HASH: ${EXECUTION_DEPENDENCY_LOCK_HASH:-0000000000000000000000000000000000000000000000000000000000000000}
   EXECUTION_EXECUTOR_VERSION: ${EXECUTION_EXECUTOR_VERSION:-factor-executor/v1}
   EXECUTION_CONFIG_HASH: ${EXECUTION_CONFIG_HASH:-0000000000000000000000000000000000000000000000000000000000000000}
+  SANDBOX_IMAGE: ${SANDBOX_IMAGE:-quant-sandbox:local}
+  SANDBOX_USE_DOCKER: ${SANDBOX_USE_DOCKER:-false}
 
 services:
   postgres:
@@ -99,6 +101,7 @@ services:
       context: .
       args:
         UV_EXTRAS: --extra data
+        INSTALL_TORCH: ${INSTALL_TORCH:-true}
     environment: *app-environment
     volumes:
       - ./config:/app/config:ro

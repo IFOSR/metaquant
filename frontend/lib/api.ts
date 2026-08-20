@@ -1071,7 +1071,9 @@ export class HttpQuantApiClient implements QuantApiClient {
           "Idempotency-Key": this.idempotencyKey(),
           "If-Match": `"${resourceVersion}"`,
         },
-        body: JSON.stringify(commandMetadata("Freeze a factor build spec")),
+        body: JSON.stringify({
+          metadata: commandMetadata("Freeze a factor build spec"),
+        }),
       },
     );
     return result.body;

@@ -132,9 +132,12 @@ Hard rules:
 - model.py MUST define top-level `def build_model(hyperparams)`.
 - train.py MUST define top-level `def train(data, labels, spec)`, where `data`
   is a PITFrame, `labels` is a pandas Series (or None), and `spec` is a dict.
-  Return a pickle-serializable weights object (e.g. a state_dict or a dict).
+  Return a SELF-DESCRIBING pickle-serializable weights dict: include the model
+  state_dict AND the hyperparameters (plus feature columns / normalization
+  stats) so infer can rebuild the model from weights alone.
 - infer.py MUST define top-level `def infer(data, weights)` returning a list of
-  floats aligned to `data.data.index` (one value per row).
+  floats aligned to `data.data.index` (one value per row). Rebuild the model
+  from `weights["hyperparameters"]` before `load_state_dict`.
 - Features come only from `data.data` (a DataFrame returned by
   quant_platform.ml.load_pit_frame); labels come only from the `labels`
   argument (never load them yourself).

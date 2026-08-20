@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     execution_dependency_lock_hash: str = "0" * 64
     execution_executor_version: str = "factor-executor/v1"
     execution_config_hash: str = "0" * 64
+    sandbox_image: str = "quant-sandbox:local"
+    sandbox_use_docker: bool = False
 
 
 @lru_cache

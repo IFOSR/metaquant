@@ -9,8 +9,10 @@ serializing weights), so the generated code is pure computation::
     infer.py:  def infer(data, weights) -> list[float]   (aligned to data index)
 
 Weights are content-addressed bytes (the sandbox image uses ``torch.save``; the
-local driver pickles the returned object). Factor values are canonicalized to
-``factor-observations/v1`` via the shared ``canonical_observations`` helper.
+local driver pickles the returned object). Train must return a self-describing
+dict (state_dict + hyperparameters) so infer can rebuild the model. Factor
+values are canonicalized to ``factor-observations/v1`` via the shared
+``canonical_observations`` helper.
 """
 
 from __future__ import annotations

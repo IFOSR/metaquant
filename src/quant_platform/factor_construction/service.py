@@ -24,6 +24,10 @@ from quant_platform.factor_construction.executor import (
     run_infer,
     run_train,
 )
+from quant_platform.factor_construction.runner import (
+    SandboxRunner,
+    SubprocessSandboxRunner,
+)
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
 )
@@ -81,10 +85,12 @@ class FactorBuildService:
         repository: SqlAlchemyFactorConstructionRepository,
         artifact_store: ArtifactStore,
         data_service: DataService,
+        sandbox: SandboxRunner | None = None,
     ) -> None:
         self._repository = repository
         self._artifacts = artifact_store
         self._data = data_service
+        self._sandbox = sandbox or SubprocessSandboxRunner()
 
     def _spec(self, spec_hash: str) -> FactorBuildSpec:
         record = self._repository.get_spec_by_hash(spec_hash)
@@ -154,6 +160,7 @@ class FactorBuildService:
                 fields=list(spec.inputs),
                 label_rows=labels["rows"],
                 decision_time=decision_time,
+                sandbox=self._sandbox,
             )
         except (FactorBuildExecutionError, ValueError) as exc:
             self._repository.fail_run(run.id, str(exc))
@@ -195,6 +202,7 @@ class FactorBuildService:
                 data_rows=frame["rows"],
                 fields=list(spec.inputs),
                 decision_time=decision_time,
+                sandbox=self._sandbox,
             )
         except (FactorBuildExecutionError, ValueError) as exc:
             self._repository.fail_run(run.id, str(exc))

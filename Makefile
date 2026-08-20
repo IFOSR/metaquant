@@ -44,5 +44,11 @@ check: build ## Run formatting, linting, type checking, and tests
 g3-integration: build ## Verify G3 migrations, PostgreSQL concurrency, and MinIO hashes
 	./scripts/verify-g3-infrastructure.sh
 
+sandbox: ## Build the factor construction sandbox image (CPU torch)
+	docker build -t quant-sandbox:local -f docker/sandbox/Dockerfile .
+
+sandbox-verify: sandbox ## Verify the torch sandbox end-to-end (train -> infer -> IC)
+	docker run --rm -v "$$PWD/scripts/sandbox-torch-smoke.py:/smoke.py:ro" quant-sandbox:local python /smoke.py
+
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z_-]+:.*## / {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

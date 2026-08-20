@@ -29,6 +29,7 @@ from quant_platform.factor_construction.data_service import (
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
 )
+from quant_platform.factor_construction.runner import DockerSandboxRunner
 from quant_platform.factor_construction.service import FactorBuildService
 from quant_platform.health import ReadinessProbe, build_readiness_probe
 from quant_platform.research.api import (
@@ -150,6 +151,9 @@ def create_app(
         factor_repository,
         _minio_artifact_store(settings),
         data_service,
+        sandbox=DockerSandboxRunner(settings.sandbox_image)
+        if settings.sandbox_use_docker
+        else None,
     )
     if experiment_repository is None:
         engine = create_engine(str(settings.database_url), pool_pre_ping=True)

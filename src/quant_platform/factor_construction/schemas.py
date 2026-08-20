@@ -106,6 +106,12 @@ class GenerateCodeDraftCommand(BaseModel):
     spec: FactorBuildSpec
 
 
+class SmokeFilesCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    files: dict[str, str]
+
+
 class LabelFrameCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

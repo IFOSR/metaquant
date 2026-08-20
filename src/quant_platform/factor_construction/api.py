@@ -16,11 +16,14 @@ from quant_platform.factor_construction.artifacts import CodeBundleError, bundle
 from quant_platform.factor_construction.executor import FactorBuildExecutionError
 from quant_platform.factor_construction.generator import (
     extract_build_spec,
-    generate_and_smoke,
     generate_code_bundle,
 )
 from quant_platform.factor_construction.repository import (
     SqlAlchemyFactorConstructionRepository,
+)
+from quant_platform.factor_construction.runner import (
+    SubprocessSandboxRunner,
+    smoke_bundle,
 )
 from quant_platform.factor_construction.schemas import (
     CreateFactorBuildSpecCommand,
@@ -29,6 +32,7 @@ from quant_platform.factor_construction.schemas import (
     GenerateCodeBundleCommand,
     GenerateCodeDraftCommand,
     InferFactorCommand,
+    SmokeFilesCommand,
     TrainFactorCommand,
     ValidateFactorCommand,
 )
@@ -108,23 +112,20 @@ def build_factor_construction_router(
 
     @router.post("/factor-build-specs:smoke")
     def smoke_spec_draft(
-        command: GenerateCodeDraftCommand,
+        command: SmokeFilesCommand,
         actor: ResearchPrincipal = Depends(principal),  # noqa: B008
     ) -> dict[str, Any]:
         del actor
-        try:
-            files, manifest, result = generate_and_smoke(command.spec)
-        except (FactorExtractionError, CodeBundleError) as exc:
-            raise _agent_failed(exc) from exc
+        result = smoke_bundle(
+            {name: text.encode() for name, text in command.files.items()},
+            SubprocessSandboxRunner(),
+        )
         return {
-            "files": {name: payload.decode() for name, payload in files.items()},
-            "manifest": manifest,
-            "bundle_hash": bundle_hash(manifest),
             "smoke": {
                 "exit_code": result.exit_code,
                 "timed_out": result.timed_out,
                 "stderr": result.stderr,
-            },
+            }
         }
 
     @router.post("/factor-build-specs", status_code=202)

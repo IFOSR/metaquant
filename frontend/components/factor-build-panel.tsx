@@ -81,14 +81,15 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
   }
 
   async function smoke() {
-    if (!spec) return;
-    const result = await run("smoking", () => quantApiClient.smokeSpec(spec));
+    if (!draft) return;
+    const result = await run("smoking", () =>
+      quantApiClient.smokeFiles(draft.files),
+    );
     if (result) {
-      setDraft(result);
-      const ok = result.smoke?.exit_code === 0;
       push(
-        `试运行 ${ok ? "通过" : "失败"} exit=${result.smoke?.exit_code ?? "?"}`,
+        `试运行 ${result.exit_code === 0 ? "通过" : "失败"} exit=${result.exit_code}`,
       );
+      if (result.stderr) push(result.stderr);
     }
   }
 
@@ -213,7 +214,7 @@ export function FactorBuildPanel({ market }: { market: MarketId }) {
         <button className="button" type="button" disabled={busy || !spec} onClick={generate}>
           {step === "generating" ? "生成中…" : "2. 生成代码"}
         </button>
-        <button className="button" type="button" disabled={busy || !spec} onClick={smoke}>
+        <button className="button" type="button" disabled={busy || !draft} onClick={smoke}>
           {step === "smoking" ? "试运行中…" : "3. 试运行"}
         </button>
         <button className="button" type="button" disabled={busy || !spec} onClick={persist}>

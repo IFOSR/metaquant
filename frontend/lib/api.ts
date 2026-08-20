@@ -506,7 +506,11 @@ export interface QuantApiClient {
     market: MarketId,
   ): Promise<FactorBuildSpecExtraction>;
   generateCodeDraft(spec: FactorBuildSpec): Promise<FactorCodeBundleDraft>;
-  smokeSpec(spec: FactorBuildSpec): Promise<FactorCodeBundleDraft>;
+  smokeFiles(files: Record<string, string>): Promise<{
+    exit_code: number;
+    timed_out: boolean;
+    stderr: string;
+  }>;
   createFactorBuildSpec(spec: FactorBuildSpec): Promise<FactorBuildSpecRecord>;
   freezeFactorBuildSpec(
     specId: string,
@@ -1028,23 +1032,15 @@ export class HttpQuantApiClient implements QuantApiClient {
     };
   }
 
-  async smokeSpec(spec: FactorBuildSpec) {
+  async smokeFiles(files: Record<string, string>) {
     const result = await this.request<{
-      files: Record<string, string>;
-      manifest: Record<string, unknown>;
-      bundle_hash: string;
       smoke: { exit_code: number; timed_out: boolean; stderr: string };
     }>("/factor-build-specs:smoke", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ spec }),
+      body: JSON.stringify({ files }),
     });
-    return {
-      files: result.body.files,
-      manifest: result.body.manifest,
-      bundle_hash: result.body.bundle_hash,
-      smoke: result.body.smoke,
-    };
+    return result.body.smoke;
   }
 
   async createFactorBuildSpec(spec: FactorBuildSpec) {

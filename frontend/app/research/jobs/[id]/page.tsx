@@ -60,6 +60,9 @@ export default async function ResearchJobDetailPage({
             <span className="mono">v{job.version}</span>
             <span>{job.owner}</span>
           </div>
+          <Link className="button button-primary" href={`/research/jobs/${job.id}/factor-build`}>
+            因子构建（研报 → 可执行模型）
+          </Link>
         </div>
         <div className="evidence-stamp">
           <span className="eyebrow">{t("detail.freshness")}</span>
@@ -98,7 +101,7 @@ export default async function ResearchJobDetailPage({
               </div>
             </div>
             <Link className="text-link" href={`/research/jobs/${job.id}/brief`}>{t("detail.openBriefEditor")}</Link>
-            <Link className="text-link" href={`/research/jobs/${job.id}/factor-build`}>因子构建（研报 → 可执行模型）</Link>
+            <Link className="button button-small" href={`/research/jobs/${job.id}/factor-build`}>因子构建（研报 → 可执行模型）</Link>
           </section>
           {job.blockers.length ? (
             <section className="panel panel-warning">

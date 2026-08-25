@@ -110,3 +110,60 @@ def bar_to_pit_rows(
         )
         for name in BAR_FIELDS
     ]
+
+
+@dataclass
+class ReplayFeed:
+    """时钟驱动的历史回放器：源价格序列 × 虚拟行情时钟 → PIT。"""
+
+    store: SqlAlchemyPitStore
+    instrument_ids: tuple[str, ...]
+    market: str
+    speed: float = 10.0
+    source_from: datetime | None = None
+    start_at: datetime | None = None
+    step: timedelta = field(default=timedelta(minutes=5))
+    source_frequency: str = "5m"
+    idle_heartbeat_seconds: float = 5.0
+
+    def run(self, stop: Event) -> None:
+        bars_by_inst = load_bars_range(
+            store=self.store,
+            instrument_ids=self.instrument_ids,
+            frequency=self.source_frequency,
+            start=self.source_from,
+        )
+        series = [bars_by_inst.get(inst, []) for inst in self.instrument_ids]
+        total = min((len(s) for s in series if s), default=0)
+        if total == 0:
+            # 没有源数据也要常驻：真实 feed 在行情真空期同样空转。
+            while not stop.wait(self.idle_heartbeat_seconds):
+                pass
+            return
+        clock = VirtualMarketClock(
+            start=self.start_at or datetime.now(UTC),
+            step=self.step,
+            sessions=sessions_for_market(self.market),
+        )
+        revision = f"replay-{datetime.now(UTC):%Y%m%dT%H%M%S}"
+        wall_interval = self.step.total_seconds() / max(self.speed, 0.01)
+        idx = 0
+        while not stop.is_set():
+            if idx >= total:
+                stop.wait(self.idle_heartbeat_seconds)
+                continue
+            event_time = clock.advance()
+            ingested = datetime.now(UTC)
+            for inst, bars in zip(self.instrument_ids, series, strict=True):
+                if idx < len(bars):
+                    self.store.persist(
+                        bar_to_pit_rows(
+                            bar=bars[idx],
+                            instrument_id=inst,
+                            event_time=event_time,
+                            revision_id=revision,
+                            ingested=ingested,
+                        )
+                    )
+            idx += 1
+            stop.wait(wall_interval)

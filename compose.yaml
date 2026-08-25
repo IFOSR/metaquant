@@ -125,6 +125,52 @@ services:
       retries: 20
     restart: unless-stopped
 
+  paper-node:
+    image: quant-platform-api:local
+    build:
+      context: .
+      args:
+        UV_EXTRAS: --extra data
+    environment: *app-environment
+    volumes:
+      - ./config:/app/config:ro
+    command:
+      - python
+      - scripts/paper-node.py
+      - --account-id
+      - ${PAPER_ACCOUNT_ID:?set PAPER_ACCOUNT_ID in .env}
+      - --poll-interval
+      - ${PAPER_POLL_INTERVAL:-60}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    profiles: ["paper"]
+    restart: unless-stopped
+
+  live-feed:
+    image: quant-platform-api:local
+    build:
+      context: .
+      args:
+        UV_EXTRAS: --extra data
+    environment: *app-environment
+    volumes:
+      - ./config:/app/config:ro
+    command:
+      - python
+      - scripts/live-feed.py
+      - --instruments
+      - ${LIVE_FEED_INSTRUMENTS:-RB2610.SHF}
+      - --speed
+      - ${LIVE_FEED_SPEED:-10}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    profiles: ["paper"]
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   minio_data:

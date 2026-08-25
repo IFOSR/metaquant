@@ -206,3 +206,55 @@ def test_replay_feed_idle_when_source_exhausted(tmp_path) -> None:
     )["RB2610.SHF"]
     assert len(loaded) == 2  # 只有 2 根，没有空转注水
     assert not thread.is_alive()
+
+
+def test_bar_to_pit_rows_available_time_equals_event_time() -> None:
+    """回放行的 available_time 必须等于（虚拟）event_time。
+
+    PIT 校验要求 available_time >= event_time；虚拟时钟可能领先真实墙钟
+    （加速回放），取 available_time=event_time 既满足不变量，又让 bar 对
+    paper 节点即时可见（load 只按 event_time 过滤）。
+    """
+    from quant_platform.data_gateway.resolver import Bar
+    from quant_platform.paper.live_feed import bar_to_pit_rows
+
+    event_time = datetime(2026, 8, 25, 9, 0, tzinfo=UTC)
+    bar = Bar(
+        timestamp=event_time, open=1.0, high=2.0, low=0.5, close=1.5,
+        volume=100.0,
+    )
+    rows = bar_to_pit_rows(
+        bar=bar,
+        instrument_id="RB2610.SHF",
+        event_time=event_time,
+        revision_id="r1",
+        ingested=datetime(2026, 8, 26, 1, 0, tzinfo=UTC),
+    )
+    assert {row.field for row in rows} == {
+        f"market.minute.{name}" for name in BAR_FIELDS_FOR_TEST
+    }
+    assert all(row.available_time == event_time for row in rows)
+    # ingested_at 晚于虚拟时刻时保持真实值
+    assert all(
+        row.ingested_at == datetime(2026, 8, 26, 1, 0, tzinfo=UTC) for row in rows
+    )
+
+
+def test_bar_to_pit_rows_clamps_ingested_when_virtual_clock_ahead() -> None:
+    """加速回放：虚拟 event_time 领先真实墙钟时，ingested_at 钳到 event_time。"""
+    from quant_platform.data_gateway.resolver import Bar
+    from quant_platform.paper.live_feed import bar_to_pit_rows
+
+    event_time = datetime(2026, 8, 25, 9, 0, tzinfo=UTC)
+    bar = Bar(
+        timestamp=event_time, open=1.0, high=2.0, low=0.5, close=1.5,
+        volume=100.0,
+    )
+    rows = bar_to_pit_rows(
+        bar=bar,
+        instrument_id="RB2610.SHF",
+        event_time=event_time,
+        revision_id="r1",
+        ingested=datetime(2026, 8, 25, 1, 0, tzinfo=UTC),  # 墙钟落后于虚拟时刻
+    )
+    assert all(row.ingested_at == event_time for row in rows)

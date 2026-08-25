@@ -86,7 +86,14 @@ def bar_to_pit_rows(
     revision_id: str,
     ingested: datetime,
 ) -> list[RawPITRow]:
-    """单根 bar → 5 条 PIT 行（与 ingest-market-data.py 的分钟线格式一致）。"""
+    """单根 bar → 5 条 PIT 行（与 ingest-market-data.py 的分钟线格式一致）。
+
+    available_time 取虚拟行情时刻（= event_time）：回放器是模拟行情的
+    生产者，数据"在其（虚拟）发生时刻可见"；PIT 读取只按 event_time
+    区间过滤，不做 as-of 可见性过滤，paper 节点因此即时可见。
+    加速回放时虚拟时刻可能领先真实墙钟，ingested_at 随之钳到
+    event_time（PIT 不变量：event_time <= available_time <= ingested_at）。
+    """
     values = {
         "open": bar.open,
         "high": bar.high,
@@ -101,8 +108,8 @@ def bar_to_pit_rows(
             field=f"market.minute.{name}",
             instrument_id=instrument_id,
             event_time=event_time,
-            available_time=ingested,
-            ingested_at=ingested,
+            available_time=event_time,
+            ingested_at=max(ingested, event_time),
             revision_id=revision_id,
             license_tag="exploratory",
             value_type="decimal",

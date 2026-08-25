@@ -1,0 +1,112 @@
+"""LiveFeed：把历史 K 线按虚拟行情时钟直播进 PIT（paper trading 的数据平面）。
+
+回测与 paper trading 共享同一份冻结策略与撮合语义，差异只在数据平面：
+回测读 PIT 封闭区间；paper 消费 LiveFeed 持续写入的新 bar。本模块是
+LiveFeed 的首个实现——时钟驱动的历史回放器：源历史数据只提供价格序列，
+event_time 由虚拟行情时钟生成（paper 节点按 event_time 水位线消费，
+原始历史时间戳必然早于水位线，原样重放会被拦掉）。
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from threading import Event
+from zoneinfo import ZoneInfo
+
+from quant_platform.data_gateway.loader import RawPITRow
+from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
+from quant_platform.data_gateway.resolver import Bar
+from quant_platform.markets.nt.sessions import (
+    A_SHARE_SESSIONS,
+    FUTURES_DAY_SESSIONS,
+    FUTURES_NIGHT_SESSIONS,
+    TradingSession,
+)
+from quant_platform.paper.data_client import load_bars_range
+
+SHANGHAI = ZoneInfo("Asia/Shanghai")
+BAR_FIELDS = ("open", "high", "low", "close", "volume")
+FUTURES_SESSIONS = FUTURES_DAY_SESSIONS + FUTURES_NIGHT_SESSIONS
+
+
+def sessions_for_market(market: str) -> tuple[TradingSession, ...]:
+    return A_SHARE_SESSIONS if market == "CN_A" else FUTURES_SESSIONS
+
+
+class VirtualMarketClock:
+    """按交易时段推进的虚拟行情时钟（固定 bar 网格，跳过非交易时段与周末）。"""
+
+    def __init__(
+        self,
+        *,
+        start: datetime,
+        step: timedelta,
+        sessions: tuple[TradingSession, ...],
+    ) -> None:
+        if start.tzinfo is None or start.utcoffset() is None:
+            raise ValueError("start must be timezone-aware")
+        self._step = step
+        self._sessions = tuple(sorted(sessions, key=lambda s: s.open))
+        self._next = self._align(start.astimezone(SHANGHAI))
+
+    def _align(self, candidate: datetime) -> datetime:
+        """快进 candidate 到下一个落在交易时段内的时刻。"""
+        while True:
+            if candidate.weekday() < 5 and any(
+                session.contains(candidate.time()) for session in self._sessions
+            ):
+                return candidate
+            candidate = self._jump(candidate)
+
+    def _jump(self, candidate: datetime) -> datetime:
+        """跳到 candidate 之后最近的时段开盘（跨天则次日，周末顺延）。"""
+        for offset in range(0, 8):
+            day = (candidate + timedelta(days=offset)).date()
+            if day.weekday() >= 5:
+                continue
+            for session in self._sessions:
+                open_dt = datetime.combine(day, session.open, tzinfo=SHANGHAI)
+                if open_dt > candidate:
+                    return open_dt
+        raise ValueError("no trading session within 8 days")
+
+    def advance(self) -> datetime:
+        """返回下一根 bar 的 event_time（UTC）并推进时钟。"""
+        current = self._next
+        self._next = self._align(current + self._step)
+        return current.astimezone(UTC)
+
+
+def bar_to_pit_rows(
+    *,
+    bar: Bar,
+    instrument_id: str,
+    event_time: datetime,
+    revision_id: str,
+    ingested: datetime,
+) -> list[RawPITRow]:
+    """单根 bar → 5 条 PIT 行（与 ingest-market-data.py 的分钟线格式一致）。"""
+    values = {
+        "open": bar.open,
+        "high": bar.high,
+        "low": bar.low,
+        "close": bar.close,
+        "volume": bar.volume,
+    }
+    return [
+        RawPITRow(
+            source_id="live-feed-replay",
+            dataset_id="market-minute",
+            field=f"market.minute.{name}",
+            instrument_id=instrument_id,
+            event_time=event_time,
+            available_time=ingested,
+            ingested_at=ingested,
+            revision_id=revision_id,
+            license_tag="exploratory",
+            value_type="decimal",
+            value=str(values[name]),
+        )
+        for name in BAR_FIELDS
+    ]

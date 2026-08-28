@@ -172,6 +172,164 @@ h2 { font-size: 1.28rem; letter-spacing: -0.02em; line-height: 1.05; margin: 8px
 .contract-list li { border-left: 2px solid var(--amber); padding-left: 14px; }
 .panel-dark .state-boundary { border-color: #52606b; color: #f1f4f5; }
 .panel-dark .state-boundary p { color: #b6c1c9; }
+
+/* ── 概览（首页 · 研究控制面） ─────────────────────────────────────── */
+.page-overview .page-heading { align-items: flex-start; gap: 24px; margin: 14px 0 24px; }
+.page-overview .page-heading h1 {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+  margin: 6px 0 8px;
+  max-width: none;
+}
+.page-overview .page-heading .lede {
+  color: var(--ink-soft);
+  font-size: 0.96rem;
+  margin: 0;
+  max-width: 720px;
+}
+
+.kpi-strip { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 20px; }
+.kpi-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 7px;
+  padding: 16px 18px;
+}
+.kpi-accent { border-top: 4px solid var(--amber); }
+.kpi-label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.kpi-value { font-family: var(--font-mono); font-size: 2.1rem; letter-spacing: -0.03em; line-height: 1; }
+.kpi-sub { color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
+
+.page-overview .overview-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.8fr);
+}
+.overview-rail { display: grid; gap: 18px; }
+.overview-rail .panel { padding: 20px 22px; }
+
+/* 最近研究 feed */
+.home-feed-bundle { display: grid; gap: 6px; }
+.home-feed-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.home-feed-tab {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 7px;
+  padding: 6px 12px;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.home-feed-tab.is-active { background: var(--ink); border-color: var(--ink); color: #f1f4f5; }
+.home-feed-count { font-size: 0.68rem; opacity: 0.75; }
+.home-feed-list {
+  display: grid;
+  gap: 8px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.home-feed-list::-webkit-scrollbar { width: 8px; }
+.home-feed-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+.home-feed-row {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  padding: 12px 14px;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.home-feed-row:hover { background: #fff; border-color: var(--amber); transform: translateY(-1px); }
+.home-feed-title { font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-feed-stage { align-items: center; color: var(--muted); display: inline-flex; font-size: 0.68rem; }
+.home-feed-stage-dot { border-radius: 50%; display: inline-block; height: 8px; margin-left: 6px; width: 8px; }
+.home-feed-stage[data-stage="CREATING"] .home-feed-stage-dot { background: var(--muted); }
+.home-feed-stage[data-stage="READY"] .home-feed-stage-dot { background: var(--amber); }
+.home-feed-stage[data-stage="CODE_TESTED"] .home-feed-stage-dot { background: var(--amber-deep); }
+.home-feed-stage[data-stage="BACKTESTED"] { color: var(--success); }
+.home-feed-stage[data-stage="BACKTESTED"] .home-feed-stage-dot { background: var(--success); }
+.home-feed-stage[data-stage="PAPER_LINKED"] { color: var(--ink); font-weight: 700; }
+.home-feed-stage[data-stage="PAPER_LINKED"] .home-feed-stage-dot { background: var(--ink); }
+.home-feed-meta { color: var(--muted); font-size: 0.66rem; }
+.home-feed-open { color: var(--muted); font-size: 0.9rem; transition: color 150ms ease, transform 150ms ease; }
+.home-feed-row:hover .home-feed-open { color: var(--amber-deep); transform: translateX(2px); }
+.home-feed-empty { padding: 24px 4px; }
+
+/* 生命周期 beacon */
+.home-beacon { display: grid; list-style: none; margin: 0; padding: 0; }
+.beacon-step {
+  align-items: center;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: auto 1fr auto;
+  padding: 8px 0;
+}
+.beacon-dot {
+  background: var(--line);
+  border: 1px solid var(--line-dark);
+  border-radius: 50%;
+  height: 10px;
+  width: 10px;
+}
+.beacon-dot.is-live { background: var(--amber); border-color: var(--amber-deep); box-shadow: 0 0 0 3px rgba(231, 166, 59, 0.2); }
+.beacon-label { color: var(--ink-soft); font-size: 0.86rem; }
+.beacon-count { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+.beacon-count.has-count { color: var(--ink); }
+
+/* 快速开始 */
+.quick-links { display: grid; gap: 8px; }
+.quick-link {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 30px 1fr;
+  padding: 12px 13px;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.quick-link:hover { background: #fff; border-color: var(--amber-deep); transform: translateX(2px); }
+.quick-link strong { font-size: 0.84rem; line-height: 1.45; }
+.quick-link-mark { color: var(--muted); font-size: 0.62rem; }
+
+.home-footer-note {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  margin: 30px 0 0;
+  padding-top: 16px;
+}
+
+@media (max-width: 1020px) {
+  .page-overview .overview-grid { grid-template-columns: 1fr; }
+  .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-feed-list { max-height: 420px; }
+}
+@media (max-width: 680px) {
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .home-feed-row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
+  .home-feed-row .home-feed-meta, .home-feed-row .home-feed-open { display: none; }
+  .home-feed-stage { display: none; }
+}
 .filter-strip { align-items: center; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); display: flex; gap: 8px; margin-bottom: 20px; padding: 10px 0; }
 .filter-label { color: var(--muted); font-family: var(--font-mono); font-size: 0.66rem; margin-right: 8px; text-transform: uppercase; }
 .filter-pill { background: transparent; border: 1px solid transparent; color: var(--ink-soft); cursor: pointer; font-size: 0.82rem; padding: 7px 9px; }

@@ -33,6 +33,7 @@ const LONG_RUNNING_PATHS = new Set([
   "factor-build-specs:train",
   "factor-build-specs:infer",
   "factor-build-specs:validate",
+  "strategy-drafts",
 ]);
 
 async function proxy(request: NextRequest, path: string[]) {
@@ -94,7 +95,11 @@ async function proxy(request: NextRequest, path: string[]) {
     if (value) headers.set(name, value);
   }
   const target = buildProxyTarget(upstream, path, request.nextUrl.search);
-  const timeoutMs = LONG_RUNNING_PATHS.has(path[1]) ? 180_000 : 15_000;
+  const timeoutMs = LONG_RUNNING_PATHS.has(path[1])
+    ? path[1] === "strategy-drafts"
+      ? 400_000
+      : 180_000
+    : 15_000;
   let response: Response;
   try {
     response = await fetch(target, {
@@ -143,6 +148,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
   return proxy(request, (await context.params).path);
 }
 
+export async function PUT(request: NextRequest, context: RouteContext) {
+  return proxy(request, (await context.params).path);
+}
+
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  return proxy(request, (await context.params).path);
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
   return proxy(request, (await context.params).path);
 }

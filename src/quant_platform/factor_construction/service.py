@@ -24,12 +24,12 @@ from quant_platform.factor_construction.executor import (
     run_infer,
     run_train,
 )
+from quant_platform.factor_construction.repository import (
+    SqlAlchemyFactorConstructionRepository,
+)
 from quant_platform.factor_construction.runner import (
     SandboxRunner,
     SubprocessSandboxRunner,
-)
-from quant_platform.factor_construction.repository import (
-    SqlAlchemyFactorConstructionRepository,
 )
 from quant_platform.factor_construction.schemas import (
     FactorBuildRunKind,

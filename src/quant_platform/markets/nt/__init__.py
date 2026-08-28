@@ -58,10 +58,16 @@ from quant_platform.markets.nt.strategy_adapter import (
     RebalancePlan,
     StrategyAdapter,
 )
+from quant_platform.markets.nt.venue import (
+    DEFAULT_FUTURES_FEE_SCHEDULE,
+    VenueSpec,
+    venue_spec_for_market,
+)
 
 __all__ = [
     "A_SHARE_SESSIONS",
     "AShareFeeModel",
+    "DEFAULT_FUTURES_FEE_SCHEDULE",
     "DailySettlement",
     "FUTURES_DAY_SESSIONS",
     "FUTURES_NIGHT_SESSIONS",
@@ -77,6 +83,7 @@ __all__ = [
     "SubmitResult",
     "TradingSession",
     "TargetPositionStrategy",
+    "VenueSpec",
     "backtest_hash",
     "build_equity_engine",
     "build_futures_engine",
@@ -95,6 +102,7 @@ __all__ = [
     "settle_daily",
     "to_nautilus_bar",
     "to_nautilus_bars",
+    "venue_spec_for_market",
     "verify_cn_a_case",
     "verify_futures_case",
     "verify_golden_cases",

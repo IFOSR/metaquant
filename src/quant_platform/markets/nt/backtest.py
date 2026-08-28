@@ -10,6 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.backtest.models import FeeModel, FillModel
 from nautilus_trader.model.currencies import CNY
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.enums import AccountType, OmsType
@@ -18,6 +19,33 @@ from nautilus_trader.model.instruments import Equity, FuturesContract
 from nautilus_trader.model.objects import Money
 
 from quant_platform.experiments import canonical_hash
+from quant_platform.markets.nt.venue import VenueSpec
+
+
+def _venue_add(
+    engine: BacktestEngine,
+    *,
+    venue: str,
+    oms_type: OmsType,
+    account_type: AccountType,
+    initial_cash: Decimal,
+    venue_spec: VenueSpec | None,
+    fee_model: FeeModel | None,
+    fill_model: FillModel | None,
+) -> None:
+    """把执行假设落到 ``add_venue``：venue_spec 优先（对齐 NT 交互），旧签名兼容。"""
+    engine.add_venue(
+        venue=Venue(venue),
+        oms_type=oms_type,
+        account_type=account_type,
+        starting_balances=[Money(initial_cash, CNY)],
+        fee_model=(venue_spec.fee_model if venue_spec is not None else fee_model),
+        fill_model=(venue_spec.fill_model if venue_spec is not None else fill_model),
+        latency_model=venue_spec.latency_model if venue_spec is not None else None,
+        price_protection_points=(
+            venue_spec.price_protection_points if venue_spec is not None else None
+        ),
+    )
 
 
 def build_equity_engine(
@@ -25,14 +53,26 @@ def build_equity_engine(
     instrument: Equity,
     initial_cash: Decimal,
     venue: str = "SSE",
+    fee_model: FeeModel | None = None,
+    fill_model: FillModel | None = None,
+    venue_spec: VenueSpec | None = None,
 ) -> BacktestEngine:
-    """装配 A 股现金账户回测引擎（NETTING + CASH）。"""
+    """装配 A 股现金账户回测引擎（NETTING + CASH）。
+
+    ``venue_spec`` 为完整执行假设（费用/撮合/延迟/价格保护，对齐 NT 交互）；
+    提供时优先于 ``fee_model``/``fill_model`` 单项参数（旧签名兼容）。
+    缺省为 None 时保持 NautilusTrader 默认行为，调用方必须在结果披露中标注成本口径。
+    """
     engine = BacktestEngine()
-    engine.add_venue(
-        venue=Venue(venue),
+    _venue_add(
+        engine,
+        venue=venue,
         oms_type=OmsType.NETTING,
         account_type=AccountType.CASH,
-        starting_balances=[Money(initial_cash, CNY)],
+        initial_cash=initial_cash,
+        venue_spec=venue_spec,
+        fee_model=fee_model,
+        fill_model=fill_model,
     )
     engine.add_instrument(instrument)
     return engine
@@ -91,14 +131,24 @@ def build_futures_engine(
     instrument: FuturesContract,
     initial_cash: Decimal,
     venue: str = "SHFE",
+    fee_model: FeeModel | None = None,
+    fill_model: FillModel | None = None,
+    venue_spec: VenueSpec | None = None,
 ) -> BacktestEngine:
-    """装配商品期货保证金账户回测引擎（NETTING + MARGIN）。"""
+    """装配商品期货保证金账户回测引擎（NETTING + MARGIN）。
+
+    费用/撮合模型语义同 :func:`build_equity_engine`。
+    """
     engine = BacktestEngine()
-    engine.add_venue(
-        venue=Venue(venue),
+    _venue_add(
+        engine,
+        venue=venue,
         oms_type=OmsType.NETTING,
         account_type=AccountType.MARGIN,
-        starting_balances=[Money(initial_cash, CNY)],
+        initial_cash=initial_cash,
+        venue_spec=venue_spec,
+        fee_model=fee_model,
+        fill_model=fill_model,
     )
     engine.add_instrument(instrument)
     return engine

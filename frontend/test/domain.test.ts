@@ -6,7 +6,7 @@ import {
 } from "../lib/domain";
 
 describe("session capability boundaries", () => {
-  it("hides strategy and execution navigation when the session lacks capabilities", () => {
+  it("hides backtest and paper navigation when the session lacks capabilities", () => {
     const navigation = getVisibleNavigation([
       "research.jobs.read",
       "research.jobs.write",
@@ -14,14 +14,11 @@ describe("session capability boundaries", () => {
 
     expect(navigation.map((item) => item.labelKey)).toEqual([
       "nav.overview",
-      "nav.researchJobs",
       "nav.newResearch",
     ]);
-    expect(
-      (navigation.map((item) => item.labelKey) as string[]).includes(
-        "Operations",
-      ),
-    ).toBe(false);
+    const labels = navigation.map((item) => item.labelKey) as string[];
+    expect(labels.includes("nav.backtest")).toBe(false);
+    expect(labels.includes("nav.paper")).toBe(false);
   });
 });
 

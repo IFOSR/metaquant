@@ -38,9 +38,7 @@ def test_resolve_unknown_universe() -> None:
         UniverseResolver().resolve("unknown:thing")
 
 
-def _row(
-    instrument: str, day: int, field: str, value: float
-) -> RawPITRow:
+def _row(instrument: str, day: int, field: str, value: float) -> RawPITRow:
     base = datetime(2026, 8, 1, tzinfo=UTC) + timedelta(days=day)
     return RawPITRow(
         source_id="ifind-cn",

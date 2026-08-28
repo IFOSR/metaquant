@@ -61,6 +61,11 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "SIM", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# 运维/验证脚本与迁移文件含长内嵌代码串，无法机械换行。
+"scripts/**" = ["E501"]
+"alembic/versions/**" = ["E501"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

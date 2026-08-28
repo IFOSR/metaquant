@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -19,7 +20,12 @@ class _FakeStore:
         self._rows = rows
 
     def load(
-        self, *, instrument_ids, field_prefix, start=None, end=None
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        field_prefix: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ) -> tuple[PITRow, ...]:
         del instrument_ids, field_prefix, start, end
         return self._rows
@@ -41,7 +47,7 @@ def _row(field: str, instrument_id: str, value: float, day: int) -> PITRow:
     )
 
 
-def _provider(*, train: bool):
+def _provider(*, train: bool) -> Callable[[str], ResearchPrincipal | None]:
     def resolve(token: str) -> ResearchPrincipal | None:
         if token != "test-researcher":
             return None

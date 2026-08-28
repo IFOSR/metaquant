@@ -105,3 +105,11 @@ class ExecutionStateService:
             updated = switch.reset(actor_id, _now())
             _apply_kill_switch(model, updated)
             return _execution_state_payload(model)
+
+    def record_paper_positions(self, *, positions: dict[str, Any]) -> dict[str, Any]:
+        """记录模拟盘目标持仓（由策略 paper 运行产生）。"""
+        with self._sessions.begin() as session:
+            model = _ensure_execution_state(session)
+            model.paper_positions = positions
+            model.updated_at = _now()
+            return _execution_state_payload(model)

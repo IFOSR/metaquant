@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from quant_platform.factor_construction.generator import generate_and_smoke
 from quant_platform.factor_construction.runner import (
@@ -107,7 +111,7 @@ def test_subprocess_runner_times_out() -> None:
     assert result.exit_code == 124
 
 
-def test_docker_runner_builds_sandbox_command(monkeypatch) -> None:
+def test_docker_runner_builds_sandbox_command(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     class _Completed:
@@ -115,14 +119,12 @@ def test_docker_runner_builds_sandbox_command(monkeypatch) -> None:
         stdout = "ok"
         stderr = ""
 
-    def fake_run(args, **kwargs):
+    def fake_run(args: list[str], **kwargs: Any) -> _Completed:
         captured["args"] = args
         captured["kwargs"] = kwargs
         return _Completed()
 
-    import quant_platform.factor_construction.runner as runner_module
-
-    monkeypatch.setattr(runner_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     docker = DockerSandboxRunner("quant-sandbox:latest", memory_mb=1024, cpus=0.5)
     with tempfile.TemporaryDirectory() as tmp:
         result = docker.run(
@@ -130,6 +132,7 @@ def test_docker_runner_builds_sandbox_command(monkeypatch) -> None:
         )
     assert result.exit_code == 0
     args = captured["args"]
+    assert isinstance(args, list)
     assert args[0] == "docker"
     assert "--network=none" in args
     assert "--read-only" in args

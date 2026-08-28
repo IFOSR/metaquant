@@ -11,7 +11,7 @@ Run:
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -61,7 +61,11 @@ def _main() -> None:
             "market": "CN_A",
             "universe_ref": "universe://real-18/v1",
             "inputs": fields,
-            "label": {"name": "future_5d_close_return", "price_field": "close", "horizon": 5},
+            "label": {
+                "name": "future_5d_close_return",
+                "price_field": "close",
+                "horizon": 5,
+            },
             "architecture": "MLP",
             "sample_weighting": "INVERSE_SIZE",
         }
@@ -81,7 +85,9 @@ def _main() -> None:
         decision_time=decision_time,
     )
 
-    print(f"instruments: {len(instruments)} | features: {len(frame['rows'])} | labels: {len(labels['rows'])}")
+    print(
+        f"instruments: {len(instruments)} | features: {len(frame['rows'])} | labels: {len(labels['rows'])}"
+    )
 
     train = run_train(
         bundle_files=_BUNDLE,
@@ -101,7 +107,9 @@ def _main() -> None:
         fields=fields,
         decision_time=decision_time_text,
     )
-    print(f"factor values: {len(infer.observations)} (output_hash {infer.output_hash[:12]}…)")
+    print(
+        f"factor values: {len(infer.observations)} (output_hash {infer.output_hash[:12]}…)"
+    )
 
     factor_rows = [
         {

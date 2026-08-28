@@ -89,4 +89,67 @@ describe("buildProxyTarget", () => {
     );
     expect(isAllowedQuantApiPath(["health", "ready"])).toBe(false);
   });
+
+  it("allows strategy draft paths", () => {
+    expect(isAllowedQuantApiPath(["v1", "strategy-drafts"])).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:freeze"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1", "messages"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1", "data-status"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:backtest"]),
+    ).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:paper"])).toBe(
+      true,
+    );
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:delete"]),
+    ).toBe(false);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:upload"]),
+    ).toBe(false);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1:unfreeze"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-drafts", "sd_1", "x"]),
+    ).toBe(false);
+    expect(isAllowedQuantApiPath(["v1", "strategy-backtests"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "strategy-backtests", "bt_1"])).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "strategy-backtests:matrix"]),
+    ).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "paper", "accounts"])).toBe(true);
+    expect(isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1"])).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1", "orders"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1", "drift"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1", "run-status"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1:pause"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1:start-node"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1:stop-node"]),
+    ).toBe(true);
+    expect(
+      isAllowedQuantApiPath(["v1", "paper", "accounts", "pa_1:hack"]),
+    ).toBe(false);
+    expect(isAllowedQuantApiPath(["v1", "paper", "nonsense"])).toBe(false);
+  });
 });

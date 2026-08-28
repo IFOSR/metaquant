@@ -1,123 +1,217 @@
-# Quant Research Platform
+# MetaQuant · Containerized Quant Research Platform
 
-量化研究与交易平台的后端工程基线。当前 G0 只提供可复现的本地运行环境、
-健康检查和数据库迁移入口，不包含 Factor IR 或量化业务逻辑。
+**English** · [简体中文](./README.zh-CN.md)
 
-## 本地依赖
+> Turn a trading idea — in plain language, a paper, or a formula — into a **verifiable factor**, a **reproducible strategy**, and an **auditable trading package** — all behind one `./quant` command.
 
-- Docker Desktop 或兼容的 Docker Engine
-- Docker Compose v2
-- `make`
+**MetaQuant** is a local-first, end-to-end quantitative research and trading platform for the Chinese markets (`CN_COMMODITY_FUTURES`, `CN_A`). It pairs an LLM-driven research workbench with a deterministic, market-realistic backtest/simulation kernel so that the strategy you *chat into existence* is the same one you *audit*, *simulate*, and *replay*.
 
-PostgreSQL 和 MinIO 均由 Docker Compose 管理。不要在宿主机安装或初始化
-PostgreSQL。
+```text
+Idea / Paper / Formula
+        │
+        ▼
+┌─────────────────────────────────────────────────────────┐
+│  Research Workbench (LLM agents, auditable, evidence-led)│
+│   • NL → NautilusTrader strategy    • factor 从研报构建   │
+│   • Point-in-time data, no look-ahead / survivorship     │
+└──────────────────────────┬──────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│  Deterministic Kernel (same strategy package everywhere) │
+│   • Market-realistic backtest (real CN fees & rules)     │
+│   • Paper simulation venue (full order lifecycle)        │
+│   • Versioned, content-addressed, replayable             │
+└─────────────────────────────────────────────────────────┘
+```
 
-## 启动
+---
 
-进项目目录后，一条命令启动全部（Docker 检查 → 后端 → 前端）：
+## Why MetaQuant
+
+Quant research is usually a swamp: LLMs write plausible-looking strategy code that can't be audited, backtests silently use future data, A-share T+1 and futures contract lifecycle are modeled like stocks, and the backtest never matches live. MetaQuant attacks each of those head-on.
+
+- **One command, no Python hell.** Everything runs in Docker (Python 3.12, CPU PyTorch). Docker checks → Postgres/MinIO → backend → frontend with a single `./quant`.
+- **Natural-language to auditable code.** Describe your entry/exit in plain Chinese/English; the agent turns it into a NautilusTrader strategy, code-tests it, and runs a deterministic, hashed backtest you can revisit.
+- **Market-realistic, not toy results.** Chinese futures venue models (fee model, price-limit fill model), contract lifecycle, roll policy, daily settlement; A-share T+1 + price bands + stamps. Point-in-time data blocks look-ahead; snapshot-based universes block survivorship bias.
+- **Same strategy package everywhere.** Backtest → paper simulation → live use one artifact, so what you validated is what you trade — no semantic drift between engines.
+- **Evidence-first & auditable.** Every conclusion carries its snapshot, strategy, and lineage. Gates, kill switch, ordering anomaly detection, reconciliation — built for research leads and risk/compliance, not just quants.
+- **LLM-backend-agnostic.** Configure which CLI agent (`codex` / `pi`) and which **provider** supplies the base model. Providers are independent, global entities with auto-fetched model catalogs; `codex` maps to OpenAI-compatible endpoints, `pi` to everything.
+
+---
+
+## Core Capabilities
+
+### 1 · Natural-Language → Strategy
+On the **New Research** page, describe a rule ("5-day MA over 20-day MA, long; exit on close below 10-day low"). The agent clarifies intent, writes the NautilusTrader strategy, runs a code test, and produces a backtest with a deterministic content hash. Reopen any historical run from the workbench history and see the exact same equity curve.
+
+### 2 · Backtest Workbench
+Pick a frozen study, tune frequency (`1d` / `5m` / …) and date range, and run against the NautilusTrader engine. Get total return, Sharpe, max drawdown, trade count, an annotated equity curve (buy/sell markers), position round-trips with realized PnL, and per-fill fees. Every run is keyed by a backtest hash so results are reproducible and comparable.
+
+### 3 · Factor Construction from a Paper
+Upload a research paper (or paste an idea) and the agent extracts a factor build-spec → generates `model`/`train`/`infer` code → runs it in a sandbox (AST-scanned subprocess locally, or a hardened `--network=none` Docker sandbox in production) → trains/infers factor values → validates IC. An 8-step, gated pipeline with full lineage.
+
+### 4 · Paper Simulation Trading
+Freeze a strategy → a content-addressed artifact is published → a persistent NautilusTrader node opens a simulated account. Orders traverse the full lifecycle on a simulated venue that charges **Chinese-market fees**. Daily net-value reconciliation, order/position/equity views, and a global kill switch.
+
+### 5 · Research Jobs & Market Boundary
+Every run starts inside a versioned brief with an explicit **market boundary**: universe reference, decision/trade/settlement clocks, exchange scope, contract selection, roll policy. Formal research fields are pinned (declarative, machine-readable), while strategy logic stays conversational.
+
+### 6 · Agent & Base-Model Configuration
+Choose the LLM agent (`codex` / `pi`) and which **provider** (OpenAI, DeepSeek, Kimi, OpenRouter, Anthropic, Google, or a custom OpenAI-compatible endpoint) supplies the base model. Providers are independent, global entities — configure Base URL + API key once. The model catalog auto-fetches (`/v1/models`), the active agent/model is shown live in the top bar, and everything takes effect immediately.
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
+| Data | PostgreSQL, MinIO (content-addressed artifacts) |
+| Research/Trading engine | NautilusTrader, custom Chinese venue models |
+| ML / factor pipeline | Python 3.12, CPU PyTorch, guarded sandbox |
+| LLM agents | `codex` / `pi` CLIs, provider-agnostic, DeepSeek/Zhipu fallback |
+| Frontend | Next.js 16, React 19, TypeScript |
+| Runtime | Docker + Docker Compose v2 |
+
+---
+
+## Installation
+
+### Prerequisites
+
+- **Docker Desktop** (or a compatible Docker Engine) and **Docker Compose v2**
+- **`make`**
+- Optional: network access to your LLM provider's API for the agent workbench (otherwise the built-in `deepseek`/`zhipu` fallback applies)
+
+> PostgreSQL and MinIO are managed entirely by Docker Compose. Do **not** install or initialize PostgreSQL on your host.
+
+### Quick start
 
 ```bash
+# From the repo root — one command brings everything up
 ./quant
 ```
 
-子命令：`up`（默认，全部）、`backend`（只后端）、`frontend`（只前端）、
-`down`（停止后端，保留数据）、`reset`（删除数据）、`status`、`logs`。
+This performs the Docker check, then boots Postgres → MinIO → migrations → API → frontend.
 
-等价的手动方式：
+Under the hood that is equivalent to:
 
 ```bash
 make bootstrap
 make up
-curl --fail http://localhost:8091/health/live
-curl --fail http://localhost:8091/health/ready
+curl --fail http://localhost:8091/health/live      # API live
+curl --fail http://localhost:8091/health/ready     # migrations applied
 ```
 
-默认端口：
+### Default endpoints
 
-| 服务 | 地址 |
+| Service | URL |
 |---|---|
-| 前端 UI | `http://localhost:3090` |
-| API/OpenAPI | `http://localhost:8091/docs` |
-| MinIO API | `http://localhost:9000` |
-| MinIO Console | `http://localhost:9001` |
+| Web UI | <http://localhost:3090> |
+| API / OpenAPI docs | <http://localhost:8091/docs> |
+| MinIO API / Console | <http://localhost:9000> / <http://localhost:9001> |
 | PostgreSQL | `localhost:55432` |
 
-后端访问令牌（本地开发）：`local-researcher`。
+Local development access token: **`local-researcher`**.
 
-`.env.example` 中的密码仅用于本地开发。执行 `make bootstrap` 后可在未跟踪的
-`.env` 中修改。
+The passwords in `.env.example` are for local development only. After `make bootstrap`, you can edit the untracked `.env` file.
 
-## 数据库迁移
-
-首次 `make up` 会在 PostgreSQL 健康后自动运行：
+### Common commands
 
 ```bash
-alembic upgrade head
-```
-
-手工重跑迁移：
-
-```bash
-make migrate
-docker compose run --rm migrate alembic current
-```
-
-应用使用非超级用户 `quant_app`。PostgreSQL 数据保存在 Compose named volume
-`postgres_data`，不会写入容器临时文件系统。
-
-## 因子构建（研报 → 可执行模型）
-
-从研报中挖掘深度学习因子：agent 抽取构建规格 → 生成 model/train/infer 代码 →
-沙箱训练/推理 → 因子值 → IC 验证。
-
-前提：后端镜像含 CPU 版 PyTorch（默认 `INSTALL_TORCH=true`），并配置了
-DeepSeek/Zhipu 的 agent 后端（`.env` 中的 `DEEPSEEK_API_KEY` 或 `ZHIPU_API_KEY`）。
-
-```bash
-# 构建/验证 torch 沙箱（含一个真实 torch 训练→推理→IC 的 smoke）
-make sandbox-verify
-
-# 用真实 PIT 数据（pit_observations）跑通 torch 全链路
-docker compose run --rm --no-deps api python scripts/verify-real-torch.py
-```
-
-前端入口：研究任务详情页的「因子构建」链接，或直接访问
-`http://localhost:3090/research/jobs/<job-id>/factor-build`，按 8 步走
-「抽取规格 → 生成代码 → 试运行 → 冻结规格 → 注册代码包 → 训练 → 推理 → 验证」。
-
-隔离方式：本地默认用子进程沙箱（AST 安全扫描 + 资源限制）；生产多租户设置
-`SANDBOX_USE_DOCKER=true`（`docker/sandbox/Dockerfile` 构建的隔离镜像，
-`--network=none` + 只读根文件系统）。
-
-## 工程检查
-
-```bash
-make check
-```
-
-该命令在 Python 3.12 应用镜像中执行 Ruff 格式检查、Ruff lint、严格 mypy
-和 pytest，宿主机无需安装 Python 依赖。
-
-G3 的真实 PostgreSQL/MinIO 门禁使用临时数据库，不修改开发数据库：
-
-```bash
-make g3-integration
-```
-
-该命令验证迁移 `upgrade -> downgrade -> upgrade`、同 fingerprint 并发运行
-幂等性，以及 MinIO 内容地址的 put/get/stat/hash 往返。
-
-## 常用运维
-
-```bash
+make check            # ruff format + lint + strict mypy + pytest (inside the 3.12 image)
+make g3-integration   # real Postgres/MinIO gate: bump->downgrade->bump, idempotency, content-addressing
 make logs
-make down
-make reset
+make down             # stop, keep data
+make reset            # delete all local named volumes (destructive — only when you're sure)
 ```
 
-`make down` 保留数据；`make reset` 会删除所有本地 named volumes，必须只在
-确认不需要本地数据时使用。
+---
 
-架构和产品边界见 `doc/quant-platform-prd.md`、
-`doc/integrated-quant-pipeline-design.md` 和
-`doc/quant-platform-technical-design.md`。
+## Usage Walkthrough (5 minutes to a reproducible backtest)
+
+1. **Open** <http://localhost:3090> → **New Research** (`/research/new`).
+2. **Describe** a rule and send it. The agent turns it into a strategy, tests the code, and freezes it.
+3. Open **Backtest** (`/backtest`), pick the frozen study, set frequency/range, and **Run**.
+4. Review total return / Sharpe / max drawdown / equity curve / trades / positions.
+5. Freeze the strategy and **open a paper account** on the **Paper** page — orders flow through a simulated Chinese-market venue with daily reconciliation.
+
+---
+
+## Architecture Overview
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│  Workbench Shell (Next.js topbar: active agent + base model)   │
+│    New Research │ Research Jobs │ Strategy │ Backtest │ Paper  │
+└───────────────┬───────────────────────────────────────────────┘
+                │  /v1 REST (Bearer token) via a local proxy
+┌───────────────▼───────────────────────────────────────────────┐
+│                          FastAPI                               │
+│  strategy_generation · agent_config · factor_construction      │
+│  research (PIT, snapshots, gates) · paper (sim venue, ledger)  │
+└───────┬───────────────────────────────────┬───────────────────┘
+        │                                   │
+ ┌──────▼──────┐                     ┌──────▼──────┐
+ │ PostgreSQL  │                     │    MinIO    │
+ │ (config,    │                     │ (artifacts, │
+ │  briefs,    │                     │  snapshots, │
+ │  lineage,   │                     │  paper lets │
+ │  agent cfg) │                     │  packages)  │
+ └─────────────┘                     └─────────────┘
+```
+
+Key design invariants:
+
+- **Point-in-time (PIT)** data access with **time-type checks** — unprovable factors are blocked at the source.
+- **Deterministic backtesting** keyed by a content hash — same inputs, same equity curve, reproducible forever.
+- **One strategy package** flows through backtest → paper → live.
+- **Market rules are a single source of truth** (`markets/`), not copy-pasted assumptions.
+- **Evidence-led execution**: every result carries snapshot, strategy, and lineage; gates + kill switch guard the path to paper/live.
+
+The product vision and deeper design live in `doc/quant-platform-prd.md`, `doc/integrated-quant-pipeline-design.md`, and `doc/quant-platform-technical-design.md`.
+
+---
+
+## Repository Layout
+
+```
+quant/
+├── src/quant_platform/         # backend: api, research, strategy_generation,
+│                               # factor_construction, paper, markets/nt, agent_config
+├── frontend/                   # Next.js workbench (app, components, lib, styles)
+├── alembic/                    # versioned database migrations
+├── doc/  docs/plans/           # PRD, technical design, implementation plans
+├── scripts/                    # ingest, verify, sandbox, live-feed helpers
+├── docker/                     # Dockerfiles (api, sandbox), postgres init
+├── tests/                      # pytest suites (unit + integration/gates)
+├── compose.yaml                # api, postgres, minio, migrate, paper/live profiles
+└── quant  Makefile             # one-command dev entrypoint + task runner
+```
+
+---
+
+## Why choose MetaQuant over a notebook or an ad-hoc script?
+
+| You care about | MetaQuant |
+|---|---|
+| Getting a local dev env up fast | `./quant`, Docker, no host Python deps |
+| Not fooling yourself in backtests | PIT data + time-type checks + real CN fees & rules |
+| Trusting LLM-generated strategies | audited code, code-test gate, deterministic hashed backtests |
+| Reproducing a result months later | hashed runs + versioned briefs + content-addressed artifacts |
+| Matching paper to live | one strategy package across backtest / sim / live |
+| Explaining to a research lead / risk | evidence-first snapshots, lineage, gates, kill switch, reconciliation |
+
+---
+
+## License
+
+[`LICENSE`](./LICENSE) — see the file for details.
+
+---
+
+## Contributing
+
+Pull requests are welcome. Run `make check` (ruff + mypy + pytest in the 3.12 image) before submitting. For larger changes, start from an implementation plan in `docs/plans/`.
+
+**Star the repo** if MetaQuant helps you stop lying to yourself in quant research ⭐

@@ -36,7 +36,9 @@ def upgrade() -> None:
             ["research_job_id"], ["research_jobs.id"], ondelete="SET NULL"
         ),
     )
-    op.create_index("ix_factor_build_specs_project_id", "factor_build_specs", ["project_id"])
+    op.create_index(
+        "ix_factor_build_specs_project_id", "factor_build_specs", ["project_id"]
+    )
 
     op.create_table(
         "factor_code_bundles",
@@ -46,11 +48,11 @@ def upgrade() -> None:
         sa.Column("manifest_payload", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_by", sa.String(255), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["spec_hash"], ["factor_build_specs.spec_hash"]
-        ),
+        sa.ForeignKeyConstraint(["spec_hash"], ["factor_build_specs.spec_hash"]),
     )
-    op.create_index("ix_factor_code_bundles_spec_hash", "factor_code_bundles", ["spec_hash"])
+    op.create_index(
+        "ix_factor_code_bundles_spec_hash", "factor_code_bundles", ["spec_hash"]
+    )
 
     op.create_table(
         "factor_build_runs",
@@ -67,7 +69,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index("ix_factor_build_runs_spec_hash", "factor_build_runs", ["spec_hash"])
+    op.create_index(
+        "ix_factor_build_runs_spec_hash", "factor_build_runs", ["spec_hash"]
+    )
 
 
 def downgrade() -> None:
@@ -75,7 +79,5 @@ def downgrade() -> None:
     op.drop_table("factor_build_runs")
     op.drop_index("ix_factor_code_bundles_spec_hash", table_name="factor_code_bundles")
     op.drop_table("factor_code_bundles")
-    op.drop_index(
-        "ix_factor_build_specs_project_id", table_name="factor_build_specs"
-    )
+    op.drop_index("ix_factor_build_specs_project_id", table_name="factor_build_specs")
     op.drop_table("factor_build_specs")

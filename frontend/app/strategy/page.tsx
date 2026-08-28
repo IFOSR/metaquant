@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { BacktestLab } from "../../components/backtest-lab";
 import { quantApiClient } from "../../lib/client";
 import { getServerT } from "../../lib/server-locale";
@@ -11,6 +13,7 @@ function shortHash(hash: string): string {
 export default async function StrategyPage() {
   const t = await getServerT();
   const factors = await quantApiClient.listAlphaPool();
+  const drafts = await quantApiClient.listStrategyDrafts("FROZEN");
 
   return (
     <div className="page">
@@ -48,6 +51,49 @@ export default async function StrategyPage() {
         ) : (
           <p className="muted">
             {t("strategy.emptyFactors")}
+          </p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">{t("strategy.savedEyebrow")}</span>
+            <h2>{t("strategy.savedTitle")}</h2>
+          </div>
+          <span className="mono muted">{t("strategy.savedCount", { count: drafts.length })}</span>
+        </div>
+        <p className="muted" style={{ marginTop: 8 }}>
+          {t("strategy.savedHint")}
+        </p>
+
+        {drafts.length ? (
+          <div className="task-list">
+            {drafts.map((draft) => (
+              <Link
+                href={`/strategy/chat?draft=${draft.id}`}
+                key={draft.id}
+                className="task-row"
+                style={{ textDecoration: "none", display: "block" }}
+              >
+                <span className="task-stage">{draft.market}</span>
+                <strong>{draft.title || shortHash(draft.id)}</strong>
+                <span className="mono muted">
+                  {t("strategy.savedInstruments")}: {draft.instrumentIds.join(" · ")}
+                </span>
+                <span className="muted">{t("strategy.savedFrequency")}: {draft.frequency}</span>
+                <span className="mono muted">
+                  {t("strategy.savedHash")}: {draft.contentHash ? shortHash(draft.contentHash) : "—"}
+                </span>
+                <span className="muted">
+                  {t("strategy.savedFrozenAt")} {draft.updatedAt.slice(0, 10)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            {t("strategy.savedEmpty")}
           </p>
         )}
       </section>

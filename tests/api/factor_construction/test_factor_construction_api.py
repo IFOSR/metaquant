@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -55,20 +56,25 @@ _FILES = {
 
 class _FakeData:
     def pit_frame(
-        self, *, instrument_ids, fields, decision_time, field_prefix="market.eod."
-    ):
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        fields: tuple[str, ...],
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+    ) -> dict[str, Any]:
         return {"rows": []}
 
     def label_frame(
         self,
         *,
-        instrument_ids,
-        price_field,
-        horizon,
-        decision_time,
-        field_prefix="market.eod.",
-        return_type="simple",
-    ):
+        instrument_ids: tuple[str, ...],
+        price_field: str,
+        horizon: int,
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+        return_type: str = "simple",
+    ) -> dict[str, Any]:
         return {"rows": []}
 
 
@@ -102,7 +108,7 @@ def make_client(
         factor_build_service=FactorBuildService(
             repository,
             InMemoryArtifactStore(),
-            _FakeData(),  # type: ignore[arg-type]
+            _FakeData(),
         ),
         research_principal_provider=provider,
     )

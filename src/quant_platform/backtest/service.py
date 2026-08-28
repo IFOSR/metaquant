@@ -51,7 +51,9 @@ _VENUE_BY_SUFFIX = {
     "INE": "INE",
     "DCE": "DCE",
     "CZC": "CZCE",
+    "CZCE": "CZCE",
     "GFE": "GFEX",
+    "GFEX": "GFEX",
 }
 
 
@@ -80,6 +82,7 @@ class BacktestTrade:
     side: str
     quantity: float
     price: float
+    commission: float = 0.0
 
     def payload(self) -> dict[str, object]:
         return {
@@ -88,6 +91,7 @@ class BacktestTrade:
             "side": self.side,
             "quantity": self.quantity,
             "price": self.price,
+            "commission": self.commission,
         }
 
 

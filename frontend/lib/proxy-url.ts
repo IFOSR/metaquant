@@ -63,6 +63,65 @@ export function isAllowedQuantApiPath(path: string[]) {
       (path.length === 4 && Boolean(path[2]) && path[3] === "artifacts")
     );
   }
+  if (path[1] === "agent-config") {
+    return path.length === 2 || path.length === 3;
+  }
+  if (path[1] === "strategy-drafts") {
+    if (path.length === 2) return true;
+    if (path.length === 3 && Boolean(path[2])) {
+      if (!path[2].includes(":")) return true;
+      return [
+        ":freeze",
+        ":unfreeze",
+        ":save",
+        ":backtest",
+        ":code-test",
+        ":paper",
+        ":provision",
+      ].some((suffix) => path[2].endsWith(suffix));
+    }
+    if (path.length === 4 && Boolean(path[2]) && Boolean(path[3])) {
+      if (path[3] === "backtests") return true;
+      return (
+        path[3] === "messages" ||
+        path[3] === "data-status" ||
+        path[3] === "attachments"
+      );
+    }
+    return (
+      path.length === 5 &&
+      Boolean(path[2]) &&
+      path[3] === "backtests" &&
+      Boolean(path[4])
+    );
+  }
+  if (path[1] === "strategy-backtests" || path[1] === "strategy-backtests:matrix") {
+    if (path.length === 2) return true;
+    return path.length === 3 && Boolean(path[2]);
+  }
+  if (path[1] === "paper") {
+    if (path[2] !== "accounts" || path.length < 3) return false;
+    if (path.length === 3) return true;
+    if (path.length === 4 && Boolean(path[3])) {
+      if (path[3].includes(":")) {
+        return [":pause", ":resume", ":close", ":start-node", ":stop-node"].some(
+          (suffix) => path[3].endsWith(suffix),
+        );
+      }
+      return true;
+    }
+    if (path.length === 5 && Boolean(path[3])) {
+      return [
+        "orders",
+        "fills",
+        "positions",
+        "equity",
+        "drift",
+        "run-status",
+      ].includes(path[4]);
+    }
+    return false;
+  }
   if (path[1] === "research-jobs") {
     if (path.length === 2) return true;
     if (path.length === 3) return Boolean(path[2]);

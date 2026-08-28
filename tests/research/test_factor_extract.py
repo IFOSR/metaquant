@@ -69,9 +69,7 @@ def test_build_factor_ir_rejects_bad_field_ref() -> None:
 
 
 def test_extract_factor_from_paper() -> None:
-    result = extract_factor_from_paper(
-        "some report", "CN_A", runner=_complete_ok
-    )
+    result = extract_factor_from_paper("some report", "CN_A", runner=_complete_ok)
     assert result.brief.expected_direction is BriefDirection.POSITIVE
     assert result.factor_ir["market_scope"]["market"] == "CN_A"
     assert result.explanation

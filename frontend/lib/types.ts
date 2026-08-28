@@ -32,6 +32,9 @@ export type Capability =
   | "research.experiments.run"
   | "research.jobs.propose"
   | "strategy.read"
+  | "strategy.write"
+  | "paper.read"
+  | "paper.write"
   | "execution.read"
   | "approval.read";
 
@@ -415,6 +418,7 @@ export interface BacktestTrade {
   side: string;
   quantity: number;
   price: number;
+  commission?: number;
 }
 
 export interface BacktestPosition {
@@ -466,6 +470,146 @@ export interface MarketDataCoverageEntry {
   rowCount: number;
   firstEvent: string;
   lastEvent: string;
+}
+
+export interface StrategyMessage {
+  role: "user" | "assistant";
+  content: string;
+  attachments?: StrategyAttachment[];
+}
+
+export interface StrategyAttachment {
+  name: string;
+  kind: "text" | "image";
+  extractedText: string;
+  objectKey?: string;
+}
+
+export interface StrategyBacktestPlan {
+  timeframes: string[];
+  trendTimeframe: string | null;
+  execTimeframe: string;
+  start: string;
+  end: string;
+  rationale: string;
+}
+
+export interface StrategyDraft {
+  id: string;
+  market: MarketId;
+  kind: ResearchKind;
+  stage: ResearchStage;
+  state: "DRAFT" | "READY" | "FROZEN";
+  title: string;
+  explanation: string;
+  question: string;
+  code: string | null;
+  ready: boolean;
+  instrumentIds: string[];
+  frequency: string;
+  backtestPlan: StrategyBacktestPlan | null;
+  codeTestResult: StrategyCodeTestResult | null;
+  backtestResults: StrategyBacktestHistoryEntry[];
+  paperBinding: { accountId: string; publishedAt: string } | null;
+  contentHash: string | null;
+  resourceVersion: number;
+  savedVersions?: StrategySavedVersion[];
+  createdAt: string;
+  updatedAt: string;
+  messages?: StrategyMessage[];
+}
+
+export type ResearchKind = "factor" | "strategy";
+
+export type ResearchStage =
+  | "CREATING"
+  | "READY"
+  | "CODE_TESTED"
+  | "BACKTESTED"
+  | "PAPER_LINKED";
+
+export interface StrategyBacktestHistoryEntry {
+  backtestHash: string;
+  start: string;
+  end: string;
+  frequency: string;
+  metrics: BacktestMetrics | null;
+  ranAt: string;
+}
+
+export interface StrategySavedVersion {
+  version: number;
+  hash: string;
+  state: string;
+  title: string;
+  savedAt: string;
+}
+
+export interface StrategyBacktestResult {
+  instrumentIds: string[];
+  start: string;
+  end: string;
+  frequency: string;
+  initialCash: number;
+  grossOfFees: boolean;
+  venueSpec: {
+    market: string;
+    costBasis: string;
+    feeModel: string | null;
+    fillModel: string | null;
+    latencyModel: string | null;
+    randomSeed: number | null;
+    priceProtectionPoints: number | null;
+  } | null;
+  metrics: BacktestMetrics;
+  equityCurve: Array<{ date: string; equity: number }>;
+  trades: BacktestTrade[];
+  positions: BacktestPosition[];
+  backtestHash: string;
+  error: string | null;
+}
+
+export interface StrategyCodeTestResult {
+  passed: boolean;
+  exitCode: number;
+  stderr: string;
+  durationMs: number;
+}
+
+export interface StrategyDataEntry {
+  rows: number;
+  firstEvent: string;
+  lastEvent: string;
+}
+
+export type StrategyFrequency = "1d" | "1w" | "5m" | "15m" | "30m" | "60m";
+
+export interface StrategyDataCheck {
+  frequency: string;
+  available: boolean;
+  required: StrategyDataEntry | null;
+}
+
+export interface StrategyDataStatusItem {
+  instrumentId: string;
+  available: boolean;
+  daily: StrategyDataEntry | null;
+  minute: StrategyDataEntry | null;
+  checks: StrategyDataCheck[];
+}
+
+export interface StrategyDataStatus {
+  instrumentIds: string[];
+  frequencies: string[];
+  ready: boolean;
+  items: StrategyDataStatusItem[];
+}
+
+export interface StrategyProvisionResult {
+  instrumentIds: string[];
+  frequency: string;
+  rows: number;
+  sources: string[];
 }
 
 export interface ExecutionState {
@@ -544,4 +688,126 @@ export interface ModelFactorValidationReport {
   rank_ic: number | null;
   icir: number | null;
   output_hash: string;
+}
+
+// ── Paper 仿真（账户生命周期与账本） ─────────────────────────────────
+
+export type PaperAccountState = "ACTIVE" | "PAUSED" | "CLOSED";
+
+export interface PaperAccount {
+  id: string;
+  owner: string;
+  draftId: string;
+  artifactAddress: string;
+  contentHash: string;
+  market: string;
+  instrumentIds: string[];
+  frequency: string;
+  initialCash: number;
+  state: PaperAccountState;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaperOrder {
+  id: string;
+  instrumentId: string;
+  side: "BUY" | "SELL";
+  quantity: number;
+  orderClock: string;
+  status: string;
+  rejectReason: string | null;
+  filledQty: number;
+  avgPx: number | null;
+  createdAt: string;
+}
+
+export interface PaperFill {
+  id: string;
+  orderId: string;
+  tradeTs: string;
+  price: number;
+  quantity: number;
+  fee: number;
+  notional: number;
+}
+
+export interface PaperPosition {
+  instrumentId: string;
+  quantity: number;
+  avgPx: number | null;
+  updatedAt: string;
+}
+
+export interface PaperEquityRow {
+  tradeDate: string;
+  equity: number;
+  cash: number;
+  marginUsed: number;
+  drawdown: number;
+}
+
+export interface PaperDriftPoint {
+  date: string;
+  backtestEquity: number;
+  paperEquity: number;
+  diff: number;
+}
+
+export interface PaperDriftReport {
+  schemaVersion: string;
+  points: PaperDriftPoint[];
+  commonDays: number;
+  paperDays: number;
+  backtestDays: number;
+  maxAbsDiff: number;
+  costBasis: string | null;
+  backtestHash: string | null;
+}
+
+export interface PaperRunStatus {
+  account_id: string;
+  status: "WARMUP" | "LIVE" | "ERROR" | "OFFLINE" | string;
+  cycles_total: number;
+  bars_total: number;
+  last_cycle_at: string | null;
+  last_bar_at: string | null;
+  last_error: string | null;
+  node_running: boolean;
+  warmed_up: boolean;
+  updated_at: string | null;
+}
+
+// ── Agent 基座模型配置 ─────────────────────────────────────────────────
+
+export type AgentId = "codex" | "pi";
+
+export interface AgentDescriptor {
+  name: AgentId;
+  supportedProviders: string[];
+  defaultProviders: string[];
+}
+
+export interface AgentProviderInfo {
+  provider: string;
+  kind: "builtin" | "custom";
+  hasApiKey: boolean;
+  maskedKey: string;
+  baseUrl?: string | null;
+}
+
+export interface AgentConfigState {
+  agent: string;
+  provider: string;
+  model: string;
+  providers: AgentProviderInfo[];
+}
+
+export interface AgentModelInfo {
+  provider: string;
+  model: string;
+  context: string;
+  maxOut: string;
+  thinking: boolean;
+  images: boolean;
 }

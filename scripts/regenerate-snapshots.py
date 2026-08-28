@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -56,7 +56,7 @@ def _load_formal_rows() -> list[dict[str, object]]:
 
 
 def _iso(value: object) -> str:
-    return value.astimezone(timezone.utc).isoformat()  # type: ignore[union-attr]
+    return value.astimezone(UTC).isoformat()  # type: ignore[union-attr]
 
 
 def _snapshot_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -89,7 +89,9 @@ def _label_rows(
     # 保证既有足够历史算因子，又给未来收益留出 horizon 天的空间。
     all_times = sorted({r["event_time"] for r in rows})
     if len(all_times) <= 2 * horizon:
-        decision_time = all_times[horizon] if len(all_times) > horizon else all_times[-1]
+        decision_time = (
+            all_times[horizon] if len(all_times) > horizon else all_times[-1]
+        )
     else:
         decision_time = all_times[-(2 * horizon)]
     decision_index = all_times.index(decision_time)
@@ -193,14 +195,18 @@ def main() -> None:
 
     existing_formal = json.loads(FORMAL_PATH.read_text())
     kept = [
-        s for s in existing_formal if s.get("snapshot_id") != "snapshot-cn-futures-eod-001"
+        s
+        for s in existing_formal
+        if s.get("snapshot_id") != "snapshot-cn-futures-eod-001"
     ]
     kept.append(formal)
     FORMAL_PATH.write_text(json.dumps(kept, ensure_ascii=False, indent=2) + "\n")
 
     existing_label = json.loads(LABEL_PATH.read_text())
     kept_label = [
-        s for s in existing_label if s.get("snapshot_id") != "label-snapshot-cn-futures-001"
+        s
+        for s in existing_label
+        if s.get("snapshot_id") != "label-snapshot-cn-futures-001"
     ]
     kept_label.append(label)
     LABEL_PATH.write_text(json.dumps(kept_label, ensure_ascii=False, indent=2) + "\n")

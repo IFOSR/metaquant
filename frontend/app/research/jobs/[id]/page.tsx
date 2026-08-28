@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AuditDeepZone } from "../../../../components/audit-deep-zone";
 import { ExperimentActions } from "../../../../components/experiment-actions";
 import { ExperimentMonitor } from "../../../../components/experiment-monitor";
 import { FactorValidationReportPanel } from "../../../../components/factor-validation-report";
@@ -129,14 +130,16 @@ export default async function ResearchJobDetailPage({
         run={run}
         artifacts={artifacts}
       />
-      {run ? (
-        <div className="evidence-grid">
-          <FactorValidationReportPanel report={validation} />
-          <IndependencePanel report={independence} />
-          <PromotionPanel report={promotion} />
-        </div>
-      ) : null}
-      <LineagePanel artifacts={artifacts} />
+      <AuditDeepZone>
+        {run ? (
+          <div className="evidence-grid">
+            <FactorValidationReportPanel report={validation} />
+            <IndependencePanel report={independence} />
+            <PromotionPanel report={promotion} />
+          </div>
+        ) : null}
+        <LineagePanel artifacts={artifacts} />
+      </AuditDeepZone>
     </div>
   );
 }

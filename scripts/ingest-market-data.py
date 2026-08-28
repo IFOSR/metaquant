@@ -38,7 +38,9 @@ def _sina_symbol(instrument_id: str) -> str:
     return instrument_id.partition(".")[0]
 
 
-def _ifind_daily(instruments: tuple[str, ...], start: date, end: date) -> tuple[RawPITRow, ...]:
+def _ifind_daily(
+    instruments: tuple[str, ...], start: date, end: date
+) -> tuple[RawPITRow, ...]:
     client = IFindClient(refresh_token=os.environ["IFIND_REFRESH_TOKEN"])
     market_data = fetch_futures_daily(
         client, instruments, start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
@@ -76,7 +78,9 @@ def _bars_to_pit_rows(
             rows.append(
                 RawPITRow(
                     source_id=source_id,
-                    dataset_id="market-eod" if field_prefix == "market.eod" else "market-minute",
+                    dataset_id="market-eod"
+                    if field_prefix == "market.eod"
+                    else "market-minute",
                     field=f"{field_prefix}.{field}",
                     instrument_id=instrument_id,
                     event_time=timestamp,
@@ -128,14 +132,20 @@ def _akshare_bars(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="真实行情采集入库")
-    parser.add_argument("--instruments", required=True, help="逗号分隔，如 RB2610.SHF,AU2612.SHF")
+    parser.add_argument(
+        "--instruments", required=True, help="逗号分隔，如 RB2610.SHF,AU2612.SHF"
+    )
     parser.add_argument("--start", required=True, help="YYYY-MM-DD")
     parser.add_argument("--end", required=True, help="YYYY-MM-DD")
     parser.add_argument("--freq", default="1d", help="1d 或 1d,5m")
-    parser.add_argument("--source", default="auto", choices=["auto", "ifind", "akshare"])
+    parser.add_argument(
+        "--source", default="auto", choices=["auto", "ifind", "akshare"]
+    )
     args = parser.parse_args()
 
-    instruments = tuple(item.strip() for item in args.instruments.split(",") if item.strip())
+    instruments = tuple(
+        item.strip() for item in args.instruments.split(",") if item.strip()
+    )
     start = date.fromisoformat(args.start)
     end = date.fromisoformat(args.end)
     freqs = [item.strip() for item in args.freq.split(",")]

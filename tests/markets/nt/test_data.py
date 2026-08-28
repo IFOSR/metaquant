@@ -34,6 +34,15 @@ def test_minute_bar_spec_step() -> None:
     assert spec.step == 5
 
 
+def test_minute_bar_spec_60m_maps_to_hour() -> None:
+    """60 分钟归一到 1-HOUR（NautilusTrader 不允许 MINUTE step=60）。"""
+    from nautilus_trader.model.enums import BarAggregation
+
+    spec = minute_bar_spec(60)
+    assert spec.step == 1
+    assert spec.aggregation == BarAggregation.HOUR
+
+
 def test_day_bar_spec() -> None:
     spec = day_bar_spec()
 
@@ -69,6 +78,24 @@ def test_to_nautilus_bars_sorts_by_timestamp() -> None:
     )
 
     assert converted[0].ts_event < converted[1].ts_event
+
+
+def test_bar_ts_init_equals_ts_event_close() -> None:
+    """对齐 NT 交互：bar 的 ts_init 必须等于区间收盘（ts_event）。
+
+    撮合时点以 ts_init 为准；PIT 的 event_time 就是收盘时点（日线 15:00、
+    分钟级 bar 收盘），ts_init 不能滞后否则撮合发生在错误时点。
+    """
+    instrument = equity_instrument(symbol="600000")
+    converted = to_nautilus_bar(
+        sample_bar(35),
+        instrument_id=instrument.id,
+        bar_spec=minute_bar_spec(5),
+        price_precision=2,
+    )
+    assert converted.ts_init == converted.ts_event
+    expected_ns = int(sample_bar(35).timestamp.timestamp() * 1_000_000_000)
+    assert converted.ts_event == expected_ns
 
 
 def test_price_precision_validation() -> None:

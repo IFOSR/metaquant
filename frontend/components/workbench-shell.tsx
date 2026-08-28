@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { getVisibleNavigation, ENV_LABEL_KEYS, MARKET_LABEL_KEYS } from "../lib/domain";
 import { quantApiClient } from "../lib/client";
@@ -10,16 +10,38 @@ import type { Environment, MarketId, Session } from "../lib/types";
 import { useI18n } from "./i18n-provider";
 import { StateBoundary } from "./state-boundary";
 
+const AGENT_CONFIG_EVENT = "quant:agent-config-changed";
+
 export function WorkbenchShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [environment, setEnvironment] = useState<Environment>("RESEARCH");
   const [market, setMarket] = useState<MarketId>("CN_COMMODITY_FUTURES");
+  const [baseModel, setBaseModel] = useState<string | null>(null);
+
+  const refreshBaseModel = useCallback(() => {
+    quantApiClient
+      .getAgentConfig()
+      .then((config) => {
+        const parts = [config.agent, config.provider, config.model].filter(
+          (part) => part && part.trim(),
+        );
+        setBaseModel(parts.length ? parts.join(" · ") : null);
+      })
+      .catch(() => setBaseModel(null));
+  }, []);
 
   useEffect(() => {
     void quantApiClient.getSession().then(setSession);
   }, []);
+
+  useEffect(() => {
+    refreshBaseModel();
+    const handler = () => refreshBaseModel();
+    window.addEventListener(AGENT_CONFIG_EVENT, handler);
+    return () => window.removeEventListener(AGENT_CONFIG_EVENT, handler);
+  }, [refreshBaseModel]);
 
   if (!session) {
     return (
@@ -77,6 +99,14 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
           <span className="online-dot" aria-hidden="true" />
           <span>{session.actor.displayName}</span>
           <span className="mono">{t("shell.actorBadge")}</span>
+          {baseModel ? (
+            <span className="actor-model mono" title={t("shell.baseModel")}>
+              {baseModel}
+            </span>
+          ) : null}
+          <Link className="actor-link" href="/settings/agent">
+            {t("shell.agentConfig")}
+          </Link>
         </div>
       </header>
       <div className="shell-body">

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -62,28 +64,49 @@ def _spec() -> FactorBuildSpec:
 
 class _FakeData:
     def pit_frame(
-        self, *, instrument_ids, fields, decision_time, field_prefix="market.eod."
-    ):
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        fields: tuple[str, ...],
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+    ) -> dict[str, Any]:
         return {"rows": _FEATURES}
 
     def label_frame(
         self,
         *,
-        instrument_ids,
-        price_field,
-        horizon,
-        decision_time,
-        field_prefix="market.eod.",
-        return_type="simple",
-    ):
+        instrument_ids: tuple[str, ...],
+        price_field: str,
+        horizon: int,
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+        return_type: str = "simple",
+    ) -> dict[str, Any]:
         return {"rows": _LABELS}
 
 
 class _FailingData:
-    def pit_frame(self, **kwargs):
+    def pit_frame(
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        fields: tuple[str, ...],
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+    ) -> dict[str, Any]:
         raise ValueError("data unavailable")
 
-    def label_frame(self, **kwargs):
+    def label_frame(
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        price_field: str,
+        horizon: int,
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+        return_type: str = "simple",
+    ) -> dict[str, Any]:
         return {"rows": []}
 
 
@@ -121,7 +144,7 @@ def _register_bundle(
 def test_train_infer_validate_roundtrip() -> None:
     repository = _repository()
     artifacts = InMemoryArtifactStore()
-    service = FactorBuildService(repository, artifacts, _FakeData())  # type: ignore[arg-type]
+    service = FactorBuildService(repository, artifacts, _FakeData())
     spec_hash, bundle = _register_bundle(repository, artifacts, _spec())
 
     train = service.train(
@@ -164,9 +187,9 @@ def test_train_infer_validate_roundtrip() -> None:
 def test_train_failure_marks_run_failed() -> None:
     repository = _repository()
     artifacts = InMemoryArtifactStore()
-    service = FactorBuildService(repository, artifacts, _FakeData())  # type: ignore[arg-type]
+    service = FactorBuildService(repository, artifacts, _FakeData())
     spec_hash, bundle = _register_bundle(repository, artifacts, _spec())
-    service._data = _FailingData()  # type: ignore[assignment]
+    service._data = _FailingData()
 
     with pytest.raises(FactorBuildExecutionError):
         service.train(
@@ -176,9 +199,9 @@ def test_train_failure_marks_run_failed() -> None:
             decision_time="2026-08-02T07:00:00Z",
         )
     runs = [
-        repository.get_run(run_id)
+        run
         for run_id in _all_run_ids(repository)
-        if repository.get_run(run_id) is not None
+        if (run := repository.get_run(run_id)) is not None
     ]
     assert any(run.state.value == "FAILED" for run in runs)
 
@@ -189,5 +212,5 @@ def _all_run_ids(repository: SqlAlchemyFactorConstructionRepository) -> list[str
 
     from quant_platform.research.models import FactorBuildRunModel
 
-    with repository._sessions() as session:  # type: ignore[attr-defined]
+    with repository._sessions() as session:
         return list(session.scalars(select(FactorBuildRunModel.id)).all())

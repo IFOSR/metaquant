@@ -55,16 +55,27 @@ def _synthetic_data(spec: FactorBuildSpec) -> tuple[list[dict], list[dict], list
         for day in range(40):
             event_time = start + timedelta(days=day)
             price = max(1.0, price * (1.0 + rng.uniform(-0.02, 0.02)))
-            row: dict = {"instrument_id": instrument, "event_time": event_time.isoformat().replace("+00:00", "Z")}
+            row: dict = {
+                "instrument_id": instrument,
+                "event_time": event_time.isoformat().replace("+00:00", "Z"),
+            }
             for field in fields:
-                row[field] = round(price * (1.0 + rng.uniform(-0.01, 0.01)), 4) if field == price_field else round(rng.uniform(-1, 1), 4)
+                row[field] = (
+                    round(price * (1.0 + rng.uniform(-0.01, 0.01)), 4)
+                    if field == price_field
+                    else round(rng.uniform(-1, 1), 4)
+                )
             features.append(row)
-            price_rows.append({"instrument_id": instrument, "event_time": event_time, "value": price})
+            price_rows.append(
+                {"instrument_id": instrument, "event_time": event_time, "value": price}
+            )
     return features, price_rows, fields
 
 
 def _main() -> None:
-    report_path = Path("/app/tests/factor_construction/fixtures/stable_alpha_report.txt")
+    report_path = Path(
+        "/app/tests/factor_construction/fixtures/stable_alpha_report.txt"
+    )
     paper = report_path.read_text()
 
     print("== 1. 研报 -> 构建规格 (agent) ==")
@@ -128,18 +139,26 @@ def _main() -> None:
     print(f"    factor_values_hash={content_hash(infer.canonical_json.encode())}")
 
     factor_rows = [
-        {"instrument_id": o.instrument_id, "event_time": o.timestamp.isoformat(), "value": o.value}
+        {
+            "instrument_id": o.instrument_id,
+            "event_time": o.timestamp.isoformat(),
+            "value": o.value,
+        }
         for o in infer.observations
     ]
     label_rows = [
-        {"instrument_id": r["instrument_id"], "event_time": r["event_time"], "value": r["label"]}
+        {
+            "instrument_id": r["instrument_id"],
+            "event_time": r["event_time"],
+            "value": r["label"],
+        }
         for r in labels
     ]
 
     print("== 5. 因子值 -> IC 验证 ==")
     report = validate_model_factor(factor_rows, label_rows)
     print(json.dumps(report.payload(), ensure_ascii=False, indent=2))
-    print(f"\nOK: 研报 -> 规格 -> torch 代码 -> 因子值 -> IC 全链路跑通。")
+    print("\nOK: 研报 -> 规格 -> torch 代码 -> 因子值 -> IC 全链路跑通。")
 
 
 if __name__ == "__main__":

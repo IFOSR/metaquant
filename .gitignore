@@ -34,3 +34,4 @@ frontend/.next/
 
 # Agent runtime state
 .deepseek/
+.gstack/

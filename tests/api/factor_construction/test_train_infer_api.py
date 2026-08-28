@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -59,20 +61,25 @@ _LABELS = [
 
 class _FakeData:
     def pit_frame(
-        self, *, instrument_ids, fields, decision_time, field_prefix="market.eod."
-    ):
+        self,
+        *,
+        instrument_ids: tuple[str, ...],
+        fields: tuple[str, ...],
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+    ) -> dict[str, Any]:
         return {"rows": _FEATURES}
 
     def label_frame(
         self,
         *,
-        instrument_ids,
-        price_field,
-        horizon,
-        decision_time,
-        field_prefix="market.eod.",
-        return_type="simple",
-    ):
+        instrument_ids: tuple[str, ...],
+        price_field: str,
+        horizon: int,
+        decision_time: Any,
+        field_prefix: str = "market.eod.",
+        return_type: str = "simple",
+    ) -> dict[str, Any]:
         return {"rows": _LABELS}
 
 
@@ -85,7 +92,7 @@ def make_client() -> tuple[TestClient, str, str]:
     Base.metadata.create_all(engine)
     repository = SqlAlchemyFactorConstructionRepository(engine)
     artifacts = InMemoryArtifactStore()
-    service = FactorBuildService(repository, artifacts, _FakeData())  # type: ignore[arg-type]
+    service = FactorBuildService(repository, artifacts, _FakeData())
 
     def provider(token: str) -> ResearchPrincipal | None:
         if token != "test-researcher":

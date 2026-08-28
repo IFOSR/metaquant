@@ -5,9 +5,11 @@ The agent is an amplifier, not an authority: it proposes a factor definition
 deterministic kernel still preregisters/validates.  The agent never writes to
 the kernel.
 
-The agent backend is injectable.  The default prefers the ``pi`` CLI in
-non-interactive mode (``pi -p``) when ``CODE_CLI_API_KEY`` is present, then
-falls back to a direct Zhipu HTTP call (the opencode provider), then DeepSeek.
+The agent backend is injectable.  The default reads the active agent base-model
+config (``codex`` / ``pi``) via an injected resolver (DB-backed, resolved per
+call), falling back to env-var backends (DeepSeek → Zhipu → legacy pi).  Both
+CLI backends are non-interactive and never mutate the host-installed agent's
+global config.
 """
 
 from __future__ import annotations
@@ -26,6 +28,29 @@ import httpx
 from quant_platform.research.schemas import BriefContent
 
 Runner = Callable[[str], str]
+
+# 活跃 Agent 基座模型配置解析器（由 app 层装配，读 DB；每次调用即时解析）。
+_agent_config_resolver: Callable[[], Any] | None = None
+
+
+def set_agent_config_resolver(resolver: Callable[[], Any] | None) -> None:
+    """注入「活跃 Agent 基座模型配置」解析器。
+
+    解析器返回一个带 ``agent/provider/model/api_key/base_url`` 属性的对象，
+    或 None（无配置，走 env 兜底）。每次调用即时解析，保证配置即时生效。
+    """
+    global _agent_config_resolver
+    _agent_config_resolver = resolver
+
+
+def _resolve_agent_config() -> Any:
+    if _agent_config_resolver is None:
+        return None
+    try:
+        return _agent_config_resolver()
+    except Exception:  # noqa: BLE001 — 配置解析失败不影响 env 兜底
+        return None
+
 
 _SYSTEM_PROMPT = """You are a quantitative factor researcher. Read a research
 report and extract ONE testable factor as structured JSON.
@@ -238,9 +263,28 @@ def _extract_json(raw: str) -> Mapping[str, Any]:
 # --- runner backends -------------------------------------------------------
 
 
-def _pi_complete(prompt: str) -> str:
+def _pi_complete(
+    prompt: str,
+    *,
+    provider: str = "",
+    model: str = "",
+    api_key: str = "",
+) -> str:
+    """调用系统安装的 ``pi``（非交互），基座模型经 CLI 参数注入。
+
+    只复用 ``pi`` 二进制，不改写 ``pi`` 自身的全局配置：``--provider`` /
+    ``--model`` / ``--api-key`` 来自项目配置，仅对本项目本次调用生效。
+    """
+    argv = ["pi", "-p", "--no-session", "--mode", "text"]
+    if provider:
+        argv += ["--provider", provider]
+    if model:
+        argv += ["--model", model]
+    if api_key:
+        argv += ["--api-key", api_key]
+    argv.append(prompt)
     result = subprocess.run(
-        ["pi", "-p", "--no-session", "--mode", "text", prompt],
+        argv,
         capture_output=True,
         text=True,
         timeout=300,
@@ -249,6 +293,42 @@ def _pi_complete(prompt: str) -> str:
     if result.returncode != 0:
         raise FactorExtractionError(
             f"pi exited {result.returncode}: {result.stderr.strip()}"
+        )
+    return result.stdout.strip()
+
+
+def _codex_complete(
+    prompt: str,
+    *,
+    model: str,
+    api_key: str = "",
+    base_url: str | None = None,
+) -> str:
+    """调用系统安装的 ``codex``（非交互），模型经 ``-m`` 注入。
+
+    用 ``--ignore-user-config`` 不读本机 ``~/.codex/config.toml``、
+    ``--ephemeral`` 不落 session；api_key 仅经本次子进程 env 注入，不写全局。
+    """
+    env = dict(os.environ)
+    if api_key:
+        env["CODE_CLI_API_KEY"] = api_key
+    if base_url:
+        env["OPENAI_BASE_URL"] = base_url
+    argv = ["codex", "exec", "--ignore-user-config", "--ephemeral"]
+    if model:
+        argv += ["-m", model]
+    argv.append(prompt)
+    result = subprocess.run(
+        argv,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+        env=env,
+    )
+    if result.returncode != 0:
+        raise FactorExtractionError(
+            f"codex exited {result.returncode}: {result.stderr.strip()}"
         )
     return result.stdout.strip()
 
@@ -337,8 +417,28 @@ def default_runner(
     Kept as a factory (rather than returning the raw HTTP functions) so callers
     that need a *different* system prompt (e.g. factor construction) can reuse
     the backend selection without inheriting the factor-ir prompt.
+
+    优先级：DB 活跃 Agent 配置（codex / pi，即时解析）→ DeepSeek → Zhipu →
+    遗留 pi（``CODE_CLI_API_KEY``）。
     """
     prompt = system_prompt or _SYSTEM_PROMPT
+    config = _resolve_agent_config()
+    if config is not None:
+        agent = getattr(config, "agent", "") or ""
+        if agent == "codex":
+            return lambda user: _codex_complete(
+                f"{prompt}\n\n{user}",
+                model=getattr(config, "model", "") or "",
+                api_key=getattr(config, "api_key", "") or "",
+                base_url=getattr(config, "base_url", None),
+            )
+        if agent == "pi":
+            return lambda user: _pi_complete(
+                f"{prompt}\n\n{user}",
+                provider=getattr(config, "provider", "") or "",
+                model=getattr(config, "model", "") or "",
+                api_key=getattr(config, "api_key", "") or "",
+            )
     if os.environ.get("DEEPSEEK_API_KEY"):
         return lambda user: _deepseek_complete(
             user, system_prompt=prompt, json_mode=json_mode
@@ -346,10 +446,15 @@ def default_runner(
     if os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key():
         return lambda user: _zhipu_complete(user, system_prompt=prompt)
     if shutil.which("pi") and os.environ.get("CODE_CLI_API_KEY"):
-        return lambda user: _pi_complete(f"{prompt}\n\n{user}")
+        return lambda user: _pi_complete(
+            f"{prompt}\n\n{user}",
+            provider=os.environ.get("PI_PROVIDER", "").strip(),
+            model=os.environ.get("PI_MODEL", "").strip(),
+            api_key=os.environ.get("PI_API_KEY", "").strip(),
+        )
     raise FactorExtractionError(
         "no agent runner configured: set DEEPSEEK_API_KEY, ZHIPU_API_KEY, "
-        "or CODE_CLI_API_KEY (pi)"
+        "PI_PROVIDER/PI_MODEL, or CODE_CLI_API_KEY (pi)"
     )
 
 

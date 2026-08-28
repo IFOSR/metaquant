@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     execution_config_hash: str = "0" * 64
     sandbox_image: str = "quant-sandbox:local"
     sandbox_use_docker: bool = False
+    # pi Agent（非交互）基座模型配置：仅对本项目调用生效，不写 pi 全局配置。
+    pi_provider: str = ""
+    pi_model: str = ""
+    pi_api_key: SecretStr = SecretStr("")
 
 
 @lru_cache

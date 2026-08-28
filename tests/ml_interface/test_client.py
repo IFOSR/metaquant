@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 import quant_platform.ml as ml
@@ -37,7 +39,14 @@ def test_pitframe_rejects_duplicate_index() -> None:
 def test_load_pit_frame_has_no_label_column(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
-    def fake_request(method, path, *, params=None, body=None, base_url=None):
+    def fake_request(
+        method: str,
+        path: str,
+        *,
+        params: Any = None,
+        body: Any = None,
+        base_url: Any = None,
+    ) -> Any:
         captured["method"] = method
         captured["path"] = path
         captured["params"] = params
@@ -60,13 +69,22 @@ def test_load_pit_frame_has_no_label_column(monkeypatch: pytest.MonkeyPatch) -> 
         base_url="http://data",
     )
     assert captured["path"] == "/v1/data/pit-frame"
-    assert captured["params"]["decision_time"] == "2026-08-01T07:00:00Z"
+    params = captured["params"]
+    assert isinstance(params, dict)
+    assert params["decision_time"] == "2026-08-01T07:00:00Z"
     assert "label" not in frame.data.columns
     assert list(frame.data.index.names) == ["instrument_id", "event_time"]
 
 
 def test_load_label_frame_returns_series(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_request(method, path, *, params=None, body=None, base_url=None):
+    def fake_request(
+        method: str,
+        path: str,
+        *,
+        params: Any = None,
+        body: Any = None,
+        base_url: Any = None,
+    ) -> Any:
         return {
             "rows": [
                 {
@@ -91,7 +109,14 @@ def test_load_label_frame_returns_series(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_load_exposure_frame_uses_style_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
-    def fake_request(method, path, *, params=None, body=None, base_url=None):
+    def fake_request(
+        method: str,
+        path: str,
+        *,
+        params: Any = None,
+        body: Any = None,
+        base_url: Any = None,
+    ) -> Any:
         captured["params"] = params
         return {"rows": []}
 
@@ -102,4 +127,6 @@ def test_load_exposure_frame_uses_style_prefix(monkeypatch: pytest.MonkeyPatch) 
         factors=["size", "volatility"],
         decision_time="2026-08-01T07:00:00Z",
     )
-    assert captured["params"]["field_prefix"] == "style."
+    params = captured["params"]
+    assert isinstance(params, dict)
+    assert params["field_prefix"] == "style."

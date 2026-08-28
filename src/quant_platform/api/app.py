@@ -8,6 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from quant_platform import __version__
+from quant_platform.agent_config.api import build_agent_config_router
+from quant_platform.agent_config.service import AgentConfigService
 from quant_platform.artifacts import MinioArtifactStore
 from quant_platform.config import Settings, get_settings
 from quant_platform.data_gateway.pit_store import SqlAlchemyPitStore
@@ -21,6 +23,9 @@ from quant_platform.experiment_runtime import (
     SqlAlchemyExperimentRepository,
     build_experiment_router,
 )
+from quant_platform.experiment_runtime.execution_state_service import (
+    ExecutionStateService,
+)
 from quant_platform.factor_construction.api import build_factor_construction_router
 from quant_platform.factor_construction.data_service import (
     PitDataService,
@@ -32,6 +37,9 @@ from quant_platform.factor_construction.repository import (
 from quant_platform.factor_construction.runner import DockerSandboxRunner
 from quant_platform.factor_construction.service import FactorBuildService
 from quant_platform.health import ReadinessProbe, build_readiness_probe
+from quant_platform.paper.api import build_paper_router
+from quant_platform.paper.artifact import StrategyArtifactStore
+from quant_platform.paper.repository import SqlAlchemyPaperRepository
 from quant_platform.research.api import (
     ResearchPrincipal,
     ResearchPrincipalProvider,
@@ -39,6 +47,7 @@ from quant_platform.research.api import (
     build_research_router,
     install_problem_handlers,
 )
+from quant_platform.research.factor_extract import Runner, set_agent_config_resolver
 from quant_platform.research.repository import SqlAlchemyResearchRepository
 from quant_platform.security import (
     AuthenticationMethod,
@@ -49,6 +58,13 @@ from quant_platform.security import (
     Scope,
     StaticBearerPrincipalProvider,
 )
+from quant_platform.strategy_generation import (
+    SqlAlchemyStrategyRepository,
+    build_strategy_router,
+)
+from quant_platform.strategy_generation.provisioning import StrategyDataProvisioner
+from quant_platform.strategy_generation.service import StrategyBacktestService
+from quant_platform.strategy_generation.tasks import BacktestTaskService
 from quant_platform.validation import (
     JsonLabelSnapshotCatalog,
     JsonPromotionPolicyCatalog,
@@ -77,6 +93,9 @@ def _default_principal_provider(token: str) -> ResearchPrincipal | None:
         # 前端导航与操作边界使用的能力
         "research.jobs.propose",
         "strategy.read",
+        "strategy.write",
+        "paper.read",
+        "paper.write",
         "execution.read",
         "approval.read",
     )
@@ -131,6 +150,12 @@ def create_app(
     pit_data_service: PitDataService | None = None,
     factor_build_service: FactorBuildService | None = None,
     research_principal_provider: ResearchPrincipalProvider | None = None,
+    strategy_runner: Runner | None = None,
+    strategy_repository: SqlAlchemyStrategyRepository | None = None,
+    strategy_backtest_service: StrategyBacktestService | None = None,
+    strategy_execution_state: ExecutionStateService | None = None,
+    strategy_provisioner: StrategyDataProvisioner | None = None,
+    paper_repository: SqlAlchemyPaperRepository | None = None,
 ) -> FastAPI:
     settings = get_settings()
     probe = readiness_probe or build_readiness_probe(settings)
@@ -186,6 +211,16 @@ def create_app(
         task_manager = ProvisioningTaskManager()
         experiment_repository.load_snapshots_from_registry()
     principal_provider = research_principal_provider or _default_principal_provider
+
+    # Agent 基座模型配置：单用户、DB 存储、每次调用即时解析（隔离本机 agent 配置）。
+    agent_config_service = AgentConfigService(
+        sessionmaker(
+            create_engine(str(settings.database_url), pool_pre_ping=True),
+            expire_on_commit=False,
+        )
+    )
+    set_agent_config_resolver(agent_config_service.resolve_active)
+
     application = FastAPI(
         title="Quant Platform API",
         version=__version__,
@@ -204,6 +239,74 @@ def create_app(
         build_experiment_router(
             experiment_repository, principal_provider, provisioning, task_manager
         )
+    )
+    application.include_router(
+        build_strategy_router(
+            strategy_repository
+            or SqlAlchemyStrategyRepository(
+                create_engine(str(settings.database_url), pool_pre_ping=True)
+            ),
+            principal_provider,
+            strategy_runner,
+            strategy_backtest_service
+            or StrategyBacktestService(
+                sessionmaker(
+                    create_engine(str(settings.database_url), pool_pre_ping=True)
+                )
+            ),
+            strategy_execution_state
+            or ExecutionStateService(
+                sessionmaker(
+                    create_engine(str(settings.database_url), pool_pre_ping=True)
+                )
+            ),
+            strategy_provisioner
+            or StrategyDataProvisioner(
+                sessionmaker(
+                    create_engine(str(settings.database_url), pool_pre_ping=True)
+                )
+            ),
+            BacktestTaskService(
+                sessions=sessionmaker(
+                    create_engine(str(settings.database_url), pool_pre_ping=True),
+                    expire_on_commit=False,
+                ),
+                artifact_store=_minio_artifact_store(settings),
+                backtest_service=strategy_backtest_service
+                or StrategyBacktestService(
+                    sessionmaker(
+                        create_engine(str(settings.database_url), pool_pre_ping=True)
+                    )
+                ),
+                drafts=strategy_repository
+                or SqlAlchemyStrategyRepository(
+                    create_engine(str(settings.database_url), pool_pre_ping=True)
+                ),
+            ),
+            attachment_store=_minio_artifact_store(settings),
+        )
+    )
+    application.include_router(
+        build_paper_router(
+            paper_repository
+            or SqlAlchemyPaperRepository(
+                create_engine(str(settings.database_url), pool_pre_ping=True)
+            ),
+            principal_provider,
+            strategy_repository
+            or SqlAlchemyStrategyRepository(
+                create_engine(str(settings.database_url), pool_pre_ping=True)
+            ),
+            StrategyArtifactStore(_minio_artifact_store(settings)),
+            StrategyBacktestService(
+                sessionmaker(
+                    create_engine(str(settings.database_url), pool_pre_ping=True)
+                )
+            ),
+        )
+    )
+    application.include_router(
+        build_agent_config_router(agent_config_service, principal_provider)
     )
 
     @application.get("/health/live", tags=["health"])

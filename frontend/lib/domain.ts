@@ -14,6 +14,29 @@ export const MARKET_LABEL_KEYS: Record<MarketId, MessageKey> = {
   CN_COMMODITY_FUTURES: "market.cnFutures.label",
 };
 
+export const RESEARCH_KIND_LABEL_KEYS: Record<"factor" | "strategy", MessageKey> = {
+  factor: "research.kind.factor",
+  strategy: "research.kind.strategy",
+};
+
+export const RESEARCH_STAGE_LABEL_KEYS: Record<
+  "CREATING" | "READY" | "CODE_TESTED" | "BACKTESTED" | "PAPER_LINKED",
+  MessageKey
+> = {
+  CREATING: "research.stage.creating",
+  READY: "research.stage.ready",
+  CODE_TESTED: "research.stage.codeTested",
+  BACKTESTED: "research.stage.backtested",
+  PAPER_LINKED: "research.stage.paperLinked",
+};
+
+// 正式研究任务（因子流水线）状态 → 统一「研究」生命周期的粗粒度阶段映射。
+export function factorStageFromState(state: string) {
+  if (state === "SUCCEEDED") return "BACKTESTED";
+  if (state === "RUNNING" || state === "READY") return "READY";
+  return "CREATING";
+}
+
 export const MARKET_NOTE_KEYS: Record<MarketId, MessageKey> = {
   CN_A: "market.cnA.note",
   CN_COMMODITY_FUTURES: "market.cnFutures.note",
@@ -66,28 +89,22 @@ export const navigation = [
     marker: "00",
   },
   {
-    labelKey: "nav.researchJobs" as MessageKey,
-    href: "/research/jobs",
-    required: "research.jobs.read" as Capability,
+    labelKey: "nav.newResearch" as MessageKey,
+    href: "/research/new",
+    required: "research.jobs.write" as Capability,
     marker: "01",
   },
   {
-    labelKey: "nav.newResearch" as MessageKey,
-    href: "/research/jobs/new",
-    required: "research.jobs.write" as Capability,
+    labelKey: "nav.backtest" as MessageKey,
+    href: "/backtest",
+    required: "strategy.read" as Capability,
     marker: "02",
   },
   {
-    labelKey: "nav.strategy" as MessageKey,
-    href: "/strategy",
-    required: "strategy.read" as Capability,
+    labelKey: "nav.paper" as MessageKey,
+    href: "/paper",
+    required: "paper.read" as Capability,
     marker: "03",
-  },
-  {
-    labelKey: "nav.execution" as MessageKey,
-    href: "/execution",
-    required: "execution.read" as Capability,
-    marker: "04",
   },
 ] as const;
 

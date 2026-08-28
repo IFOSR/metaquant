@@ -20,11 +20,11 @@ import numpy as np
 
 import quant_platform.ml as ml
 
-MODEL = '''import torch\n\ndef build_model(hyperparams: dict):\n    dim = hyperparams.get("input_dim", 2)\n    hidden = hyperparams.get("hidden_dim", 8)\n    return torch.nn.Sequential(\n        torch.nn.Linear(dim, hidden),\n        torch.nn.ReLU(),\n        torch.nn.Linear(hidden, 1),\n    )\n'''
+MODEL = """import torch\n\ndef build_model(hyperparams: dict):\n    dim = hyperparams.get("input_dim", 2)\n    hidden = hyperparams.get("hidden_dim", 8)\n    return torch.nn.Sequential(\n        torch.nn.Linear(dim, hidden),\n        torch.nn.ReLU(),\n        torch.nn.Linear(hidden, 1),\n    )\n"""
 
-TRAIN = '''import torch\nfrom model import build_model\n\ndef train(data, labels, spec):\n    X = torch.tensor(data.data.values, dtype=torch.float32)\n    y = labels.to_numpy(dtype=float)\n    y = torch.tensor(y, dtype=torch.float32).unsqueeze(1)\n    hp = dict(spec.get("hyperparameters", {}))\n    hp.setdefault("input_dim", X.shape[1])\n    model = build_model(hp)\n    opt = torch.optim.Adam(model.parameters(), lr=1e-2)\n    loss_fn = torch.nn.MSELoss()\n    for _ in range(50):\n        opt.zero_grad()\n        loss = loss_fn(model(X), y)\n        loss.backward()\n        opt.step()\n    return {"state_dict": model.state_dict(), "hyperparameters": hp}\n'''
+TRAIN = """import torch\nfrom model import build_model\n\ndef train(data, labels, spec):\n    X = torch.tensor(data.data.values, dtype=torch.float32)\n    y = labels.to_numpy(dtype=float)\n    y = torch.tensor(y, dtype=torch.float32).unsqueeze(1)\n    hp = dict(spec.get("hyperparameters", {}))\n    hp.setdefault("input_dim", X.shape[1])\n    model = build_model(hp)\n    opt = torch.optim.Adam(model.parameters(), lr=1e-2)\n    loss_fn = torch.nn.MSELoss()\n    for _ in range(50):\n        opt.zero_grad()\n        loss = loss_fn(model(X), y)\n        loss.backward()\n        opt.step()\n    return {"state_dict": model.state_dict(), "hyperparameters": hp}\n"""
 
-INFER = '''import torch\nfrom model import build_model\n\ndef infer(data, weights):\n    X = torch.tensor(data.data.values, dtype=torch.float32)\n    hp = dict(weights.get("hyperparameters", {}))\n    hp.setdefault("input_dim", X.shape[1])\n    model = build_model(hp)\n    model.load_state_dict(weights["state_dict"])\n    model.eval()\n    with torch.no_grad():\n        return model(X).squeeze(1).tolist()\n'''
+INFER = """import torch\nfrom model import build_model\n\ndef infer(data, weights):\n    X = torch.tensor(data.data.values, dtype=torch.float32)\n    hp = dict(weights.get("hyperparameters", {}))\n    hp.setdefault("input_dim", X.shape[1])\n    model = build_model(hp)\n    model.load_state_dict(weights["state_dict"])\n    model.eval()\n    with torch.no_grad():\n        return model(X).squeeze(1).tolist()\n"""
 
 SPEC = {
     "factor_id": "cn_a.stable_alpha_dl",
@@ -82,7 +82,9 @@ def main() -> None:
             )
     # forward return label over horizon 5
     for instrument in range(30):
-        prices = [r["vwap"] for r in rows if r["instrument_id"] == f"STK{instrument:03d}"]
+        prices = [
+            r["vwap"] for r in rows if r["instrument_id"] == f"STK{instrument:03d}"
+        ]
         for day in range(len(prices) - 5):
             labels.append(
                 {
@@ -105,11 +107,12 @@ def main() -> None:
     values = infer_mod.infer(data, weights)
 
     # 4. Align factor values with labels and compute IC.
-    by_key = {
-        (i, e): v for (i, e), v in zip(data.data.index, values)
-    }
+    by_key = {(i, e): v for (i, e), v in zip(data.data.index, values, strict=False)}
     label_by_key = {
-        (i, e): float(v) for (i, e), v in zip(aligned_labels.index, aligned_labels.to_numpy())
+        (i, e): float(v)
+        for (i, e), v in zip(
+            aligned_labels.index, aligned_labels.to_numpy(), strict=False
+        )
     }
     common = [(by_key[k], label_by_key[k]) for k in by_key if k in label_by_key]
     xs = [p[0] for p in common]

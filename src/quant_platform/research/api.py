@@ -99,6 +99,7 @@ class ProblemError(Exception):
         detail: str,
         current_version: str | None = None,
     ) -> None:
+        super().__init__(detail)
         self.status = status
         self.code = code
         self.title = title
@@ -446,9 +447,7 @@ def build_research_router(
         ):
             raise _not_found()
         try:
-            extraction = extract_factor_from_paper(
-                command.paper_text, command.market
-            )
+            extraction = extract_factor_from_paper(command.paper_text, command.market)
         except FactorExtractionError as exc:
             raise ProblemError(
                 status=422,

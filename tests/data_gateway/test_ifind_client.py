@@ -283,3 +283,21 @@ def test_futures_daily_to_pit_rows_formal() -> None:
         "market.eod.settlement",
     }
     assert all(row.license_tag == "formal" for row in rows)
+
+
+def test_to_ifind_futures_code_normalizes_czce() -> None:
+    """郑商所：4 位月→3 位月，后缀 .CZCE/.CZC → .CZC。"""
+    from quant_platform.data_gateway.ifind_client import to_ifind_futures_code
+
+    assert to_ifind_futures_code("SA2701.CZCE") == "SA701.CZC"
+    assert to_ifind_futures_code("SA2701.CZC") == "SA701.CZC"
+    assert to_ifind_futures_code("TA509.CZCE") == "TA509.CZC"
+
+
+def test_to_ifind_futures_code_keeps_other_exchanges() -> None:
+    from quant_platform.data_gateway.ifind_client import to_ifind_futures_code
+
+    assert to_ifind_futures_code("RB2610.SHF") == "RB2610.SHF"
+    assert to_ifind_futures_code("A2611.DCE") == "A2611.DCE"
+    assert to_ifind_futures_code("SC2609.INE") == "SC2609.INE"
+    assert to_ifind_futures_code("LC2701.GFEX") == "LC2701.GFE"

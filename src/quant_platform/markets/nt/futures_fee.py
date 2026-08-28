@@ -12,7 +12,8 @@ from decimal import Decimal
 
 from nautilus_trader.backtest.models import FeeModel
 from nautilus_trader.model.currencies import CNY
-from nautilus_trader.model.objects import Money
+from nautilus_trader.model.instruments import Instrument
+from nautilus_trader.model.objects import Money, Price, Quantity
 from nautilus_trader.model.orders import Order
 
 from quant_platform.markets.futures import CloseOffset, FeeSchedule
@@ -40,9 +41,16 @@ def offset_from_order(order: Order) -> CloseOffset:
 
 
 class FuturesFeeModel(FeeModel):  # type: ignore[misc]  # FeeModel 为 C 扩展
-    """期货平仓费用：按平今/平昨分桶，复用 FeeSchedule。"""
+    """期货平仓费用：按平今/平昨分桶，复用 FeeSchedule。
 
-    def __init__(self, schedule: FeeSchedule, multiplier: Decimal) -> None:
+    签名对齐 NautilusTrader ``FeeModel.get_commission(order, fill_qty,
+    fill_px, instrument)``，可直接挂载到 ``add_venue(fee_model=...)``；
+    合约乘数优先取自 instrument，构造参数仅作回退。
+    """
+
+    def __init__(
+        self, schedule: FeeSchedule, multiplier: Decimal | None = None
+    ) -> None:
         super().__init__()
         self.schedule = schedule
         self.multiplier = multiplier
@@ -50,16 +58,26 @@ class FuturesFeeModel(FeeModel):  # type: ignore[misc]  # FeeModel 为 C 扩展
     def get_commission(
         self,
         order: Order,
-        fill: object,
-        fill_px: float,
-        multiplier: Decimal,
+        fill_qty: Quantity,
+        fill_px: Price,
+        instrument: Instrument,
     ) -> Money:
+        if self.multiplier is not None:
+            multiplier = self.multiplier
+        else:
+            raw = getattr(instrument, "multiplier", None)
+            if raw is None:
+                raise ValueError(
+                    f"instrument {instrument.id} has no multiplier; "
+                    "FuturesFeeModel requires a futures contract"
+                )
+            multiplier = Decimal(str(raw.as_double()))
         offset = offset_from_order(order)
         fee = close_offset_fee(
             self.schedule,
             offset,
-            int(order.quantity.as_double()),
-            Decimal(str(fill_px)),
-            self.multiplier,
+            int(fill_qty.as_double()),
+            Decimal(str(fill_px.as_double())),
+            multiplier,
         )
         return Money(fee, CNY)

@@ -533,3 +533,114 @@ class FactorBuildRunModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class StrategyDraftModel(Base):
+    __tablename__ = "strategy_drafts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    market: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # 研究形态：factor | strategy（由对话/产物自然判定，可被对话改写）。
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="strategy")
+    state: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    explanation: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    code: Mapped[str | None] = mapped_column(Text)
+    ready: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    instrument_ids: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="1d")
+    backtest_plan: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # 代码正确性测试结果（非回测）：{passed, exit_code, stderr, duration_ms}。
+    code_test_result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # 每次 NT 回测的可追溯结果（含 backtest_hash），按时间倒序追加。
+    backtest_results: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    # 发布仿真后的绑定：{account_id, published_at}。
+    paper_binding: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    content_hash: Mapped[str | None] = mapped_column(String(80))
+    # 用户「保存」产生的版本化快照（任意阶段可保存，用于回滚/追溯）。
+    saved_versions: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    resource_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class StrategyMessageModel(Base):
+    __tablename__ = "strategy_messages"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    draft_id: Mapped[str] = mapped_column(
+        ForeignKey("strategy_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # 附件（文本/图片）：{name, kind, extracted_text}。文本直接抽取、图片记录
+    # 引用（视觉/OCR 待接入），供 Agent 上下文与审计展示。
+    attachments: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class BacktestTaskModel(Base):
+    """回测任务（对齐 NT BacktestNode：配置驱动、幂等、每次独立引擎）。"""
+
+    __tablename__ = "backtest_tasks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    request_hash: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    request: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    result_address: Mapped[str | None] = mapped_column(String(128))
+    error: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class AgentProviderModel(Base):
+    """Provider 凭据（全局、与 agent 无关；api_key 明文，仅本地单用户演示）。"""
+
+    __tablename__ = "agent_providers"
+
+    provider: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="builtin")
+    base_url: Mapped[str | None] = mapped_column(String(255))
+    api_key: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class AgentConfigModel(Base):
+    """活跃的 Agent 基座模型选择（单行，单用户）。"""
+
+    __tablename__ = "agent_config"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
+    active_agent: Mapped[str] = mapped_column(String(16), nullable=False, default="pi")
+    active_provider: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    active_model: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -32,6 +33,36 @@ BASE_URL = "https://quantapi.51ifind.com"
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 HttpPost = Callable[[str, dict[str, object], dict[str, str]], dict[str, object]]
+
+# 库内期货后缀 → iFinD 期货代码后缀（iFinD 用 3 字母：SHF/DCE/INE/CZC/GFE）。
+_IFIND_FUTURES_SUFFIX = {
+    "SHF": "SHF",
+    "SHFE": "SHF",
+    "DCE": "DCE",
+    "INE": "INE",
+    "CZC": "CZC",
+    "CZCE": "CZC",
+    "GFE": "GFE",
+    "GFEX": "GFE",
+}
+
+
+def to_ifind_futures_code(instrument_id: str) -> str:
+    """库内期货标的 ID → iFinD 期货代码。
+
+    郑商所（CZCE）合约月份为 3 位（``2701`` → ``701``），且 iFinD 后缀为
+    ``CZC``；其余交易所后缀取 iFinD 的 3 字母约定（SHF/DCE/INE/GFE）。
+    """
+    symbol, _, suffix = instrument_id.partition(".")
+    suffix = suffix.upper()
+    if suffix in ("CZCE", "CZC"):
+        symbol = re.sub(
+            r"^([A-Za-z]{1,2})(\d{4})$",
+            lambda match: f"{match.group(1)}{match.group(2)[1:]}",
+            symbol,
+        )
+    ifind_suffix = _IFIND_FUTURES_SUFFIX.get(suffix, suffix)
+    return f"{symbol}.{ifind_suffix}"
 
 
 def _http_post(
@@ -129,6 +160,33 @@ class IFindClient:
         _require_zero(payload, "basic_data_service")
         return payload
 
+    def fetch_high_frequency(
+        self,
+        codes: tuple[str, ...],
+        indicators: tuple[str, ...],
+        starttime: str,
+        endtime: str,
+        interval_minutes: int,
+    ) -> dict[str, object]:
+        """Fetch intraday bars via ``high_frequency``（契约 2026-08-24 生产验证）。
+
+        ``starttime``/``endtime`` 形如 ``2026-08-18 09:00:00``（北京时）；
+        ``interval_minutes`` 为 5/15/30/60 等分钟数。单响应上限
+        ``MaxPoints=50000``，超长区间需调用方分块。
+        """
+        if not codes or not indicators:
+            raise ValueError("codes and indicators must not be empty")
+        body: dict[str, object] = {
+            "codes": ",".join(codes),
+            "indicators": ",".join(indicators),
+            "starttime": starttime,
+            "endtime": endtime,
+            "functionpara": {"Interval": str(interval_minutes)},
+        }
+        payload = self._post("/api/v1/high_frequency", body, self._auth_headers())
+        _require_zero(payload, "high_frequency")
+        return payload
+
     def fetch_date_sequence(
         self,
         codes: tuple[str, ...],
@@ -152,6 +210,88 @@ class IFindClient:
         payload = self._post("/api/v1/date_sequence", body, self._auth_headers())
         _require_zero(payload, "date_sequence")
         return payload
+
+
+def parse_high_frequency(
+    payload: dict[str, object],
+) -> dict[str, dict[str, list[object]]]:
+    """Parse ``high_frequency`` into ``{code: {"time": [...], indicator: [...]}}``。
+
+    ``time`` 为 ``YYYY-MM-DD HH:MM``（北京时）字符串列表；``table`` 的各指标
+    值列表与 time 对齐。
+    """
+    tables = payload.get("tables")
+    result: dict[str, dict[str, list[object]]] = {}
+    if not isinstance(tables, list):
+        return result
+    for entry in tables:
+        if not isinstance(entry, dict):
+            continue
+        code = entry.get("thscode")
+        times = entry.get("time")
+        table = entry.get("table")
+        if not isinstance(code, str) or not isinstance(times, list):
+            continue
+        if not isinstance(table, dict):
+            continue
+        series: dict[str, list[object]] = {"time": times}
+        for indicator, values in table.items():
+            if isinstance(values, list):
+                series[str(indicator)] = values
+        result[code] = series
+    return result
+
+
+def hf_to_pit_rows(
+    parsed: dict[str, dict[str, list[object]]],
+    *,
+    code_to_db_id: dict[str, str],
+    field_prefix: str,
+    source_id: str,
+    license_tag: str,
+    ingested_at: datetime,
+) -> tuple[RawPITRow, ...]:
+    """把 high_frequency 分钟线转成 PIT 行（每字段一条）。
+
+    ``code_to_db_id``：iFinD 代码 → 库内标的 ID（如 ``600000.SH`` →
+    ``600000.SSE``；期货两者一致）。bar 时间戳取北京时并落到 SHANGHAI 时区。
+    """
+    revision = f"{source_id}-{ingested_at.strftime('%Y%m%dT%H%M%S')}"
+    rows: list[RawPITRow] = []
+    for code, series in parsed.items():
+        db_id = code_to_db_id.get(code)
+        if db_id is None:
+            continue
+        times = series.get("time", [])
+        for index, time_str in enumerate(times):
+            if not isinstance(time_str, str):
+                continue
+            event_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M").replace(
+                tzinfo=SHANGHAI
+            )
+            row_ingested = ingested_at if ingested_at >= event_time else event_time
+            for field, values in series.items():
+                if field == "time" or index >= len(values):
+                    continue
+                value = values[index]
+                if not isinstance(value, int | float) or float(value) < 0:
+                    continue
+                rows.append(
+                    RawPITRow(
+                        source_id=source_id,
+                        dataset_id="market-minute",
+                        field=f"{field_prefix}.{field}",
+                        instrument_id=db_id,
+                        event_time=event_time,
+                        available_time=event_time,
+                        ingested_at=row_ingested,
+                        revision_id=revision,
+                        license_tag=license_tag,
+                        value_type="decimal",
+                        value=str(value),
+                    )
+                )
+    return tuple(rows)
 
 
 def parse_date_sequence(
@@ -343,11 +483,16 @@ def futures_daily_to_pit_rows(
     *,
     source_id: str,
     ingested_at: datetime,
+    code_to_db_id: dict[str, str] | None = None,
 ) -> tuple[RawPITRow, ...]:
-    """把期货日频量价转成 FORMAL PIT 行，每字段一条。"""
+    """把期货日频量价转成 FORMAL PIT 行，每字段一条。
+
+    ``code_to_db_id``：iFinD 代码 → 库内标的 ID（默认二者一致）。
+    """
     revision = f"{source_id}-{ingested_at.strftime('%Y%m%dT%H%M%S')}"
     rows: list[RawPITRow] = []
     for code, dates in market_data.items():
+        db_id = (code_to_db_id or {}).get(code, code)
         for date_str, fields in sorted(dates.items()):
             event_time = datetime.fromisoformat(date_str).replace(
                 hour=15, minute=0, tzinfo=SHANGHAI
@@ -363,7 +508,7 @@ def futures_daily_to_pit_rows(
                         source_id=source_id,
                         dataset_id="market-eod",
                         field=f"market.eod.{field}",
-                        instrument_id=code,
+                        instrument_id=db_id,
                         event_time=event_time,
                         available_time=event_time.replace(minute=20),
                         ingested_at=ingested_at,

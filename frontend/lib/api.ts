@@ -1,4 +1,9 @@
 import type {
+  AgentConfigState,
+  AgentDescriptor,
+  AgentId,
+  AgentModelInfo,
+  AgentProviderInfo,
   AlphaPoolFactor,
   BacktestResult,
   BriefDraftInput,
@@ -16,6 +21,13 @@ import type {
   LabelSnapshotInfo,
   MarketDataCoverageEntry,
   MarketId,
+  PaperAccount,
+  PaperDriftReport,
+  PaperEquityRow,
+  PaperFill,
+  PaperOrder,
+  PaperPosition,
+  PaperRunStatus,
   PreregisterExperimentInput,
   PromotionSummary,
   ProvisionInput,
@@ -25,6 +37,13 @@ import type {
   ResearchJob,
   RunBacktestInput,
   Session,
+  StrategyBacktestResult,
+  StrategyAttachment,
+  StrategyCodeTestResult,
+  StrategyDataStatus,
+  StrategyDraft,
+  StrategyFrequency,
+  StrategyProvisionResult,
   FactorExtractionResult,
   FromPaperPipelineResult,
   FactorBuildSpec,
@@ -399,6 +418,7 @@ export interface ApiBacktestResult {
     side: string;
     quantity: number;
     price: number;
+    commission?: number;
   }>;
   positions: Array<{
     instrument_id: string;
@@ -411,6 +431,139 @@ export interface ApiBacktestResult {
     closed_at: string | null;
   }>;
   backtest_hash: string;
+}
+
+export interface ApiStrategyDraft {
+  id: string;
+  market: MarketId;
+  kind: "factor" | "strategy";
+  stage: "CREATING" | "READY" | "CODE_TESTED" | "BACKTESTED" | "PAPER_LINKED";
+  state: "DRAFT" | "READY" | "FROZEN";
+  title: string;
+  explanation: string;
+  question: string;
+  code: string | null;
+  ready: boolean;
+  instrument_ids: string[];
+  frequency: string;
+  backtest_plan: {
+    timeframes: string[];
+    trend_timeframe: string | null;
+    exec_timeframe: string;
+    start: string;
+    end: string;
+    rationale: string;
+  } | null;
+  code_test_result: {
+    passed: boolean;
+    exit_code: number;
+    stderr: string;
+    duration_ms: number;
+  } | null;
+  backtest_results: Array<{
+    backtest_hash: string;
+    start: string;
+    end: string;
+    frequency: string;
+    metrics: {
+      total_return: number;
+      sharpe: number | null;
+      max_drawdown: number;
+      trade_count: number;
+    } | null;
+    ran_at: string;
+  }>;
+  paper_binding: { account_id: string; published_at: string } | null;
+  content_hash: string | null;
+  resource_version: number;
+  saved_versions?: Array<{
+    version: number;
+    hash: string;
+    state: string;
+    title: string;
+    saved_at: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+  messages?: Array<{
+    role: "user" | "assistant";
+    content: string;
+    attachments?: Array<{ name: string; kind: "text" | "image"; extracted_text: string }>;
+  }>;
+}
+
+export interface ApiStrategyBacktestResult {
+  instrument_ids: string[];
+  start: string;
+  end: string;
+  frequency: string;
+  initial_cash: number;
+  gross_of_fees: boolean;
+  venue_spec: {
+    market: string;
+    cost_basis: string;
+    fee_model: string | null;
+    fill_model: string | null;
+    latency_model: string | null;
+    random_seed: number | null;
+    price_protection_points: number | null;
+  } | null;
+  metrics: {
+    total_return: number;
+    sharpe: number | null;
+    max_drawdown: number;
+    trade_count: number;
+  };
+  equity_curve: Array<{ date: string; equity: number }>;
+  trades: Array<{
+    time: string;
+    instrument_id: string;
+    side: string;
+    quantity: number;
+    price: number;
+    commission?: number;
+  }>;
+  positions: Array<{
+    instrument_id: string;
+    entry: string;
+    peak_qty: number;
+    avg_px_open: number;
+    avg_px_close: number | null;
+    realized_pnl: number;
+    opened_at: string;
+    closed_at: string | null;
+  }>;
+  backtest_hash: string;
+  error: string | null;
+}
+
+export interface ApiStrategyDataStatus {
+  instrument_ids: string[];
+  frequencies: string[];
+  ready: boolean;
+  items: Array<{
+    instrument_id: string;
+    available: boolean;
+    daily: {
+      rows: number;
+      first_event: string;
+      last_event: string;
+    } | null;
+    minute: {
+      rows: number;
+      first_event: string;
+      last_event: string;
+    } | null;
+    checks: Array<{
+      frequency: string;
+      available: boolean;
+      required: {
+        rows: number;
+        first_event: string;
+        last_event: string;
+      } | null;
+    }>;
+  }>;
 }
 
 export interface ApiMarketDataCoverageEntry {
@@ -432,6 +585,75 @@ export interface ApiExecutionState {
   reason: string | null;
   shadow_positions: Record<string, number>;
   paper_positions: Record<string, number>;
+}
+
+export interface ApiPaperAccount {
+  id: string;
+  owner: string;
+  draft_id: string;
+  artifact_address: string;
+  content_hash: string;
+  market: string;
+  instrument_ids: string[];
+  frequency: string;
+  initial_cash: number;
+  state: "ACTIVE" | "PAUSED" | "CLOSED";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiPaperOrder {
+  id: string;
+  instrument_id: string;
+  side: "BUY" | "SELL";
+  quantity: number;
+  order_clock: string;
+  status: string;
+  reject_reason: string | null;
+  filled_qty: number;
+  avg_px: number | null;
+  created_at: string;
+}
+
+export interface ApiPaperFill {
+  id: string;
+  order_id: string;
+  trade_ts: string;
+  price: number;
+  quantity: number;
+  fee: number;
+  notional: number;
+}
+
+export interface ApiPaperPosition {
+  instrument_id: string;
+  quantity: number;
+  avg_px: number | null;
+  updated_at: string;
+}
+
+export interface ApiPaperEquityRow {
+  trade_date: string;
+  equity: number;
+  cash: number;
+  margin_used: number;
+  drawdown: number;
+}
+
+export interface ApiPaperDriftReport {
+  schema_version: string;
+  points: Array<{
+    date: string;
+    backtest_equity: number;
+    paper_equity: number;
+    diff: number;
+  }>;
+  common_days: number;
+  paper_days: number;
+  backtest_days: number;
+  max_abs_diff: number;
+  cost_basis: string | null;
+  backtest_hash: string | null;
 }
 
 export interface ApiSession {
@@ -486,6 +708,52 @@ export interface QuantApiClient {
   getMarketDataCoverage(
     instruments: string[],
   ): Promise<MarketDataCoverageEntry[]>;
+  createStrategyDraft(
+    market: MarketId,
+    firstMessage: string,
+    attachments?: StrategyAttachment[],
+  ): Promise<StrategyDraft>;
+  listStrategyDrafts(
+    state?: "DRAFT" | "READY" | "FROZEN",
+  ): Promise<StrategyDraft[]>;
+  postStrategyMessage(
+    draftId: string,
+    message: string,
+    attachments?: StrategyAttachment[],
+  ): Promise<StrategyDraft>;
+  uploadStrategyAttachment(
+    market: MarketId,
+    file: File,
+  ): Promise<StrategyAttachment>;
+  getStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  freezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  unfreezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  saveStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  codeTestStrategyDraft(draftId: string): Promise<StrategyCodeTestResult>;
+  backtestStrategyDraft(
+    draftId: string,
+    options?: {
+      frequency?: StrategyFrequency;
+      startDate?: string;
+      endDate?: string;
+    },
+  ): Promise<StrategyBacktestResult>;
+  getStrategyBacktestResult(
+    draftId: string,
+    backtestHash: string,
+  ): Promise<StrategyBacktestResult>;
+  getStrategyDataStatus(
+    draftId: string,
+    frequency?: StrategyFrequency,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<StrategyDataStatus>;
+  provisionStrategyData(
+    draftId: string,
+    frequency?: StrategyFrequency,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<StrategyProvisionResult>;
   listFormalSnapshots(): Promise<FormalSnapshotInfo[]>;
   provisionData(input: ProvisionInput): Promise<{ taskId: string }>;
   getProvisioningTask(taskId: string): Promise<ProvisioningTaskStatus>;
@@ -499,6 +767,45 @@ export interface QuantApiClient {
   getExecutionState(): Promise<ExecutionState>;
   tripKillSwitch(reason: string): Promise<ExecutionState>;
   resetKillSwitch(): Promise<ExecutionState>;
+
+  // Paper 仿真
+  listPaperAccounts(): Promise<PaperAccount[]>;
+  createPaperAccount(
+    draftId: string,
+    initialCash?: number,
+  ): Promise<PaperAccount>;
+  getPaperAccount(id: string): Promise<PaperAccount>;
+  pausePaperAccount(id: string): Promise<PaperAccount>;
+  resumePaperAccount(id: string): Promise<PaperAccount>;
+  closePaperAccount(id: string): Promise<PaperAccount>;
+  listPaperOrders(id: string): Promise<PaperOrder[]>;
+  listPaperFills(id: string): Promise<PaperFill[]>;
+  listPaperPositions(id: string): Promise<PaperPosition[]>;
+  listPaperEquity(id: string): Promise<PaperEquityRow[]>;
+  paperDrift(id: string): Promise<PaperDriftReport>;
+  paperRunStatus(id: string): Promise<PaperRunStatus>;
+  startPaperNode(id: string): Promise<{ account_id: string; starting: boolean }>;
+
+  // Agent 基座模型配置
+  getAgentConfig(): Promise<AgentConfigState>;
+  listAgentConfigAgents(): Promise<AgentDescriptor[]>;
+  listAgentConfigProviders(agent?: AgentId): Promise<AgentProviderInfo[]>;
+  listAgentConfigModels(
+    agent: AgentId,
+    provider: string,
+  ): Promise<{ items: AgentModelInfo[]; note?: string }>;
+  upsertAgentProvider(input: {
+    provider: string;
+    apiKey: string;
+    kind?: "builtin" | "custom";
+    baseUrl?: string;
+  }): Promise<AgentProviderInfo>;
+  deleteAgentProvider(provider: string): Promise<void>;
+  saveAgentConfig(input: {
+    agent: AgentId;
+    provider: string;
+    model: string;
+  }): Promise<{ agent: string; provider: string; model: string }>;
 
   // 因子构建
   extractBuildSpec(
@@ -899,6 +1206,188 @@ export class HttpQuantApiClient implements QuantApiClient {
     return result.body.items.map(mapMarketDataCoverageEntry);
   }
 
+  async createStrategyDraft(
+    market: MarketId,
+    firstMessage: string,
+    attachments?: StrategyAttachment[],
+  ) {
+    const result = await this.request<ApiStrategyDraft>("/strategy-drafts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        market,
+        first_message: firstMessage,
+        attachments: (attachments ?? []).map(mapStrategyAttachmentToApi),
+      }),
+    });
+    return mapStrategyDraft(result.body);
+  }
+
+  async listStrategyDrafts(state?: "DRAFT" | "READY" | "FROZEN") {
+    const query = state ? `?state=${state}` : "";
+    const result = await this.request<{ items: ApiStrategyDraft[] }>(
+      `/strategy-drafts${query}`,
+    );
+    return result.body.items.map(mapStrategyDraft);
+  }
+
+  async postStrategyMessage(
+    draftId: string,
+    message: string,
+    attachments?: StrategyAttachment[],
+  ) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          attachments: (attachments ?? []).map(mapStrategyAttachmentToApi),
+        }),
+      },
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async uploadStrategyAttachment(market: MarketId, file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const result = await this.request<{
+      name: string;
+      kind: "text" | "image";
+      object_key: string;
+      extracted_text: string;
+    }>(`/strategy-drafts/attachments?market=${market}`, {
+      method: "POST",
+      body: form,
+    });
+    return {
+      name: result.body.name,
+      kind: result.body.kind,
+      objectKey: result.body.object_key,
+      extractedText: result.body.extracted_text,
+    };
+  }
+
+  async getStrategyDraft(draftId: string) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}`,
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async freezeStrategyDraft(draftId: string) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}:freeze`,
+      { method: "POST" },
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async unfreezeStrategyDraft(draftId: string) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}:unfreeze`,
+      { method: "POST" },
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async saveStrategyDraft(draftId: string) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}:save`,
+      { method: "POST" },
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async codeTestStrategyDraft(draftId: string) {
+    const result = await this.request<{
+      passed: boolean;
+      exit_code: number;
+      stderr: string;
+      duration_ms: number;
+    }>(`/strategy-drafts/${draftId}:code-test`, { method: "POST" });
+    const body = result.body;
+    return {
+      passed: body.passed,
+      exitCode: body.exit_code,
+      stderr: body.stderr,
+      durationMs: body.duration_ms,
+    };
+  }
+
+  async backtestStrategyDraft(
+    draftId: string,
+    options?: {
+      frequency?: StrategyFrequency;
+      startDate?: string;
+      endDate?: string;
+    },
+  ) {
+    const params = new URLSearchParams();
+    if (options?.frequency) params.set("frequency", options.frequency);
+    if (options?.startDate) params.set("start", options.startDate);
+    if (options?.endDate) params.set("end", options.endDate);
+    const query = params.toString();
+    const result = await this.request<ApiStrategyBacktestResult>(
+      `/strategy-drafts/${draftId}:backtest${query ? `?${query}` : ""}`,
+      { method: "POST" },
+    );
+    return mapStrategyBacktestResult(result.body);
+  }
+
+  async getStrategyBacktestResult(draftId: string, backtestHash: string) {
+    const result = await this.request<ApiStrategyBacktestResult>(
+      `/strategy-drafts/${draftId}/backtests/${encodeURIComponent(backtestHash)}`,
+    );
+    return mapStrategyBacktestResult(result.body);
+  }
+
+  async getStrategyDataStatus(
+    draftId: string,
+    frequency?: StrategyFrequency,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (frequency) params.set("frequency", frequency);
+    if (startDate) params.set("start", startDate);
+    if (endDate) params.set("end", endDate);
+    const query = params.toString();
+    const result = await this.request<ApiStrategyDataStatus>(
+      `/strategy-drafts/${draftId}/data-status${query ? `?${query}` : ""}`,
+    );
+    return mapStrategyDataStatus(result.body);
+  }
+
+  async provisionStrategyData(
+    draftId: string,
+    frequency?: StrategyFrequency,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (frequency) params.set("frequency", frequency);
+    if (startDate) params.set("start", startDate);
+    if (endDate) params.set("end", endDate);
+    const query = params.toString();
+    const result = await this.request<{
+      instrument_ids: string[];
+      frequency: string;
+      rows: number;
+      sources: string[];
+    }>(`/strategy-drafts/${draftId}:provision${query ? `?${query}` : ""}`, {
+      method: "POST",
+    });
+    return {
+      instrumentIds: result.body.instrument_ids,
+      frequency: result.body.frequency,
+      rows: result.body.rows,
+      sources: result.body.sources,
+    };
+  }
+
   async listFormalSnapshots() {
     const result = await this.request<ApiList<ApiFormalSnapshot>>(
       "/formal-snapshots",
@@ -999,6 +1488,239 @@ export class HttpQuantApiClient implements QuantApiClient {
       },
     );
     return mapExecutionState(result.body);
+  }
+
+  async listPaperAccounts() {
+    const result = await this.request<{ accounts: ApiPaperAccount[] }>(
+      "/paper/accounts",
+    );
+    return result.body.accounts.map(mapPaperAccount);
+  }
+
+  async createPaperAccount(draftId: string, initialCash?: number) {
+    const result = await this.request<ApiPaperAccount>("/paper/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        draft_id: draftId,
+        ...(initialCash !== undefined ? { initial_cash: initialCash } : {}),
+      }),
+    });
+    return mapPaperAccount(result.body);
+  }
+
+  async getPaperAccount(id: string) {
+    const result = await this.request<ApiPaperAccount>(`/paper/accounts/${id}`);
+    return mapPaperAccount(result.body);
+  }
+
+  async pausePaperAccount(id: string) {
+    const result = await this.request<ApiPaperAccount>(
+      `/paper/accounts/${id}:pause`,
+      { method: "POST" },
+    );
+    return mapPaperAccount(result.body);
+  }
+
+  async resumePaperAccount(id: string) {
+    const result = await this.request<ApiPaperAccount>(
+      `/paper/accounts/${id}:resume`,
+      { method: "POST" },
+    );
+    return mapPaperAccount(result.body);
+  }
+
+  async closePaperAccount(id: string) {
+    const result = await this.request<ApiPaperAccount>(
+      `/paper/accounts/${id}:close`,
+      { method: "POST" },
+    );
+    return mapPaperAccount(result.body);
+  }
+
+  async listPaperOrders(id: string) {
+    const result = await this.request<{ orders: ApiPaperOrder[] }>(
+      `/paper/accounts/${id}/orders`,
+    );
+    return result.body.orders.map(mapPaperOrder);
+  }
+
+  async listPaperFills(id: string) {
+    const result = await this.request<{ fills: ApiPaperFill[] }>(
+      `/paper/accounts/${id}/fills`,
+    );
+    return result.body.fills.map(mapPaperFill);
+  }
+
+  async listPaperPositions(id: string) {
+    const result = await this.request<{ positions: ApiPaperPosition[] }>(
+      `/paper/accounts/${id}/positions`,
+    );
+    return result.body.positions.map(mapPaperPosition);
+  }
+
+  async listPaperEquity(id: string) {
+    const result = await this.request<{ equity: ApiPaperEquityRow[] }>(
+      `/paper/accounts/${id}/equity`,
+    );
+    return result.body.equity.map(mapPaperEquityRow);
+  }
+
+  async paperDrift(id: string) {
+    const result = await this.request<ApiPaperDriftReport>(
+      `/paper/accounts/${id}/drift`,
+    );
+    return mapPaperDriftReport(result.body);
+  }
+
+  async paperRunStatus(id: string) {
+    const result = await this.request<PaperRunStatus>(
+      `/paper/accounts/${id}/run-status`,
+    );
+    return result.body;
+  }
+
+  async startPaperNode(id: string) {
+    const result = await this.request<{ account_id: string; starting: boolean }>(
+      `/paper/accounts/${id}:start-node`,
+      { method: "POST" },
+    );
+    return result.body;
+  }
+
+  // ── Agent 基座模型配置 ──────────────────────────────────────────────
+
+  async getAgentConfig() {
+    const result = await this.request<{
+      agent: string;
+      provider: string;
+      model: string;
+      providers: Array<{
+        provider: string;
+        kind: "builtin" | "custom";
+        has_api_key: boolean;
+        masked_key: string;
+        base_url?: string | null;
+      }>;
+    }>("/agent-config");
+    return {
+      agent: result.body.agent,
+      provider: result.body.provider,
+      model: result.body.model,
+      providers: result.body.providers.map((item) => ({
+        provider: item.provider,
+        kind: item.kind,
+        hasApiKey: item.has_api_key,
+        maskedKey: item.masked_key,
+        baseUrl: item.base_url,
+      })),
+    };
+  }
+
+  async listAgentConfigAgents() {
+    const result = await this.request<{ items: AgentDescriptor[] }>(
+      "/agent-config/agents",
+    );
+    return result.body.items;
+  }
+
+  async listAgentConfigProviders(agent?: AgentId) {
+    const result = await this.request<{
+      items: Array<{
+        provider: string;
+        kind: "builtin" | "custom";
+        has_api_key: boolean;
+        masked_key: string;
+        base_url?: string | null;
+      }>;
+    }>(`/agent-config/providers${agent ? `?agent=${agent}` : ""}`);
+    return result.body.items.map((item) => ({
+      provider: item.provider,
+      kind: item.kind,
+      hasApiKey: item.has_api_key,
+      maskedKey: item.masked_key,
+      baseUrl: item.base_url,
+    }));
+  }
+
+  async listAgentConfigModels(agent: AgentId, provider: string) {
+    const result = await this.request<{
+      items: Array<{
+        provider: string;
+        model: string;
+        context: string;
+        max_out: string;
+        thinking: boolean;
+        images: boolean;
+      }>;
+      note?: string;
+    }>(`/agent-config/models?agent=${agent}&provider=${provider}`);
+    return {
+      items: result.body.items.map((item) => ({
+        provider: item.provider,
+        model: item.model,
+        context: item.context,
+        maxOut: item.max_out,
+        thinking: item.thinking,
+        images: item.images,
+      })),
+      note: result.body.note,
+    };
+  }
+
+  async upsertAgentProvider(input: {
+    provider: string;
+    apiKey: string;
+    kind?: "builtin" | "custom";
+    baseUrl?: string;
+  }) {
+    const result = await this.request<{
+      provider: string;
+      kind: "builtin" | "custom";
+      has_api_key: boolean;
+      masked_key: string;
+      base_url?: string | null;
+    }>("/agent-config/credentials", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: input.provider,
+        api_key: input.apiKey,
+        kind: input.kind ?? "builtin",
+        base_url: input.baseUrl ?? null,
+      }),
+    });
+    return {
+      provider: result.body.provider,
+      kind: result.body.kind,
+      hasApiKey: result.body.has_api_key,
+      maskedKey: result.body.masked_key,
+      baseUrl: result.body.base_url,
+    };
+  }
+
+  async deleteAgentProvider(provider: string) {
+    await this.request<{ provider: string }>(
+      `/agent-config/credentials?provider=${encodeURIComponent(provider)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async saveAgentConfig(input: {
+    agent: AgentId;
+    provider: string;
+    model: string;
+  }) {
+    const result = await this.request<{
+      agent: string;
+      provider: string;
+      model: string;
+    }>("/agent-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return result.body;
   }
 
   // ── 因子构建 ──────────────────────────────────────────────────────
@@ -1540,6 +2262,7 @@ export function mapBacktestResult(input: ApiBacktestResult): BacktestResult {
       side: trade.side,
       quantity: trade.quantity,
       price: trade.price,
+      commission: trade.commission,
     })),
     positions: (input.positions ?? []).map((position) => ({
       instrumentId: position.instrument_id,
@@ -1552,6 +2275,180 @@ export function mapBacktestResult(input: ApiBacktestResult): BacktestResult {
       closedAt: position.closed_at,
     })),
     backtestHash: input.backtest_hash,
+  };
+}
+
+export function mapStrategyAttachmentToApi(attachment: StrategyAttachment): {
+  name: string;
+  kind: "text" | "image";
+  extracted_text: string;
+  object_key: string;
+} {
+  return {
+    name: attachment.name,
+    kind: attachment.kind,
+    extracted_text: attachment.extractedText,
+    object_key: attachment.objectKey ?? "",
+  };
+}
+
+export function mapStrategyDraft(input: ApiStrategyDraft): StrategyDraft {
+  return {
+    id: input.id,
+    market: input.market,
+    kind: input.kind,
+    stage: input.stage,
+    state: input.state,
+    title: input.title,
+    explanation: input.explanation,
+    question: input.question,
+    code: input.code,
+    ready: input.ready,
+    instrumentIds: input.instrument_ids,
+    frequency: input.frequency,
+    backtestPlan:
+      input.backtest_plan === null
+        ? null
+        : {
+            timeframes: input.backtest_plan.timeframes,
+            trendTimeframe: input.backtest_plan.trend_timeframe,
+            execTimeframe: input.backtest_plan.exec_timeframe,
+            start: input.backtest_plan.start,
+            end: input.backtest_plan.end,
+            rationale: input.backtest_plan.rationale,
+          },
+    codeTestResult: input.code_test_result
+      ? {
+          passed: input.code_test_result.passed,
+          exitCode: input.code_test_result.exit_code,
+          stderr: input.code_test_result.stderr,
+          durationMs: input.code_test_result.duration_ms,
+        }
+      : null,
+    backtestResults: (input.backtest_results ?? []).map((entry) => ({
+      backtestHash: entry.backtest_hash,
+      start: entry.start,
+      end: entry.end,
+      frequency: entry.frequency,
+      metrics: entry.metrics
+        ? {
+            totalReturn: entry.metrics.total_return,
+            sharpe: entry.metrics.sharpe,
+            maxDrawdown: entry.metrics.max_drawdown,
+            tradeCount: entry.metrics.trade_count,
+          }
+        : null,
+      ranAt: entry.ran_at,
+    })),
+    paperBinding: input.paper_binding
+      ? {
+          accountId: input.paper_binding.account_id,
+          publishedAt: input.paper_binding.published_at,
+        }
+      : null,
+    contentHash: input.content_hash,
+    resourceVersion: input.resource_version,
+    savedVersions: (input.saved_versions ?? []).map((version) => ({
+      version: version.version,
+      hash: version.hash,
+      state: version.state,
+      title: version.title,
+      savedAt: version.saved_at,
+    })),
+    createdAt: input.created_at,
+    updatedAt: input.updated_at,
+    messages: input.messages?.map((message) => ({
+      role: message.role,
+      content: message.content,
+      attachments: (message.attachments ?? []).map((attachment) => ({
+        name: attachment.name,
+        kind: attachment.kind,
+        extractedText: attachment.extracted_text,
+      })),
+    })),
+  };
+}
+
+export function mapStrategyBacktestResult(
+  input: ApiStrategyBacktestResult,
+): StrategyBacktestResult {
+  return {
+    instrumentIds: input.instrument_ids,
+    start: input.start,
+    end: input.end,
+    frequency: input.frequency,
+    initialCash: input.initial_cash,
+    grossOfFees: input.gross_of_fees,
+    venueSpec:
+      input.venue_spec === null || input.venue_spec === undefined
+        ? null
+        : {
+            market: input.venue_spec.market,
+            costBasis: input.venue_spec.cost_basis,
+            feeModel: input.venue_spec.fee_model,
+            fillModel: input.venue_spec.fill_model,
+            latencyModel: input.venue_spec.latency_model,
+            randomSeed: input.venue_spec.random_seed,
+            priceProtectionPoints: input.venue_spec.price_protection_points,
+          },
+    metrics: {
+      totalReturn: input.metrics.total_return,
+      sharpe: input.metrics.sharpe,
+      maxDrawdown: input.metrics.max_drawdown,
+      tradeCount: input.metrics.trade_count,
+    },
+    equityCurve: input.equity_curve,
+    trades: (input.trades ?? []).map((trade) => ({
+      time: trade.time,
+      instrumentId: trade.instrument_id,
+      side: trade.side,
+      quantity: trade.quantity,
+      price: trade.price,
+      commission: trade.commission,
+    })),
+    positions: (input.positions ?? []).map((position) => ({
+      instrumentId: position.instrument_id,
+      entry: position.entry,
+      peakQty: position.peak_qty,
+      avgPxOpen: position.avg_px_open,
+      avgPxClose: position.avg_px_close,
+      realizedPnl: position.realized_pnl,
+      openedAt: position.opened_at,
+      closedAt: position.closed_at,
+    })),
+    backtestHash: input.backtest_hash,
+    error: input.error,
+  };
+}
+
+export function mapStrategyDataStatus(
+  input: ApiStrategyDataStatus,
+): StrategyDataStatus {
+  const mapEntry = (
+    entry: { rows: number; first_event: string; last_event: string } | null,
+  ) =>
+    entry === null
+      ? null
+      : {
+          rows: entry.rows,
+          firstEvent: entry.first_event,
+          lastEvent: entry.last_event,
+        };
+  return {
+    instrumentIds: input.instrument_ids,
+    frequencies: input.frequencies,
+    ready: input.ready,
+    items: input.items.map((item) => ({
+      instrumentId: item.instrument_id,
+      available: item.available,
+      daily: mapEntry(item.daily),
+      minute: mapEntry(item.minute),
+      checks: item.checks.map((check) => ({
+        frequency: check.frequency,
+        available: check.available,
+        required: mapEntry(check.required),
+      })),
+    })),
   };
 }
 
@@ -1579,6 +2476,89 @@ export function mapExecutionState(input: ApiExecutionState): ExecutionState {
     reason: input.reason,
     shadowPositions: input.shadow_positions,
     paperPositions: input.paper_positions,
+  };
+}
+
+export function mapPaperAccount(input: ApiPaperAccount): PaperAccount {
+  return {
+    id: input.id,
+    owner: input.owner,
+    draftId: input.draft_id,
+    artifactAddress: input.artifact_address,
+    contentHash: input.content_hash,
+    market: input.market,
+    instrumentIds: input.instrument_ids,
+    frequency: input.frequency,
+    initialCash: input.initial_cash,
+    state: input.state,
+    createdAt: input.created_at,
+    updatedAt: input.updated_at,
+  };
+}
+
+export function mapPaperOrder(input: ApiPaperOrder): PaperOrder {
+  return {
+    id: input.id,
+    instrumentId: input.instrument_id,
+    side: input.side,
+    quantity: input.quantity,
+    orderClock: input.order_clock,
+    status: input.status,
+    rejectReason: input.reject_reason,
+    filledQty: input.filled_qty,
+    avgPx: input.avg_px,
+    createdAt: input.created_at,
+  };
+}
+
+export function mapPaperFill(input: ApiPaperFill): PaperFill {
+  return {
+    id: input.id,
+    orderId: input.order_id,
+    tradeTs: input.trade_ts,
+    price: input.price,
+    quantity: input.quantity,
+    fee: input.fee,
+    notional: input.notional,
+  };
+}
+
+export function mapPaperPosition(input: ApiPaperPosition): PaperPosition {
+  return {
+    instrumentId: input.instrument_id,
+    quantity: input.quantity,
+    avgPx: input.avg_px,
+    updatedAt: input.updated_at,
+  };
+}
+
+export function mapPaperEquityRow(input: ApiPaperEquityRow): PaperEquityRow {
+  return {
+    tradeDate: input.trade_date,
+    equity: input.equity,
+    cash: input.cash,
+    marginUsed: input.margin_used,
+    drawdown: input.drawdown,
+  };
+}
+
+export function mapPaperDriftReport(
+  input: ApiPaperDriftReport,
+): PaperDriftReport {
+  return {
+    schemaVersion: input.schema_version,
+    points: input.points.map((point) => ({
+      date: point.date,
+      backtestEquity: point.backtest_equity,
+      paperEquity: point.paper_equity,
+      diff: point.diff,
+    })),
+    commonDays: input.common_days,
+    paperDays: input.paper_days,
+    backtestDays: input.backtest_days,
+    maxAbsDiff: input.max_abs_diff,
+    costBasis: input.cost_basis,
+    backtestHash: input.backtest_hash,
   };
 }
 

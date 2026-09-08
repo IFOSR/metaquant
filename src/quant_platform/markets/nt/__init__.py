@@ -53,7 +53,6 @@ from quant_platform.markets.nt.settlement import (
     SettlementLeg,
     settle_daily,
 )
-from quant_platform.markets.nt.strategy import TargetPositionStrategy
 from quant_platform.markets.nt.strategy_adapter import (
     RebalancePlan,
     StrategyAdapter,
@@ -82,7 +81,6 @@ __all__ = [
     "StrategyAdapter",
     "SubmitResult",
     "TradingSession",
-    "TargetPositionStrategy",
     "VenueSpec",
     "backtest_hash",
     "build_equity_engine",

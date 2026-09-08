@@ -350,7 +350,15 @@ def build_strategy_router(
                 "backtest_hash": command.backtest_hash,
             }
         history.append(StrategyMessage(role="user", content=user_content))
-        output = _run_agent_turn(market=draft.market, history=history)
+        output = _run_agent_turn(
+            market=draft.market,
+            history=history,
+            state={
+                "instrument_ids": draft.instrument_ids,
+                "frequency": draft.frequency,
+                "code": draft.code,
+            },
+        )
         updated = repository.apply_turn(
             draft_id=draft_id,
             user_content=command.message,
@@ -877,9 +885,10 @@ def build_strategy_router(
         *,
         market: str,
         history: list[StrategyMessage],
+        state: dict[str, Any] | None = None,
     ) -> AgentOutput:
         try:
-            return run_turn(market=market, history=history, runner=runner)
+            return run_turn(market=market, history=history, runner=runner, state=state)
         except Exception as exc:  # noqa: BLE001
             # LLM 任意失败（含网络超时）都以 502 优雅返回，绝不裸 500。
             raise ProblemError(

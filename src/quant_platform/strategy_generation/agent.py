@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from quant_platform.research.factor_extract import (
@@ -84,6 +85,10 @@ _SYSTEM_PROMPT_LINES = (
     "the main/continuous contract (主力/连续), use the iFinD 8888 "
     "convention: SA8888.CZC, RB8888.SHF — NEVER 9999/0000 or any other "
     "continuous code (they are rejected and un-fetchable).",
+    "- NEVER drift to placeholder values: the example [\"600000.SH\"] in "
+    "the JSON shape is ONLY a placeholder. Preserve the current "
+    "instrument_ids across turns unless the user explicitly asks to "
+    "change them.",
     '- frequency: "1d" (daily), "1w" (weekly), or minute bars '
     '"5m"/"15m"/"30m"/"60m". Default 1d.',
     "- backtest_plan: when ready=true you MUST fill it (null otherwise). "
@@ -176,6 +181,7 @@ def run_turn(
     market: str,
     history: Sequence[StrategyMessage],
     runner: Runner | None = None,
+    state: dict[str, Any] | None = None,
 ) -> AgentOutput:
     """Run one agent turn over the conversation and return its output.
 
@@ -183,7 +189,7 @@ def run_turn(
     重试——LLM 侧偶发慢/错是常态，重试一次能消化大部分瞬时故障。
     """
     complete = runner or default_runner(system_prompt=_build_system_prompt())
-    prompt = _build_prompt(market, history)
+    prompt = _build_prompt(market, history, state)
     last_error: Exception | None = None
     for _ in range(2):
         try:
@@ -318,8 +324,26 @@ def _build_system_prompt() -> str:
     )
 
 
-def _build_prompt(market: str, history: Sequence[StrategyMessage]) -> str:
-    lines = [f"Target market: {market}", "", "Conversation:"]
+def _build_prompt(
+    market: str,
+    history: Sequence[StrategyMessage],
+    state: dict[str, Any] | None = None,
+) -> str:
+    lines = [f"Target market: {market}"]
+    if state:
+        lines.append("")
+        lines.append(
+            "Current strategy state — PRESERVE these unless the user "
+            "explicitly asks to change them:"
+        )
+        lines.append(f"- instrument_ids: {state.get('instrument_ids', [])}")
+        lines.append(f"- frequency: {state.get('frequency', '1d')}")
+        code = state.get("code")
+        if code:
+            lines.append("- current code (edit it in place, do not start over):")
+            lines.append(code)
+    lines.append("")
+    lines.append("Conversation:")
     for message in history:
         role = "user" if message.role == "user" else "assistant"
         lines.append(f"{role}: {message.content}")

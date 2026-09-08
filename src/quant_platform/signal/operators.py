@@ -1,170 +1,134 @@
-"""信号算子库（时间周期无关）。
+"""信号算子库（时间周期无关，NT 指标薄壳）。
 
-算子只对「喂进来的数值序列」负责，对 bar 颗粒度（1d/15m/…）无感知；
-颗粒度由调用方（SignalStrategy）决定。每个算子暴露：
-- ``update(high=None, low=None, close=None)`` 推进
-- ``value``（或命名字段）当前值
-- ``initialized`` 是否已完成预热
+原则：NT 已内置且正确的算子直接包壳，统一成 ``update`` / ``snapshot`` /
+``initialized`` 接口；NT 没有（adx）或不完整（macd 缺 dea）的自实现。
+
+算子只吃数值序列，对 bar 颗粒度（1d/15m/…）无感知；颗粒度由调用方
+（SignalStrategy）决定。加新算子 = 在 ``_NT_INDICATORS`` 里加一行。
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import nautilus_trader.indicators as nt_ind
+
 
 class Operator:
-    """算子基类。"""
+    """算子基类：统一接口。"""
 
-    def __init__(self, period: int) -> None:
-        self.period = period
-        self.initialized = False
+    def __init__(self) -> None:
+        self._initialized = False
 
-    _FIELDS: tuple[str, ...] = ("value",)
-
-    def snapshot(self) -> dict[str, float]:
-        """当前值的字段快照（供信号 ctx 暴露，不暴露算子对象本身）。"""
-        return {field: getattr(self, field) for field in self._FIELDS}
+    @property
+    def initialized(self) -> bool:
+        return self._initialized
 
     def update(
         self,
         *,
+        open: float | None = None,
         high: float | None = None,
         low: float | None = None,
         close: float | None = None,
+        volume: float | None = None,
     ) -> None:
         raise NotImplementedError
 
+    def snapshot(self) -> dict[str, float]:
+        raise NotImplementedError
 
-class SmaOperator(Operator):
-    def __init__(self, period: int) -> None:
-        super().__init__(period)
-        self._buf: list[float] = []
-        self.value = 0.0
+
+class NtOperator(Operator):
+    """NT 指标薄壳：把 NT 指标包装成统一接口。
+
+    ``inputs``：喂给 NT ``update_raw`` 的 bar 字段序列（如 ``("high","low","close")``）。
+    ``outputs``：快照字段名 → NT 属性名（如 ``{"mid": "middle"}``）。
+    """
+
+    def __init__(
+        self,
+        indicator: Any,
+        inputs: tuple[str, ...],
+        outputs: dict[str, str],
+    ) -> None:
+        super().__init__()
+        self._ind = indicator
+        self._inputs = inputs
+        self._outputs = outputs
+
+    @property
+    def initialized(self) -> bool:
+        return bool(self._ind.initialized)
 
     def update(
         self,
         *,
+        open: float | None = None,
         high: float | None = None,
         low: float | None = None,
         close: float | None = None,
+        volume: float | None = None,
     ) -> None:
-        assert close is not None
-        self._buf.append(close)
-        if len(self._buf) > self.period:
-            self._buf.pop(0)
-        self.value = sum(self._buf) / len(self._buf)
-        self.initialized = len(self._buf) >= self.period
+        fields = {
+            "open": open,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+        self._ind.update_raw(*(fields[key] for key in self._inputs))
 
-
-class EmaOperator(Operator):
-    def __init__(self, period: int) -> None:
-        super().__init__(period)
-        self._n = 0
-        self._seed_sum = 0.0
-        self.value = 0.0
-
-    def update(
-        self,
-        *,
-        high: float | None = None,
-        low: float | None = None,
-        close: float | None = None,
-    ) -> None:
-        assert close is not None
-        self._n += 1
-        if self._n < self.period:
-            self._seed_sum += close
-            return
-        if self._n == self.period:
-            self._seed_sum += close
-            self.value = self._seed_sum / self.period
-            self.initialized = True
-            return
-        k = 2.0 / (self.period + 1)
-        self.value = self.value + k * (close - self.value)
+    def snapshot(self) -> dict[str, float]:
+        return {
+            name: float(getattr(self._ind, attr))
+            for name, attr in self._outputs.items()
+        }
 
 
 class MacdOperator(Operator):
-    """MACD：dif = ema(fast) - ema(slow)；dea = ema(signal) of dif。"""
-
-    _FIELDS = ("dif", "dea")
+    """MACD：dif = NT MACD 线；dea = NT EMA(signal) of dif（NT 的 MACD 无 dea）。"""
 
     def __init__(self, fast: int, slow: int, signal: int = 9) -> None:
-        super().__init__(slow)
-        self.fast_ema = EmaOperator(fast)
-        self.slow_ema = EmaOperator(slow)
-        self.dea_ema = EmaOperator(signal)
+        super().__init__()
+        self._macd = nt_ind.MovingAverageConvergenceDivergence(fast, slow)
+        self._dea = nt_ind.ExponentialMovingAverage(signal)
         self.dif = 0.0
         self.dea = 0.0
 
+    @property
+    def initialized(self) -> bool:
+        return bool(self._macd.initialized) and bool(self._dea.initialized)
+
     def update(
         self,
         *,
+        open: float | None = None,
         high: float | None = None,
         low: float | None = None,
         close: float | None = None,
+        volume: float | None = None,
     ) -> None:
         assert close is not None
-        self.fast_ema.update(close=close)
-        self.slow_ema.update(close=close)
-        self.dif = self.fast_ema.value - self.slow_ema.value
-        self.dea_ema.update(close=self.dif)
-        self.dea = self.dea_ema.value
-        self.initialized = self.slow_ema.initialized
+        self._macd.update_raw(close)
+        self.dif = float(self._macd.value)
+        self._dea.update_raw(self.dif)
+        self.dea = float(self._dea.value)
 
-
-class AtrOperator(Operator):
-    """真实波幅（Wilder 平滑）。"""
-
-    def __init__(self, period: int) -> None:
-        super().__init__(period)
-        self._prev_close: float | None = None
-        self._trs: list[float] = []
-        self._tr = 0.0
-        self.value = 0.0
-
-    def update(
-        self,
-        *,
-        high: float | None = None,
-        low: float | None = None,
-        close: float | None = None,
-    ) -> None:
-        assert high is not None and low is not None and close is not None
-        if self._prev_close is None:
-            tr = high - low
-        else:
-            tr = max(
-                high - low,
-                abs(high - self._prev_close),
-                abs(low - self._prev_close),
-            )
-        self._prev_close = close
-        self._trs.append(tr)
-        if len(self._trs) < self.period:
-            self.value = 0.0
-            return
-        if len(self._trs) == self.period:
-            self._tr = sum(self._trs) / self.period
-        else:
-            k = 1.0 / self.period
-            self._tr = self._tr + k * (tr - self._tr)
-        self.value = self._tr
-        self.initialized = True
+    def snapshot(self) -> dict[str, float]:
+        return {"dif": self.dif, "dea": self.dea}
 
 
 class AdxOperator(Operator):
     """ADX（Wilder 自实现）。
 
-    平台自建而非复用 NautilusTrader 的 ``DirectionalMovement``：后者只暴露
-    +DM/-DM，``.value`` 恒为 0（无 ADX）。此处输出 ``adx`` / ``di_plus`` /
-    ``di_minus``。
+    NT 的 ``DirectionalMovement`` 只暴露 +DM/-DM，``.value`` 恒为 0（无 ADX），
+    故自实现：TR/+DM/-DM Wilder 平滑 → +DI/-DI → DX → ADX 平滑。
     """
 
-    _FIELDS = ("adx", "di_plus", "di_minus")
-
     def __init__(self, period: int) -> None:
-        super().__init__(period)
+        super().__init__()
+        self.period = period
         self._prev_high: float | None = None
         self._prev_low: float | None = None
         self._prev_close: float | None = None
@@ -183,9 +147,11 @@ class AdxOperator(Operator):
     def update(
         self,
         *,
+        open: float | None = None,
         high: float | None = None,
         low: float | None = None,
         close: float | None = None,
+        volume: float | None = None,
     ) -> None:
         assert high is not None and low is not None and close is not None
         prev_high = self._prev_high
@@ -235,102 +201,74 @@ class AdxOperator(Operator):
             k = 1.0 / self.period
             self._adx_s = self._adx_s + k * (dx - self._adx_s)
         self.adx = self._adx_s
-        self.initialized = True
+        self._initialized = True
+
+    def snapshot(self) -> dict[str, float]:
+        return {"adx": self.adx, "di_plus": self.di_plus, "di_minus": self.di_minus}
 
 
-class BollingerOperator(Operator):
-    """布林带：mid/upper/lower（总体标准差，k 默认 2）。"""
-
-    _FIELDS = ("upper", "mid", "lower")
-
-    def __init__(self, period: int, k: float = 2.0) -> None:
-        super().__init__(period)
-        self.k = k
-        self._buf: list[float] = []
-        self.mid = 0.0
-        self.upper = 0.0
-        self.lower = 0.0
-
-    def update(
-        self,
-        *,
-        high: float | None = None,
-        low: float | None = None,
-        close: float | None = None,
-    ) -> None:
-        assert close is not None
-        self._buf.append(close)
-        if len(self._buf) > self.period:
-            self._buf.pop(0)
-        if len(self._buf) < self.period:
-            return
-        mean = sum(self._buf) / self.period
-        variance = sum((x - mean) ** 2 for x in self._buf) / self.period
-        std = variance ** 0.5
-        self.mid = mean
-        self.upper = mean + self.k * std
-        self.lower = mean - self.k * std
-        self.initialized = True
-
-
-class RsiOperator(Operator):
-    """RSI（Wilder 平滑）。"""
-
-    def __init__(self, period: int) -> None:
-        super().__init__(period)
-        self._prev_close: float | None = None
-        self._gains: list[float] = []
-        self._losses: list[float] = []
-        self._avg_gain = 0.0
-        self._avg_loss = 0.0
-        self.value = 0.0
-
-    def update(
-        self,
-        *,
-        high: float | None = None,
-        low: float | None = None,
-        close: float | None = None,
-    ) -> None:
-        assert close is not None
-        if self._prev_close is None:
-            self._prev_close = close
-            return
-        change = close - self._prev_close
-        gain = max(change, 0.0)
-        loss = max(-change, 0.0)
-        self._prev_close = close
-        self._gains.append(gain)
-        self._losses.append(loss)
-        if len(self._gains) < self.period:
-            return
-        if len(self._gains) == self.period:
-            self._avg_gain = sum(self._gains) / self.period
-            self._avg_loss = sum(self._losses) / self.period
-        else:
-            k = 1.0 / self.period
-            self._avg_gain = self._avg_gain + k * (gain - self._avg_gain)
-            self._avg_loss = self._avg_loss + k * (loss - self._avg_loss)
-        if self._avg_loss == 0:
-            self.value = 100.0
-        else:
-            rs = self._avg_gain / self._avg_loss
-            self.value = 100.0 - 100.0 / (1.0 + rs)
-        self.initialized = True
-
-
-OPERATORS: dict[str, type[Operator]] = {
-    "sma": SmaOperator,
-    "ema": EmaOperator,
-    "atr": AtrOperator,
-    "adx": AdxOperator,
-    "bollinger": BollingerOperator,
-    "rsi": RsiOperator,
+# type → (NT 类, update_raw 入参字段, 快照字段→NT 属性, spec 键→构造参数)
+_NT_INDICATORS: dict[
+    str,
+    tuple[Any, tuple[str, ...], dict[str, str], dict[str, str]],
+] = {
+    "sma": (nt_ind.SimpleMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
+    "ema": (nt_ind.ExponentialMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
+    "wma": (nt_ind.WeightedMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
+    "dema": (nt_ind.DoubleExponentialMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
+    "hma": (nt_ind.HullMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
+    "atr": (nt_ind.AverageTrueRange, ("high", "low", "close"), {"value": "value"}, {"period": "period"}),
+    "bollinger": (
+        nt_ind.BollingerBands,
+        ("high", "low", "close"),
+        {"upper": "upper", "mid": "middle", "lower": "lower"},
+        {"period": "period", "k": "k"},
+    ),
+    "rsi": (nt_ind.RelativeStrengthIndex, ("close",), {"value": "value"}, {"period": "period"}),
+    "roc": (nt_ind.RateOfChange, ("close",), {"value": "value"}, {"period": "period"}),
+    "cci": (nt_ind.CommodityChannelIndex, ("high", "low", "close"), {"value": "value"}, {"period": "period"}),
+    "stoch": (
+        nt_ind.Stochastics,
+        ("high", "low", "close"),
+        {"k": "value_k", "d": "value_d"},
+        {"period_k": "period_k", "period_d": "period_d", "slowing": "slowing"},
+    ),
+    "aroon": (
+        nt_ind.AroonOscillator,
+        ("high", "low"),
+        {"value": "value", "up": "aroon_up", "down": "aroon_down"},
+        {"period": "period"},
+    ),
+    "cmo": (nt_ind.ChandeMomentumOscillator, ("close",), {"value": "value"}, {"period": "period"}),
+    "linreg": (
+        nt_ind.LinearRegression,
+        ("close",),
+        {"value": "value", "slope": "slope", "intercept": "intercept"},
+        {"period": "period"},
+    ),
+    "keltner": (
+        nt_ind.KeltnerChannel,
+        ("high", "low", "close"),
+        {"upper": "upper", "mid": "middle", "lower": "lower"},
+        {"period": "period", "k": "k_multiplier"},
+    ),
+    "donchian": (
+        nt_ind.DonchianChannel,
+        ("high", "low"),
+        {"upper": "upper", "mid": "middle", "lower": "lower"},
+        {"period": "period"},
+    ),
+    "obv": (
+        nt_ind.OnBalanceVolume,
+        ("open", "close", "volume"),
+        {"value": "value"},
+        {"period": "period"},
+    ),
 }
 
 
 def build_operator(spec: dict[str, Any]) -> Operator:
-    """由声明式指标 spec 构建算子（``{"type": "sma", "period": 3}``）。"""
+    """由声明式指标 spec 构建算子（``{"type": "sma", "period": 20}``）。"""
     type_name = spec.get("type")
     if not isinstance(type_name, str):
         raise ValueError("indicator spec requires a string 'type'")
@@ -338,9 +276,13 @@ def build_operator(spec: dict[str, Any]) -> Operator:
         return MacdOperator(
             fast=spec["fast"], slow=spec["slow"], signal=spec.get("signal", 9)
         )
-    if type_name == "bollinger" and "k" in spec:
-        return BollingerOperator(period=spec["period"], k=spec["k"])
-    cls = OPERATORS.get(type_name)
-    if cls is None:
+    if type_name == "adx":
+        return AdxOperator(period=spec["period"])
+    entry = _NT_INDICATORS.get(type_name)
+    if entry is None:
         raise ValueError(f"unknown operator: {type_name}")
-    return cls(period=spec["period"])
+    cls, inputs, outputs, param_map = entry
+    if type_name in ("bollinger", "keltner") and "k" not in spec:
+        spec = {**spec, "k": 2.0}
+    kwargs = {arg: spec[key] for key, arg in param_map.items() if key in spec}
+    return NtOperator(cls(**kwargs), inputs, outputs)

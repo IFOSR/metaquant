@@ -27,7 +27,6 @@ from quant_platform.data_gateway.models import PITRow
 from quant_platform.data_gateway.resolver import Bar
 from quant_platform.experiments import FactorObservation
 from quant_platform.markets.nt import (
-    TargetPositionStrategy,
     backtest_hash,
     build_futures_engine,
     day_bar_spec,
@@ -36,6 +35,8 @@ from quant_platform.markets.nt import (
     run_engine,
     to_nautilus_bars,
 )
+from quant_platform.signal.contract import Signal, SignalSpec
+from quant_platform.signal.strategy import SignalStrategy
 
 _DEFAULT_INITIAL_CASH = Decimal("100000000")
 _BAR_FIELDS = ("open", "high", "low", "close", "volume")
@@ -45,6 +46,7 @@ _BAR_FIELDS = ("open", "high", "low", "close", "volume")
 _CONTRACT_SPECS: dict[str, tuple[str, str, int]] = {
     "RB": ("1", "10", 0),
     "AU": ("0.02", "1000", 2),
+    "SA": ("1", "20", 0),
 }
 _VENUE_BY_SUFFIX = {
     "SHF": "SHFE",
@@ -83,6 +85,9 @@ class BacktestTrade:
     quantity: float
     price: float
     commission: float = 0.0
+    # 方向化动作：开多/开空/平多/平空（反手成交合并为「平空+开多」等）。
+    # 空串表示未推导（旧数据/因子回测），前端回退到 side 标签。
+    action: str = ""
 
     def payload(self) -> dict[str, object]:
         return {
@@ -92,6 +97,7 @@ class BacktestTrade:
             "quantity": self.quantity,
             "price": self.price,
             "commission": self.commission,
+            "action": self.action,
         }
 
 
@@ -497,15 +503,18 @@ def run_factor_backtest(
         )
         targets[instrument_id] = by_bar
 
-        def target_fn(bar: Any, targets: dict[datetime, int] = by_bar) -> int:
-            return targets.get(datetime.fromtimestamp(bar.ts_event / 1e9, tz=UTC), 0)
+        def compute_signal(
+            ctx: Any, targets: dict[datetime, int] = by_bar
+        ) -> Signal:
+            bar_time = datetime.fromisoformat(ctx.bar.ts)
+            return Signal(target_qty=targets.get(bar_time, 0))
 
         engine.add_strategy(
-            TargetPositionStrategy(
+            SignalStrategy(
                 StrategyConfig(strategy_id=f"bt-{contract.id.symbol}"),
                 instrument_id=str(contract.id),
-                target_qty_fn=target_fn,
                 bar_type_str=f"{contract.id}-{bar_type_suffix}",
+                spec=SignalSpec(indicators=[], compute_signal=compute_signal),
             )
         )
 

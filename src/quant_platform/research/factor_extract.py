@@ -263,6 +263,28 @@ def _extract_json(raw: str) -> Mapping[str, Any]:
 # --- runner backends -------------------------------------------------------
 
 
+def _resolve_cli(name: str) -> str | None:
+    """Locate a CLI binary by PATH first, then well-known install locations.
+
+    服务进程（Docker/systemd/GUI 启动）常带精简 PATH，npm global 等
+    安装位置不在其中；裸 ``subprocess.run([name, ...])`` 会抛
+    ``FileNotFoundError: [Errno 2] No such file or directory``。
+    """
+    found = shutil.which(name)
+    if found:
+        return found
+    candidates = [
+        Path.home() / ".npm-global" / "bin" / name,
+        Path.home() / ".local" / "bin" / name,
+        Path("/usr/local/bin") / name,
+        Path("/opt/homebrew/bin") / name,
+    ]
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def _pi_complete(
     prompt: str,
     *,
@@ -275,7 +297,14 @@ def _pi_complete(
     只复用 ``pi`` 二进制，不改写 ``pi`` 自身的全局配置：``--provider`` /
     ``--model`` / ``--api-key`` 来自项目配置，仅对本项目本次调用生效。
     """
-    argv = ["pi", "-p", "--no-session", "--mode", "text"]
+    binary = _resolve_cli("pi")
+    if not binary:
+        raise FactorExtractionError(
+            "pi CLI not found: install it (npm i -g @earendil-works/pi-coding-agent) "
+            "or add its bin dir (e.g. ~/.npm-global/bin) to the backend PATH, "
+            "or switch the active agent config to codex/DeepSeek/Zhipu"
+        )
+    argv = [binary, "-p", "--no-session", "--mode", "text"]
     if provider:
         argv += ["--provider", provider]
     if model:
@@ -314,7 +343,14 @@ def _codex_complete(
         env["CODE_CLI_API_KEY"] = api_key
     if base_url:
         env["OPENAI_BASE_URL"] = base_url
-    argv = ["codex", "exec", "--ignore-user-config", "--ephemeral"]
+    binary = _resolve_cli("codex")
+    if not binary:
+        raise FactorExtractionError(
+            "codex CLI not found: install it or add its bin dir to the "
+            "backend PATH, or switch the active agent config to "
+            "pi/DeepSeek/Zhipu"
+        )
+    argv = [binary, "exec", "--ignore-user-config", "--ephemeral"]
     if model:
         argv += ["-m", model]
     argv.append(prompt)
@@ -425,7 +461,15 @@ def default_runner(
     config = _resolve_agent_config()
     if config is not None:
         agent = getattr(config, "agent", "") or ""
+        # DB 配置是显式选择：CLI 缺失时明确报错（可操作），而不是静默
+        # 换到其它 provider 或在运行期抛 FileNotFoundError。
         if agent == "codex":
+            if not _resolve_cli("codex"):
+                raise FactorExtractionError(
+                    "active agent config is codex but the codex CLI is not "
+                    "installed or not on this backend's PATH; install it, add "
+                    "its bin dir to PATH, or switch the active agent config"
+                )
             return lambda user: _codex_complete(
                 f"{prompt}\n\n{user}",
                 model=getattr(config, "model", "") or "",
@@ -433,6 +477,14 @@ def default_runner(
                 base_url=getattr(config, "base_url", None),
             )
         if agent == "pi":
+            if not _resolve_cli("pi"):
+                raise FactorExtractionError(
+                    "active agent config is pi but the pi CLI is not "
+                    "installed or not on this backend's PATH; install it "
+                    "(npm i -g @earendil-works/pi-coding-agent), add its bin "
+                    "dir (e.g. ~/.npm-global/bin) to PATH, or switch the "
+                    "active agent config"
+                )
             return lambda user: _pi_complete(
                 f"{prompt}\n\n{user}",
                 provider=getattr(config, "provider", "") or "",
@@ -445,7 +497,7 @@ def default_runner(
         )
     if os.environ.get("ZHIPU_API_KEY") or _read_zhipu_key():
         return lambda user: _zhipu_complete(user, system_prompt=prompt)
-    if shutil.which("pi") and os.environ.get("CODE_CLI_API_KEY"):
+    if _resolve_cli("pi") and os.environ.get("CODE_CLI_API_KEY"):
         return lambda user: _pi_complete(
             f"{prompt}\n\n{user}",
             provider=os.environ.get("PI_PROVIDER", "").strip(),

@@ -301,3 +301,15 @@ def test_to_ifind_futures_code_keeps_other_exchanges() -> None:
     assert to_ifind_futures_code("A2611.DCE") == "A2611.DCE"
     assert to_ifind_futures_code("SC2609.INE") == "SC2609.INE"
     assert to_ifind_futures_code("LC2701.GFEX") == "LC2701.GFE"
+
+
+def test_to_ifind_futures_code_keeps_continuous_8888() -> None:
+    """连续合约（8888）不参与郑商所 4→3 位月份转换。
+
+    iFinD 的主力连续代码是 4 位 8888；若被转成 888 会拉不到数据。
+    """
+    from quant_platform.data_gateway.ifind_client import to_ifind_futures_code
+
+    assert to_ifind_futures_code("SA8888.CZC") == "SA8888.CZC"
+    assert to_ifind_futures_code("TA8888.CZCE") == "TA8888.CZC"
+    assert to_ifind_futures_code("RB8888.SHF") == "RB8888.SHF"

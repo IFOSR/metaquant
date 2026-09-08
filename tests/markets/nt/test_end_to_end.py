@@ -15,9 +15,16 @@ from quant_platform.markets.nt.backtest import (
 )
 from quant_platform.markets.nt.data import minute_bar_spec, to_nautilus_bar
 from quant_platform.markets.nt.instruments import equity_instrument, futures_contract
-from quant_platform.markets.nt.strategy import TargetPositionStrategy
+from quant_platform.signal.contract import Signal, SignalSpec
+from quant_platform.signal.strategy import SignalStrategy
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
+
+
+def _spec(target_qty: int) -> SignalSpec:
+    return SignalSpec(
+        indicators=[], compute_signal=lambda ctx: Signal(target_qty=target_qty)
+    )
 
 
 def bar(hour: int, minute: int, close: float) -> Bar:
@@ -36,10 +43,10 @@ def test_end_to_end_strategy_buys_and_holds() -> None:
     engine = build_equity_engine(instrument=instrument, initial_cash=Decimal("100000"))
 
     bar_type_str = f"{instrument.id}-1-MINUTE-LAST-EXTERNAL"
-    strategy = TargetPositionStrategy(
+    strategy = SignalStrategy(
         StrategyConfig(strategy_id="S-001"),
         instrument_id=str(instrument.id),
-        target_qty_fn=lambda _bar: 100,
+        spec=_spec(100),
         bar_type_str=bar_type_str,
     )
     engine.add_strategy(strategy)
@@ -91,10 +98,10 @@ def test_futures_end_to_end_opens_position() -> None:
     engine = build_futures_engine(instrument=instrument, initial_cash=Decimal("100000"))
 
     bar_type_str = f"{instrument.id}-1-MINUTE-LAST-EXTERNAL"
-    strategy = TargetPositionStrategy(
+    strategy = SignalStrategy(
         StrategyConfig(strategy_id="S-FUT"),
         instrument_id=str(instrument.id),
-        target_qty_fn=lambda _bar: 2,
+        spec=_spec(2),
         bar_type_str=bar_type_str,
     )
     engine.add_strategy(strategy)
@@ -130,10 +137,10 @@ def test_deterministic_replay_same_fills() -> None:
             instrument=instrument, initial_cash=Decimal("100000")
         )
         bar_type_str = f"{instrument.id}-1-MINUTE-LAST-EXTERNAL"
-        strategy = TargetPositionStrategy(
+        strategy = SignalStrategy(
             StrategyConfig(strategy_id="S-001"),
             instrument_id=str(instrument.id),
-            target_qty_fn=lambda _bar: 100,
+            spec=_spec(100),
             bar_type_str=bar_type_str,
         )
         engine.add_strategy(strategy)

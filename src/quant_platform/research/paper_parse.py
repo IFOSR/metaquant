@@ -9,12 +9,10 @@ result.  It never writes to the deterministic kernel.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable, Mapping
 from typing import Any
 
-import httpx
-
+from quant_platform.research.factor_extract import default_runner
 from quant_platform.research.schemas import BriefContent
 
 _SYSTEM_PROMPT = """You extract testable factor-research hypotheses
@@ -56,9 +54,9 @@ def parse_paper_to_brief(
     """Translate free-form paper text into a structured brief draft.
 
     ``complete`` is injectable for tests; it defaults to the DeepSeek REST
-    client and receives (paper_text, hint).
+    client's shared Agent runner and receives (paper_text, hint).
     """
-    runner = complete or _deepseek_complete
+    runner = complete or _default_complete
     raw = runner(paper_text, None)
     data = _extract_json(raw)
     try:
@@ -73,40 +71,17 @@ def parse_paper_to_brief(
         return BriefContent.model_validate(data)
 
 
-def _deepseek_complete(paper_text: str, hint: str | None) -> str:
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    if not api_key:
-        raise PaperParseError("DEEPSEEK_API_KEY is not configured; cannot parse papers")
+def _default_complete(paper_text: str, hint: str | None) -> str:
+    """Use the same active Agent/provider/model as the rest of the platform."""
     user_prompt = f"Paper text:\n\n{paper_text}"
     if hint:
         user_prompt += f"\n\n{hint}"
-    payload = {
-        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
-        "messages": [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        "response_format": {"type": "json_object"},
-        "temperature": 0,
-    }
     try:
-        response = httpx.post(
-            "https://api.deepseek.com/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json=payload,
-            timeout=120,
+        return default_runner(system_prompt=_SYSTEM_PROMPT, json_mode=True)(
+            user_prompt
         )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise PaperParseError(f"DeepSeek request failed: {exc}") from exc
-    body = response.json()
-    try:
-        content = body["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise PaperParseError("unexpected DeepSeek response shape") from exc
-    if not isinstance(content, str):
-        raise PaperParseError("unexpected DeepSeek response shape")
-    return content
+    except Exception as exc:  # noqa: BLE001 - preserve the parser's public error
+        raise PaperParseError(f"agent request failed: {exc}") from exc
 
 
 def _extract_json(raw: str) -> Mapping[str, Any]:

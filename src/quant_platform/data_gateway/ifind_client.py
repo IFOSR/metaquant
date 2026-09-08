@@ -52,10 +52,13 @@ def to_ifind_futures_code(instrument_id: str) -> str:
 
     郑商所（CZCE）合约月份为 3 位（``2701`` → ``701``），且 iFinD 后缀为
     ``CZC``；其余交易所后缀取 iFinD 的 3 字母约定（SHF/DCE/INE/GFE）。
+    连续合约（``8888`` 结尾，如 ``SA8888``）不参与月份位数转换——
+    iFinD 的主力连续代码本身是 4 位 ``8888``，转换会把它变成不存在的
+    ``888``。
     """
     symbol, _, suffix = instrument_id.partition(".")
     suffix = suffix.upper()
-    if suffix in ("CZCE", "CZC"):
+    if suffix in ("CZCE", "CZC") and not symbol.endswith("8888"):
         symbol = re.sub(
             r"^([A-Za-z]{1,2})(\d{4})$",
             lambda match: f"{match.group(1)}{match.group(2)[1:]}",

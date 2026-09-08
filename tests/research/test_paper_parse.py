@@ -79,3 +79,23 @@ def test_parse_paper_to_brief_raises_after_retry() -> None:
 
     with pytest.raises(ValidationError):
         parse_paper_to_brief("paper", complete=always_bad)
+
+
+def test_default_paper_parser_uses_shared_agent_runner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Default paper parsing must use the active Agent config, not env-only DeepSeek."""
+    import quant_platform.research.paper_parse as paper_parse
+
+    calls: list[dict[str, object]] = []
+
+    def fake_default_runner(*, system_prompt: str, json_mode: bool):
+        calls.append({"system_prompt": system_prompt, "json_mode": json_mode})
+        return lambda _prompt: json.dumps(_VALID_BRIEF, ensure_ascii=False)
+
+    monkeypatch.setattr(paper_parse, "default_runner", fake_default_runner)
+
+    brief = paper_parse.parse_paper_to_brief("paper")
+
+    assert brief.expected_direction is BriefDirection.POSITIVE
+    assert calls == [{"system_prompt": paper_parse._SYSTEM_PROMPT, "json_mode": True}]

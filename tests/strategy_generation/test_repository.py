@@ -233,6 +233,8 @@ def test_record_backtest_appends_traceable_history() -> None:
             "frequency": "1d",
             "metrics": {"total_return": 0.1},
         },
+        code="class MAStrategy(Strategy): ...",
+        instrument_ids=["600000.SH"],
     )
     updated = repo.record_backtest(
         draft_id=draft.id,
@@ -243,11 +245,34 @@ def test_record_backtest_appends_traceable_history() -> None:
             "frequency": "1d",
             "metrics": {"total_return": -0.05},
         },
+        code="class MAStrategyV2(Strategy): ...",
+        instrument_ids=["600000.SH", "000001.SZ"],
     )
     assert len(updated.backtest_results) == 2
     assert updated.backtest_results[0]["backtest_hash"] == "abc123"
     assert updated.backtest_results[1]["backtest_hash"] == "def456"
     assert updated.backtest_results[1]["ran_at"]
+
+
+def test_record_backtest_stores_execution_snapshot() -> None:
+    """历史条目必须沉淀录制时的代码与标的，供忠实重放。"""
+    repo = make_repository()
+    draft = repo.create_draft(actor_id="researcher-1", market="CN_A")
+    updated = repo.record_backtest(
+        draft_id=draft.id,
+        result={
+            "backtest_hash": "abc123",
+            "start": "2025-01-01",
+            "end": "2026-01-01",
+            "frequency": "1d",
+            "metrics": {"total_return": 0.1},
+        },
+        code="class MAStrategy(Strategy): ...",
+        instrument_ids=["600000.SH"],
+    )
+    entry = updated.backtest_results[0]
+    assert entry["code"] == "class MAStrategy(Strategy): ..."
+    assert entry["instrument_ids"] == ["600000.SH"]
 
 
 def test_record_paper_binding_sets_binding() -> None:

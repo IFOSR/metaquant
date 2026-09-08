@@ -27,3 +27,19 @@ def test_ema_values() -> None:
 def test_unknown_operator_raises() -> None:
     with pytest.raises(ValueError):
         build_operator({"type": "nope", "period": 3})
+
+
+def test_macd_fields() -> None:
+    op = build_operator({"type": "macd", "fast": 3, "slow": 5})
+    for close in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
+        op.update(close=close)
+    assert op.initialized
+    assert op.dif == op.fast_ema.value - op.slow_ema.value
+
+
+def test_atr_values() -> None:
+    op = build_operator({"type": "atr", "period": 3})
+    for high, low, close in ((10, 12, 9), (11, 13, 10), (12, 14, 11)):
+        op.update(high=high, low=low, close=close)
+    assert op.initialized
+    assert op.value > 0

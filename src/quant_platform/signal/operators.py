@@ -76,15 +76,81 @@ class EmaOperator(Operator):
         self.value = self.value + k * (close - self.value)
 
 
+class MacdOperator(Operator):
+    """MACD：dif = ema(fast) - ema(slow)。dea 由平台用 ema 算子对 dif 序列另行计算。"""
+
+    def __init__(self, fast: int, slow: int) -> None:
+        super().__init__(slow)
+        self.fast_ema = EmaOperator(fast)
+        self.slow_ema = EmaOperator(slow)
+        self.dif = 0.0
+
+    def update(
+        self,
+        *,
+        high: float | None = None,
+        low: float | None = None,
+        close: float | None = None,
+    ) -> None:
+        assert close is not None
+        self.fast_ema.update(close=close)
+        self.slow_ema.update(close=close)
+        self.dif = self.fast_ema.value - self.slow_ema.value
+        self.initialized = self.slow_ema.initialized
+
+
+class AtrOperator(Operator):
+    """真实波幅（Wilder 平滑）。"""
+
+    def __init__(self, period: int) -> None:
+        super().__init__(period)
+        self._prev_close: float | None = None
+        self._trs: list[float] = []
+        self._tr = 0.0
+        self.value = 0.0
+
+    def update(
+        self,
+        *,
+        high: float | None = None,
+        low: float | None = None,
+        close: float | None = None,
+    ) -> None:
+        assert high is not None and low is not None and close is not None
+        if self._prev_close is None:
+            tr = high - low
+        else:
+            tr = max(
+                high - low,
+                abs(high - self._prev_close),
+                abs(low - self._prev_close),
+            )
+        self._prev_close = close
+        self._trs.append(tr)
+        if len(self._trs) < self.period:
+            self.value = 0.0
+            return
+        if len(self._trs) == self.period:
+            self._tr = sum(self._trs) / self.period
+        else:
+            k = 1.0 / self.period
+            self._tr = self._tr + k * (tr - self._tr)
+        self.value = self._tr
+        self.initialized = True
+
+
 OPERATORS: dict[str, type[Operator]] = {
     "sma": SmaOperator,
     "ema": EmaOperator,
+    "atr": AtrOperator,
 }
 
 
 def build_operator(spec: dict) -> Operator:
     """由声明式指标 spec 构建算子（``{"type": "sma", "period": 3}``）。"""
     type_name = spec.get("type")
+    if type_name == "macd":
+        return MacdOperator(fast=spec["fast"], slow=spec["slow"])
     cls = OPERATORS.get(type_name)
     if cls is None:
         raise ValueError(f"unknown operator: {type_name}")

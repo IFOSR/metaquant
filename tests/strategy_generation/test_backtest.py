@@ -21,6 +21,8 @@ from quant_platform.strategy_generation.backtest import (
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 
+_ALWAYS_BUY = "INDICATORS = []\ndef compute_signal(ctx):\n    return Signal(target_qty=1)\n"
+
 _EMA_CROSS = """\
 from nautilus_trader.config import StrategyConfig
 from nautilus_trader.indicators import ExponentialMovingAverage
@@ -250,10 +252,22 @@ def test_run_strategy_backtest_requires_data() -> None:
         )
 
 
+def test_run_strategy_backtest_rejects_market_instrument_mismatch() -> None:
+    """期货标的不能使用 A 股市场口径（费用/账户模型）。"""
+    with pytest.raises(StrategyLoadError, match="market CN_A"):
+        run_strategy_backtest(
+            code=_EMA_CROSS,
+            market="CN_A",
+            instrument_ids=("SA8888.CZC",),
+            bars_by_instrument={"SA8888.CZC": _daily_bars()},
+            frequency="1d",
+        )
+
+
 def test_code_test_strategy_passes_valid_strategy() -> None:
-    """代码正确性测试：合法策略应在基础行情上跑通。"""
+    """代码正确性测试：合法信号 spec 应在基础行情上跑通并产生信号。"""
     result = code_test_strategy(
-        code=_EMA_CROSS,
+        code=_ALWAYS_BUY,
         market="CN_A",
         instrument_ids=("600000.SH",),
         bars_by_instrument={"600000.SH": _daily_bars(30)},
@@ -265,9 +279,9 @@ def test_code_test_strategy_passes_valid_strategy() -> None:
 
 
 def test_code_test_strategy_fails_policy_violation() -> None:
-    """代码正确性测试：违反安全策略的代码必须被拦截。"""
+    """代码正确性测试：违反隔离策略（import）的代码必须被拦截。"""
     result = code_test_strategy(
-        code="import os\n" + _EMA_CROSS,
+        code="import os\n" + _ALWAYS_BUY,
         market="CN_A",
         instrument_ids=("600000.SH",),
         bars_by_instrument={"600000.SH": _daily_bars(30)},
@@ -275,7 +289,20 @@ def test_code_test_strategy_fails_policy_violation() -> None:
     )
     assert result.passed is False
     assert result.exit_code != 0
-    assert "security policy" in result.stderr
+    assert "import" in result.stderr
+
+
+def test_code_test_strategy_fails_when_no_trades() -> None:
+    """代码正确性测试：代表性数据上 0 成交 → 判定失败（抓「永远不成交」bug）。"""
+    result = code_test_strategy(
+        code="INDICATORS = []\ndef compute_signal(ctx):\n    return Signal(target_qty=0)\n",
+        market="CN_A",
+        instrument_ids=("600000.SH",),
+        bars_by_instrument={"600000.SH": _daily_bars(30)},
+        frequency="1d",
+    )
+    assert result.passed is False
+    assert "no trades" in result.stderr
 
 
 # ── 任意周期：聚合 / 周线 / 多周期 / 多标的（P2/P3）─────────────────────────
@@ -454,3 +481,20 @@ def test_run_strategy_backtest_multi_timeframe() -> None:
     assert result.error is None
     # 趋势 SMA(3) 需 3 根日线就绪后才买入 —— 有成交即证明趋势 bar 被喂入
     assert result.trades
+
+
+def test_minute_equity_curve_preserves_intraday_timestamps() -> None:
+    """分钟回测的曲线不能把同日成交压成一个日期点。"""
+    result = run_strategy_backtest(
+        code=_EMA_CROSS,
+        market="CN_A",
+        instrument_ids=("600000.SH",),
+        bars_by_instrument={"600000.SH": _minute_bars(days=5)},
+        frequency="5m",
+        initial_cash=Decimal("1000000"),
+    )
+
+    assert len(result.equity_curve) > len(
+        {point[0][:10] for point in result.equity_curve}
+    )
+    assert any("T" in point[0] for point in result.equity_curve)

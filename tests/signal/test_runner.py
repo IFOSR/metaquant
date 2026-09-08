@@ -49,3 +49,37 @@ def test_run_signal_backtest_produces_result() -> None:
     payload = result.payload()
     assert payload["schema_version"] == "strategy-backtest/v1"
     assert payload["cost_basis"] == "net_of_fees"
+
+
+def test_must_fire_when_entry_condition_satisfied() -> None:
+    """must-fire 夹具：进场条件在喂入数据上无歧义成立 → 必须成交。
+
+    用于机械地抓「自相矛盾的进场条件」这类永远不成交的 bug。
+    """
+    signal = (
+        "INDICATORS = []\n"
+        "def compute_signal(ctx):\n"
+        "    if ctx.position == 0 and ctx.bar.close > 12.0:\n"
+        "        return Signal(target_qty=1)\n"
+        "    return Signal(target_qty=ctx.position)\n"
+    )
+    base = datetime(2026, 1, 5, 15, 0, tzinfo=SHANGHAI)
+    bars = tuple(
+        Bar(
+            timestamp=base + timedelta(days=i),
+            open=15.0,
+            high=15.1,
+            low=14.9,
+            close=15.0,
+            volume=1000.0,
+        )
+        for i in range(5)
+    )
+    result = run_signal_backtest(
+        code=signal,
+        market="CN_A",
+        instrument_ids=("600000.SH",),
+        bars_by_instrument={"600000.SH": bars},
+        frequency="1d",
+    )
+    assert result.metrics.trade_count > 0

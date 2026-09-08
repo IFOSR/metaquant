@@ -795,16 +795,17 @@ def code_test_strategy(
     trend_frequency: str | None = None,
     initial_cash: Decimal = _DEFAULT_INITIAL_CASH,
 ) -> CodeTestResult:
-    """代码正确性测试：安全扫描 + 编译 + 实例化 + 用「数据准备」环节选定的
-    基础行情端到端跑通。
+    """代码正确性测试：契约校验 + 端到端跑通 + 必须产出信号。
 
-    复用 ``run_strategy_backtest`` 的完整 NT 装配，喂入真实行情的一小段切片
-    ——只要代码能通过安全扫描、编译、实例化，并在该数据上跑通不崩，即视为
-    「代码正确」。它不衡量好坏（那是回测的事），只保证代码能跑。
+    通过注入式隔离加载信号 spec，在「数据准备」选定的基础行情上端到端跑通，
+    并断言至少成交一笔——机械地抓「永远不成交」的进场逻辑 bug（如条件自相
+    矛盾）。它不衡量好坏（那是回测的事），只保证代码能跑且能产生信号。
     """
     started = _clock.monotonic()
     try:
-        run_strategy_backtest(
+        from quant_platform.signal.runner import run_signal_backtest
+
+        result = run_signal_backtest(
             code=code,
             market=market,
             instrument_ids=instrument_ids,
@@ -814,6 +815,11 @@ def code_test_strategy(
             trend_frequency=trend_frequency,
             initial_cash=initial_cash,
         )
+        if result.metrics.trade_count == 0:
+            raise StrategyLoadError(
+                "code test produced no trades on representative data; "
+                "the entry condition may be unsatisfiable"
+            )
         passed = True
         exit_code = 0
         stderr = ""

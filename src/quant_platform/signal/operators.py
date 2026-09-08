@@ -139,10 +139,91 @@ class AtrOperator(Operator):
         self.initialized = True
 
 
+class AdxOperator(Operator):
+    """ADX（Wilder 自实现）。
+
+    平台自建而非复用 NautilusTrader 的 ``DirectionalMovement``：后者只暴露
+    +DM/-DM，``.value`` 恒为 0（无 ADX）。此处输出 ``adx`` / ``di_plus`` /
+    ``di_minus``。
+    """
+
+    def __init__(self, period: int) -> None:
+        super().__init__(period)
+        self._prev_high: float | None = None
+        self._prev_low: float | None = None
+        self._prev_close: float | None = None
+        self._trs: list[float] = []
+        self._pdms: list[float] = []
+        self._ndms: list[float] = []
+        self._dxs: list[float] = []
+        self._tr = 0.0
+        self._pdm_s = 0.0
+        self._ndm_s = 0.0
+        self._adx_s = 0.0
+        self.adx = 0.0
+        self.di_plus = 0.0
+        self.di_minus = 0.0
+
+    def update(
+        self,
+        *,
+        high: float | None = None,
+        low: float | None = None,
+        close: float | None = None,
+    ) -> None:
+        assert high is not None and low is not None and close is not None
+        if self._prev_high is None:
+            tr = high - low
+            pdm = 0.0
+            ndm = 0.0
+        else:
+            up = high - self._prev_high
+            dn = self._prev_low - low
+            pdm = up if (up > dn and up > 0) else 0.0
+            ndm = dn if (dn > up and dn > 0) else 0.0
+            tr = max(
+                high - low,
+                abs(high - self._prev_close),
+                abs(low - self._prev_close),
+            )
+        self._prev_high = high
+        self._prev_low = low
+        self._prev_close = close
+        self._trs.append(tr)
+        self._pdms.append(pdm)
+        self._ndms.append(ndm)
+        if len(self._trs) < self.period:
+            return
+        if len(self._trs) == self.period:
+            self._tr = sum(self._trs) / self.period
+            self._pdm_s = sum(self._pdms) / self.period
+            self._ndm_s = sum(self._ndms) / self.period
+        else:
+            k = 1.0 / self.period
+            self._tr = self._tr + k * (tr - self._tr)
+            self._pdm_s = self._pdm_s + k * (pdm - self._pdm_s)
+            self._ndm_s = self._ndm_s + k * (ndm - self._ndm_s)
+        self.di_plus = 100.0 * self._pdm_s / self._tr if self._tr > 0 else 0.0
+        self.di_minus = 100.0 * self._ndm_s / self._tr if self._tr > 0 else 0.0
+        denom = self.di_plus + self.di_minus
+        dx = (
+            100.0 * abs(self.di_plus - self.di_minus) / denom if denom > 0 else 0.0
+        )
+        self._dxs.append(dx)
+        if len(self._dxs) <= self.period:
+            self._adx_s = sum(self._dxs) / len(self._dxs)
+        else:
+            k = 1.0 / self.period
+            self._adx_s = self._adx_s + k * (dx - self._adx_s)
+        self.adx = self._adx_s
+        self.initialized = True
+
+
 OPERATORS: dict[str, type[Operator]] = {
     "sma": SmaOperator,
     "ema": EmaOperator,
     "atr": AtrOperator,
+    "adx": AdxOperator,
 }
 
 

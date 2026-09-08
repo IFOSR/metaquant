@@ -43,3 +43,16 @@ def test_atr_values() -> None:
         op.update(high=high, low=low, close=close)
     assert op.initialized
     assert op.value > 0
+
+
+def test_adx_not_zero_and_direction_matches() -> None:
+    """单边上涨序列：adx 必须非 0（不可像 DirectionalMovement.value 那样恒 0），
+    且 +DI 应大于 -DI。"""
+    op = build_operator({"type": "adx", "period": 14})
+    close = 100.0
+    for _ in range(60):
+        op.update(high=close + 1.0, low=close - 0.2, close=close)
+        close += 0.5
+    assert op.initialized
+    assert op.adx > 0
+    assert op.di_plus > op.di_minus

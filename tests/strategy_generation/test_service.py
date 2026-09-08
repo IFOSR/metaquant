@@ -260,6 +260,27 @@ def _minute_pit_row(day: int, index: int, price: float) -> RawPITRow:
     )
 
 
+def test_load_code_test_bars_covers_warmup() -> None:
+    """code test 切片必须足够覆盖指标预热（如 SMA60），否则误判 no trades。"""
+    rows = [_daily_pit_row(day, 100.0 + day) for day in range(300)]
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(engine)
+    SqlAlchemyPitStore(sessions).persist(rows)
+    service = StrategyBacktestService(sessions)
+
+    db_ids, exec_bars, trend_bars = service.load_code_test_bars(
+        instrument_ids=("RB2610.SHF",), frequency="1d"
+    )
+    assert db_ids == ("RB2610.SHF",)
+    assert trend_bars is None
+    assert len(exec_bars["RB2610.SHF"]) == 250
+
+
 def test_run_warmed_trend_series_trades_inside_window() -> None:
     """日线趋势 + 5m 执行：趋势指标必须带窗口前历史，否则窗口内无信号。
 

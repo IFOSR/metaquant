@@ -173,13 +173,16 @@ class StrategyBacktestService:
         instrument_ids: tuple[str, ...],
         frequency: str,
         trend_frequency: str | None = None,
-        max_bars: int = 60,
+        max_bars: int = 250,
     ) -> tuple[
         tuple[str, ...],
         dict[str, tuple[Bar, ...]],
         dict[str, tuple[Bar, ...]] | None,
     ]:
         """加载「代码正确性测试」用的基础行情切片（每标的至多 ``max_bars`` 根）。
+
+        默认 250 根：必须覆盖常见指标预热（SMA60/MACD(12,26) 等）并留出
+        足够的信号窗口；取样太小会误判「永远不成交」（预热就用光了所有 K 线）。
 
         数据未入库时抛 ``ValueError("MARKET_DATA_NOT_INGESTED")``，由调用方转成
         「数据未就绪」的友好提示（引导用户先做数据准备）。

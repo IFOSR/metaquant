@@ -219,11 +219,92 @@ class AdxOperator(Operator):
         self.initialized = True
 
 
+class BollingerOperator(Operator):
+    """布林带：mid/upper/lower（总体标准差，k 默认 2）。"""
+
+    def __init__(self, period: int, k: float = 2.0) -> None:
+        super().__init__(period)
+        self.k = k
+        self._buf: list[float] = []
+        self.mid = 0.0
+        self.upper = 0.0
+        self.lower = 0.0
+
+    def update(
+        self,
+        *,
+        high: float | None = None,
+        low: float | None = None,
+        close: float | None = None,
+    ) -> None:
+        assert close is not None
+        self._buf.append(close)
+        if len(self._buf) > self.period:
+            self._buf.pop(0)
+        if len(self._buf) < self.period:
+            return
+        mean = sum(self._buf) / self.period
+        variance = sum((x - mean) ** 2 for x in self._buf) / self.period
+        std = variance ** 0.5
+        self.mid = mean
+        self.upper = mean + self.k * std
+        self.lower = mean - self.k * std
+        self.initialized = True
+
+
+class RsiOperator(Operator):
+    """RSI（Wilder 平滑）。"""
+
+    def __init__(self, period: int) -> None:
+        super().__init__(period)
+        self._prev_close: float | None = None
+        self._gains: list[float] = []
+        self._losses: list[float] = []
+        self._avg_gain = 0.0
+        self._avg_loss = 0.0
+        self.value = 0.0
+
+    def update(
+        self,
+        *,
+        high: float | None = None,
+        low: float | None = None,
+        close: float | None = None,
+    ) -> None:
+        assert close is not None
+        if self._prev_close is None:
+            self._prev_close = close
+            return
+        change = close - self._prev_close
+        gain = max(change, 0.0)
+        loss = max(-change, 0.0)
+        self._prev_close = close
+        self._gains.append(gain)
+        self._losses.append(loss)
+        if len(self._gains) < self.period:
+            return
+        if len(self._gains) == self.period:
+            self._avg_gain = sum(self._gains) / self.period
+            self._avg_loss = sum(self._losses) / self.period
+        else:
+            k = 1.0 / self.period
+            self._avg_gain = self._avg_gain + k * (gain - self._avg_gain)
+            self._avg_loss = self._avg_loss + k * (loss - self._avg_loss)
+        if self._avg_loss == 0:
+            self.value = 100.0
+        else:
+            rs = self._avg_gain / self._avg_loss
+            self.value = 100.0 - 100.0 / (1.0 + rs)
+        self.initialized = True
+
+
 OPERATORS: dict[str, type[Operator]] = {
     "sma": SmaOperator,
     "ema": EmaOperator,
     "atr": AtrOperator,
     "adx": AdxOperator,
+    "bollinger": BollingerOperator,
+    "rsi": RsiOperator,
 }
 
 
@@ -232,6 +313,8 @@ def build_operator(spec: dict) -> Operator:
     type_name = spec.get("type")
     if type_name == "macd":
         return MacdOperator(fast=spec["fast"], slow=spec["slow"])
+    if type_name == "bollinger" and "k" in spec:
+        return BollingerOperator(period=spec["period"], k=spec["k"])
     cls = OPERATORS.get(type_name)
     if cls is None:
         raise ValueError(f"unknown operator: {type_name}")

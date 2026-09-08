@@ -56,3 +56,22 @@ def test_adx_not_zero_and_direction_matches() -> None:
     assert op.initialized
     assert op.adx > 0
     assert op.di_plus > op.di_minus
+
+
+def test_bollinger_bands() -> None:
+    op = build_operator({"type": "bollinger", "period": 3})
+    for close in (1, 2, 3, 4, 5):
+        op.update(close=close)
+    assert op.initialized
+    assert abs(op.mid - 4.0) < 1e-9
+    std = (2.0 / 3.0) ** 0.5
+    assert abs(op.upper - (4.0 + 2 * std)) < 1e-9
+    assert abs(op.lower - (4.0 - 2 * std)) < 1e-9
+
+
+def test_rsi_all_gains_is_100() -> None:
+    op = build_operator({"type": "rsi", "period": 3})
+    for close in (10, 11, 12, 13, 14):
+        op.update(close=close)
+    assert op.initialized
+    assert op.value == 100.0

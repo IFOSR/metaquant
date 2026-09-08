@@ -17,6 +17,7 @@ import type {
   StrategyFrequency,
   StrategyMessage,
 } from "../lib/types";
+import { actionTone, positionAction, tradeAction } from "../lib/trade-labels";
 import { EquitySparkline } from "./equity-sparkline";
 import { useI18n } from "./i18n-provider";
 import { OpenPaperDialog } from "./open-paper-dialog";
@@ -95,6 +96,10 @@ export function StrategyChat() {
   const [messages, setMessages] = useState<StrategyMessage[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<StrategyAttachment[]>([]);
+  const [selectedBacktestHash, setSelectedBacktestHash] = useState<string | null>(
+    null,
+  );
+  const [backtestPickerOpen, setBacktestPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backtest, setBacktest] = useState<StrategyBacktestResult | null>(null);
@@ -116,6 +121,10 @@ export function StrategyChat() {
       .flatMap((item) => item.checks)
       .find((check) => check.available && check.required !== null)?.required ??
     null;
+  const selectedBacktest =
+    draft?.backtestResults.find(
+      (entry) => entry.backtestHash === selectedBacktestHash,
+    ) ?? null;
 
   useEffect(() => {
     if (draft === null || draft.instrumentIds.length === 0) {
@@ -152,6 +161,8 @@ export function StrategyChat() {
         setDraft(loaded);
         setMessages(loaded.messages ?? []);
         setCodeTest(loaded.codeTestResult ?? null);
+        setSelectedBacktestHash(null);
+        setBacktestPickerOpen(false);
         applyPlan(loaded);
         setBtEdited(false);
         setError(null);
@@ -198,10 +209,30 @@ export function StrategyChat() {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     const pending = attachments;
+    const pendingBacktestHash = selectedBacktestHash;
+    const pendingBacktest = selectedBacktest;
     setBusy(true);
     setError(null);
-    setMessages((previous) => [...previous, { role: "user", content: trimmed }]);
-    setAttachments([]);
+    setMessages((previous) => [
+      ...previous,
+      {
+        role: "user",
+        content: trimmed,
+        attachments: [
+          ...pending,
+          ...(pendingBacktest
+            ? [
+                {
+                  name: `${t("strategyChat.backtestReference")} · ${pendingBacktest.start} ~ ${pendingBacktest.end}`,
+                  kind: "backtest" as const,
+                  extractedText: "",
+                  backtestHash: pendingBacktest.backtestHash,
+                },
+              ]
+            : []),
+        ],
+      },
+    ]);
     try {
       if (draft === null) {
         const created = await quantApiClient.createStrategyDraft(
@@ -217,6 +248,7 @@ export function StrategyChat() {
           draft.id,
           trimmed,
           pending,
+          pendingBacktestHash,
         );
         setDraft(updated);
         if (!btEdited) applyPlan(updated);
@@ -224,6 +256,9 @@ export function StrategyChat() {
         setCodeTest(null);
         setMessages((previous) => [...previous, assistantReply(updated)]);
       }
+      setAttachments([]);
+      setSelectedBacktestHash(null);
+      setBacktestPickerOpen(false);
       setInput("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -357,6 +392,9 @@ export function StrategyChat() {
     setBacktest(null);
     setCodeTest(null);
     setInput("");
+    setAttachments([]);
+    setSelectedBacktestHash(null);
+    setBacktestPickerOpen(false);
     setError(null);
     setShowCode(false);
     setDataStatus(null);
@@ -483,6 +521,38 @@ export function StrategyChat() {
           )}
 
           <div className="sc-composer">
+            {selectedBacktest && (
+              <div
+                className="sc-backtest-reference"
+                role="status"
+                aria-label={`${t("strategyChat.backtestImported")} ${selectedBacktest.start} ~ ${selectedBacktest.end}`}
+              >
+                <div>
+                  <span className="sc-attachment-kind">
+                    {t("strategyChat.backtestImported")}
+                  </span>
+                  <strong>
+                    {selectedBacktest.start} ~ {selectedBacktest.end}
+                  </strong>
+                  <span className="sc-backtest-reference-meta">
+                    {selectedBacktest.frequency} ·{" "}
+                    {selectedBacktest.metrics
+                      ? pct(selectedBacktest.metrics.totalReturn)
+                      : "—"}{" "}
+                    · {selectedBacktest.metrics?.tradeCount ?? "—"}{" "}
+                    {t("strategyChat.trades")}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label={t("strategyChat.removeBacktest")}
+                  onClick={() => setSelectedBacktestHash(null)}
+                  disabled={busy || frozen}
+                >
+                  ×
+                </button>
+              </div>
+            )}
             {attachments.length > 0 && (
               <div className="sc-attachments">
                 {attachments.map((attachment, index) => (
@@ -530,6 +600,75 @@ export function StrategyChat() {
             >
               {t("strategyChat.attach")}
             </button>
+            <button
+              type="button"
+              className="sc-import-backtest"
+              aria-haspopup="dialog"
+              aria-expanded={backtestPickerOpen}
+              onClick={() => setBacktestPickerOpen((open) => !open)}
+              disabled={
+                busy ||
+                frozen ||
+                draft === null ||
+                draft.backtestResults.length === 0
+              }
+            >
+              {t("strategyChat.importBacktest")}
+            </button>
+            {backtestPickerOpen && draft && (
+              <div
+                className="sc-backtest-picker"
+                role="dialog"
+                aria-label={t("strategyChat.backtestPickerTitle")}
+              >
+                <div className="sc-backtest-picker-head">
+                  <strong>{t("strategyChat.backtestPickerTitle")}</strong>
+                  <button
+                    type="button"
+                    aria-label={t("strategyChat.closeBacktestPicker")}
+                    onClick={() => setBacktestPickerOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="sc-backtest-picker-list">
+                  {[...draft.backtestResults]
+                    .sort((a, b) => b.ranAt.localeCompare(a.ranAt))
+                    .map((entry) => (
+                      <button
+                        type="button"
+                        className={`sc-backtest-option ${
+                          entry.backtestHash === selectedBacktestHash
+                            ? "is-active"
+                            : ""
+                        }`}
+                        key={entry.backtestHash}
+                        onClick={() => {
+                          setSelectedBacktestHash(entry.backtestHash);
+                          setBacktestPickerOpen(false);
+                        }}
+                      >
+                        <span className="sc-backtest-option-range">
+                          {entry.start} ~ {entry.end}
+                        </span>
+                        <span className="sc-backtest-option-meta">
+                          {entry.frequency} ·{" "}
+                          {entry.metrics
+                            ? pct(entry.metrics.totalReturn)
+                            : "—"}{" "}
+                          · Sharpe{" "}
+                          {entry.metrics?.sharpe?.toFixed(2) ?? "—"} ·{" "}
+                          {entry.metrics?.tradeCount ?? "—"}{" "}
+                          {t("strategyChat.trades")}
+                        </span>
+                        <span className="sc-backtest-option-hash mono">
+                          {entry.backtestHash.slice(0, 12)}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
             <input
               id="sc-attach-input"
               type="file"
@@ -995,7 +1134,7 @@ export function StrategyChat() {
                               <div className="bt-trade-card" key={index}>
                                 <div className="bt-trade-left">
                                   <span className="bt-trade-side mono">
-                                    {position.entry === "BUY" ? t("bt.buy") : t("bt.sell")}
+                                    {positionAction(position.entry)}
                                   </span>
                                   <span className="bt-trade-px mono">
                                     {position.avgPxOpen} · {fmtTime(position.openedAt)}
@@ -1035,8 +1174,14 @@ export function StrategyChat() {
                                 <span className="task-stage">{trade.time}</span>
                                 <strong className="mono">{trade.instrumentId}</strong>
                                 <span className="muted">
-                                  {trade.side === "BUY" ? t("bt.buy") : t("bt.sell")} ·{" "}
-                                  {trade.quantity} @ {trade.price}
+                                  <span
+                                    className={`trade-action trade-action-${actionTone(
+                                      tradeAction(trade),
+                                    )}`}
+                                  >
+                                    {tradeAction(trade)}
+                                  </span>{" "}
+                                  · {trade.quantity} @ {trade.price}
                                 </span>
                                 <span className="muted">{trade.quantity}</span>
                               </div>

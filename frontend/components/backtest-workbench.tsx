@@ -11,6 +11,7 @@ import type {
   StrategyDraft,
   StrategyFrequency,
 } from "../lib/types";
+import { actionTone, positionAction, tradeAction } from "../lib/trade-labels";
 import { EquitySparkline } from "./equity-sparkline";
 import { useI18n } from "./i18n-provider";
 
@@ -560,7 +561,7 @@ export function BacktestWorkbench() {
                           <div className="bt-trade-card" key={index}>
                             <div className="bt-trade-left">
                               <span className="bt-trade-side mono">
-                                {position.entry === "BUY" ? t("bt.buy") : t("bt.sell")}
+                                {positionAction(position.entry)}
                               </span>
                               <span className="bt-trade-px mono">
                                 {position.avgPxOpen} · {fmtTime(position.openedAt)}
@@ -615,7 +616,14 @@ export function BacktestWorkbench() {
                               <span className="task-stage">{fmtTime(trade.time)}</span>
                               <strong className="mono">{trade.instrumentId}</strong>
                               <span className="muted">
-                                {trade.side === "BUY" ? t("bt.buy") : t("bt.sell")} ·{" "}
+                                <span
+                                  className={`trade-action trade-action-${actionTone(
+                                    tradeAction(trade),
+                                  )}`}
+                                >
+                                  {tradeAction(trade)}
+                                </span>{" "}
+                                ·{" "}
                                 {trade.quantity} @ {trade.price}
                               </span>
                               <span className="task-fee mono">

@@ -8,6 +8,7 @@ import type {
   BacktestResult,
   MarketDataCoverageEntry,
 } from "../lib/types";
+import { positionAction } from "../lib/trade-labels";
 import { useI18n } from "./i18n-provider";
 
 interface BacktestLabProps {
@@ -354,7 +355,7 @@ export function BacktestLab({ factors }: BacktestLabProps) {
                     <tr key={`${position.instrumentId}-${index}`}>
                       <td className="mono">{position.instrumentId}</td>
                       <td>
-                        {position.entry === "BUY" ? t("bt.long") : t("bt.short")}
+                        {positionAction(position.entry)}
                       </td>
                       <td>{position.peakQty}</td>
                       <td className="mono">{position.avgPxOpen}</td>

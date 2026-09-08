@@ -8,6 +8,7 @@ import {
   mapExperimentRun,
   mapResearchBrief,
   mapResearchJob,
+  mapStrategyDraft,
 } from "../lib/api";
 import type { Session } from "../lib/types";
 
@@ -48,6 +49,94 @@ function apiClient(fetcher: typeof fetch) {
 }
 
 describe("HTTP QuantApiClient", () => {
+  it("posts only the selected backtest hash with a strategy message", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      response({
+        id: "draft-1",
+        market: "CN_COMMODITY_FUTURES",
+        kind: "strategy",
+        stage: "READY",
+        state: "DRAFT",
+        title: "MACD strategy",
+        explanation: "Ready",
+        question: "",
+        code: null,
+        ready: true,
+        instrument_ids: ["SA9999.CZC"],
+        frequency: "1d",
+        backtest_plan: null,
+        code_test_result: null,
+        backtest_results: [],
+        paper_binding: null,
+        content_hash: null,
+        resource_version: 1,
+        created_at: "2026-09-07T00:00:00Z",
+        updated_at: "2026-09-07T00:00:00Z",
+        messages: [],
+      }),
+    );
+
+    await apiClient(fetcher).postStrategyMessage(
+      "draft-1",
+      "分析这次回测并优化策略",
+      [],
+      "bt-20260907",
+    );
+
+    const [, requestInit] = fetcher.mock.calls[0];
+    expect(JSON.parse(String(requestInit?.body))).toEqual({
+      message: "分析这次回测并优化策略",
+      attachments: [],
+      backtest_hash: "bt-20260907",
+    });
+  });
+
+  it("maps a backtest reference attachment from strategy history", () => {
+    const draft = mapStrategyDraft({
+      id: "draft-1",
+      market: "CN_COMMODITY_FUTURES",
+      kind: "strategy",
+      stage: "BACKTESTED",
+      state: "DRAFT",
+      title: "MACD strategy",
+      explanation: "Ready",
+      question: "",
+      code: null,
+      ready: true,
+      instrument_ids: ["SA9999.CZC"],
+      frequency: "1d",
+      backtest_plan: null,
+      code_test_result: null,
+      backtest_results: [],
+      paper_binding: null,
+      content_hash: null,
+      resource_version: 1,
+      created_at: "2026-09-07T00:00:00Z",
+      updated_at: "2026-09-07T00:00:00Z",
+      messages: [
+        {
+          role: "user",
+          content: "请分析回测",
+          attachments: [
+            {
+              name: "回测结果 · 2026-09-07",
+              kind: "backtest",
+              extracted_text: "",
+              backtest_hash: "bt-20260907",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(draft.messages?.[0].attachments?.[0]).toEqual({
+      name: "回测结果 · 2026-09-07",
+      kind: "backtest",
+      extractedText: "",
+      backtestHash: "bt-20260907",
+    });
+  });
+
   it("maps list responses and sends the bearer token", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       response({

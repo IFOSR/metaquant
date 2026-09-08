@@ -419,6 +419,7 @@ export interface BacktestTrade {
   quantity: number;
   price: number;
   commission?: number;
+  action?: string;
 }
 
 export interface BacktestPosition {
@@ -480,9 +481,10 @@ export interface StrategyMessage {
 
 export interface StrategyAttachment {
   name: string;
-  kind: "text" | "image";
+  kind: "text" | "image" | "backtest";
   extractedText: string;
   objectKey?: string;
+  backtestHash?: string;
 }
 
 export interface StrategyBacktestPlan {

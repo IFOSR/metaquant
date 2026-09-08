@@ -36,6 +36,16 @@ const LONG_RUNNING_PATHS = new Set([
   "strategy-drafts",
 ]);
 
+export function upstreamTimeoutMs(path: string[]): number {
+  const resource = path[1] ?? path[0];
+  if (resource !== "strategy-drafts") {
+    return LONG_RUNNING_PATHS.has(resource) ? 180_000 : 15_000;
+  }
+  // Strategy draft creation/message turns invoke a synchronous LLM runner.
+  // Keep the proxy timeout above the backend's two-attempt 300s budget.
+  return 700_000;
+}
+
 async function proxy(request: NextRequest, path: string[]) {
   if (!isLocalDemoRequest(request.headers)) {
     return Response.json(
@@ -95,11 +105,7 @@ async function proxy(request: NextRequest, path: string[]) {
     if (value) headers.set(name, value);
   }
   const target = buildProxyTarget(upstream, path, request.nextUrl.search);
-  const timeoutMs = LONG_RUNNING_PATHS.has(path[1])
-    ? path[1] === "strategy-drafts"
-      ? 400_000
-      : 180_000
-    : 15_000;
+  const timeoutMs = upstreamTimeoutMs(path);
   let response: Response;
   try {
     response = await fetch(target, {

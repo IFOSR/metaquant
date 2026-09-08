@@ -818,6 +818,106 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 }
 .sc-attach:hover:not(:disabled) { color: var(--amber-deep); }
 .sc-attach:disabled { cursor: not-allowed; opacity: 0.4; }
+.sc-import-backtest {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  justify-self: start;
+  padding: 0 16px;
+}
+.sc-import-backtest:hover:not(:disabled) { color: var(--amber-deep); }
+.sc-import-backtest:disabled { cursor: not-allowed; opacity: 0.4; }
+.sc-import-backtest:focus-visible,
+.sc-attach:focus-visible,
+.sc-backtest-reference button:focus-visible,
+.sc-backtest-picker button:focus-visible {
+  outline: 2px solid var(--amber-deep);
+  outline-offset: 2px;
+}
+.sc-backtest-reference {
+  align-items: center;
+  background: rgba(231, 166, 59, 0.1);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+.sc-backtest-reference > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  align-items: baseline;
+}
+.sc-backtest-reference strong { font-size: 0.82rem; }
+.sc-backtest-reference-meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+.sc-backtest-reference button,
+.sc-backtest-picker-head button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 3px 5px;
+}
+.sc-backtest-reference button:hover,
+.sc-backtest-picker-head button:hover { color: var(--danger); }
+.sc-backtest-picker {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin: 0 12px 8px;
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+}
+.sc-backtest-picker-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px 3px;
+}
+.sc-backtest-picker-head strong { font-size: 0.8rem; }
+.sc-backtest-picker-list { display: grid; gap: 6px; }
+.sc-backtest-option {
+  background: var(--panel-inset);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  text-align: left;
+}
+.sc-backtest-option:hover,
+.sc-backtest-option.is-active {
+  background: rgba(231, 166, 59, 0.12);
+  border-color: var(--amber-deep);
+}
+.sc-backtest-option-range { font-size: 0.76rem; font-weight: 700; }
+.sc-backtest-option-meta {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+.sc-backtest-option-hash { color: var(--muted); font-size: 0.6rem; }
 .sc-send {
   align-items: center;
   background: var(--amber);
@@ -1039,9 +1139,46 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
   border: 1px solid var(--line);
   border-radius: 8px;
   display: block;
-  height: auto;
+  height: 320px;
+  min-width: 0;
+  overflow: hidden;
   width: 100%;
 }
+.equity-chart-shell {
+  --chart-grid: #d8dee5;
+  --chart-line: #9d4f43;
+  --chart-text: #536071;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.equity-chart-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+.equity-chart-hint {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.equity-chart-reset {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  padding: 4px 8px;
+}
+.equity-chart-reset:hover {
+  border-color: var(--amber-deep);
+  color: var(--amber-deep);
+}
+.trade-action-long { color: var(--success); }
+.trade-action-short { color: var(--danger); }
+.trade-action-neutral { color: inherit; }
 
 /* ── 研究生命周期（阶段灯塔） ─────────────────────────────────── */
 .sc-stage-rail {
@@ -1640,7 +1777,7 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 .bt-console .bt-results .sc-artifact-head { margin-bottom: 16px; }
 .bt-console .bt-results .sc-artifact-body { display: grid; gap: 16px; }
 .bt-console .bt-results .sc-metrics { grid-template-columns: repeat(4, 1fr); }
-.bt-console .bt-results .sc-sparkline { aspect-ratio: 16 / 5; margin-top: 10px; }
+.bt-console .bt-results .sc-sparkline { margin-top: 0; }
 .bt-equity { display: grid; gap: 2px; }
 .bt-section { display: grid; gap: 4px; }
 .bt-section .eyebrow { margin-bottom: 8px; }
@@ -1716,5 +1853,6 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 }
 @media (max-width: 680px) {
   .bt-console .bt-results .sc-metrics { grid-template-columns: repeat(2, 1fr); }
-  .bt-console .bt-results .sc-sparkline { aspect-ratio: 4 / 3; }
+  .bt-console .bt-results .sc-sparkline { height: 260px; }
+  .equity-chart-toolbar { align-items: flex-start; flex-direction: column; }
 }

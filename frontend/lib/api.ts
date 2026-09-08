@@ -419,6 +419,7 @@ export interface ApiBacktestResult {
     quantity: number;
     price: number;
     commission?: number;
+    action?: string;
   }>;
   positions: Array<{
     instrument_id: string;
@@ -488,7 +489,13 @@ export interface ApiStrategyDraft {
   messages?: Array<{
     role: "user" | "assistant";
     content: string;
-    attachments?: Array<{ name: string; kind: "text" | "image"; extracted_text: string }>;
+    attachments?: Array<{
+      name: string;
+      kind: "text" | "image" | "backtest";
+      extracted_text: string;
+      object_key?: string;
+      backtest_hash?: string | null;
+    }>;
   }>;
 }
 
@@ -522,6 +529,7 @@ export interface ApiStrategyBacktestResult {
     quantity: number;
     price: number;
     commission?: number;
+    action?: string;
   }>;
   positions: Array<{
     instrument_id: string;
@@ -720,6 +728,7 @@ export interface QuantApiClient {
     draftId: string,
     message: string,
     attachments?: StrategyAttachment[],
+    backtestHash?: string | null,
   ): Promise<StrategyDraft>;
   uploadStrategyAttachment(
     market: MarketId,
@@ -1235,6 +1244,7 @@ export class HttpQuantApiClient implements QuantApiClient {
     draftId: string,
     message: string,
     attachments?: StrategyAttachment[],
+    backtestHash?: string | null,
   ) {
     const result = await this.request<ApiStrategyDraft>(
       `/strategy-drafts/${draftId}/messages`,
@@ -1244,6 +1254,7 @@ export class HttpQuantApiClient implements QuantApiClient {
         body: JSON.stringify({
           message,
           attachments: (attachments ?? []).map(mapStrategyAttachmentToApi),
+          ...(backtestHash ? { backtest_hash: backtestHash } : {}),
         }),
       },
     );
@@ -2263,6 +2274,7 @@ export function mapBacktestResult(input: ApiBacktestResult): BacktestResult {
       quantity: trade.quantity,
       price: trade.price,
       commission: trade.commission,
+      action: trade.action,
     })),
     positions: (input.positions ?? []).map((position) => ({
       instrumentId: position.instrument_id,
@@ -2284,6 +2296,9 @@ export function mapStrategyAttachmentToApi(attachment: StrategyAttachment): {
   extracted_text: string;
   object_key: string;
 } {
+  if (attachment.kind === "backtest") {
+    throw new Error("Backtest references are sent as backtest_hash, not attachments");
+  }
   return {
     name: attachment.name,
     kind: attachment.kind,
@@ -2364,6 +2379,12 @@ export function mapStrategyDraft(input: ApiStrategyDraft): StrategyDraft {
         name: attachment.name,
         kind: attachment.kind,
         extractedText: attachment.extracted_text,
+        ...(attachment.object_key
+          ? { objectKey: attachment.object_key }
+          : {}),
+        ...(attachment.backtest_hash
+          ? { backtestHash: attachment.backtest_hash }
+          : {}),
       })),
     })),
   };
@@ -2405,6 +2426,7 @@ export function mapStrategyBacktestResult(
       quantity: trade.quantity,
       price: trade.price,
       commission: trade.commission,
+      action: trade.action,
     })),
     positions: (input.positions ?? []).map((position) => ({
       instrumentId: position.instrument_id,

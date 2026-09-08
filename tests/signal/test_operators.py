@@ -35,6 +35,9 @@ def test_macd_fields() -> None:
         op.update(close=close)
     assert op.initialized
     assert op.dif == op.fast_ema.value - op.slow_ema.value
+    assert op.dea == op.dea_ema.value
+    snap = op.snapshot()
+    assert set(snap) == {"dif", "dea"}
 
 
 def test_atr_values() -> None:

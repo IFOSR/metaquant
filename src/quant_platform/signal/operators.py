@@ -19,6 +19,12 @@ class Operator:
         self.period = period
         self.initialized = False
 
+    _FIELDS: tuple[str, ...] = ("value",)
+
+    def snapshot(self) -> dict[str, float]:
+        """当前值的字段快照（供信号 ctx 暴露，不暴露算子对象本身）。"""
+        return {field: getattr(self, field) for field in self._FIELDS}
+
     def update(
         self,
         *,
@@ -79,13 +85,17 @@ class EmaOperator(Operator):
 
 
 class MacdOperator(Operator):
-    """MACD：dif = ema(fast) - ema(slow)。dea 由平台用 ema 算子对 dif 序列另行计算。"""
+    """MACD：dif = ema(fast) - ema(slow)；dea = ema(signal) of dif。"""
 
-    def __init__(self, fast: int, slow: int) -> None:
+    _FIELDS = ("dif", "dea")
+
+    def __init__(self, fast: int, slow: int, signal: int = 9) -> None:
         super().__init__(slow)
         self.fast_ema = EmaOperator(fast)
         self.slow_ema = EmaOperator(slow)
+        self.dea_ema = EmaOperator(signal)
         self.dif = 0.0
+        self.dea = 0.0
 
     def update(
         self,
@@ -98,6 +108,8 @@ class MacdOperator(Operator):
         self.fast_ema.update(close=close)
         self.slow_ema.update(close=close)
         self.dif = self.fast_ema.value - self.slow_ema.value
+        self.dea_ema.update(close=self.dif)
+        self.dea = self.dea_ema.value
         self.initialized = self.slow_ema.initialized
 
 
@@ -148,6 +160,8 @@ class AdxOperator(Operator):
     +DM/-DM，``.value`` 恒为 0（无 ADX）。此处输出 ``adx`` / ``di_plus`` /
     ``di_minus``。
     """
+
+    _FIELDS = ("adx", "di_plus", "di_minus")
 
     def __init__(self, period: int) -> None:
         super().__init__(period)
@@ -226,6 +240,8 @@ class AdxOperator(Operator):
 
 class BollingerOperator(Operator):
     """布林带：mid/upper/lower（总体标准差，k 默认 2）。"""
+
+    _FIELDS = ("upper", "mid", "lower")
 
     def __init__(self, period: int, k: float = 2.0) -> None:
         super().__init__(period)
@@ -319,7 +335,9 @@ def build_operator(spec: dict[str, Any]) -> Operator:
     if not isinstance(type_name, str):
         raise ValueError("indicator spec requires a string 'type'")
     if type_name == "macd":
-        return MacdOperator(fast=spec["fast"], slow=spec["slow"])
+        return MacdOperator(
+            fast=spec["fast"], slow=spec["slow"], signal=spec.get("signal", 9)
+        )
     if type_name == "bollinger" and "k" in spec:
         return BollingerOperator(period=spec["period"], k=spec["k"])
     cls = OPERATORS.get(type_name)

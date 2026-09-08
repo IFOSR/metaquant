@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nautilus_trader.config import StrategyConfig
 from nautilus_trader.model.data import BarType
@@ -29,19 +29,9 @@ from quant_platform.markets.nt import (
 from quant_platform.markets.nt.venue import VenueSpec, venue_spec_for_market
 from quant_platform.signal.contract import load_signal_spec
 from quant_platform.signal.strategy import SignalStrategy
-from quant_platform.strategy_generation.backtest import (
-    _DEFAULT_FUTURES_FEE_SCHEDULE,
-    _DEFAULT_INITIAL_CASH,
-    _audit_t_plus_one,
-    _bar_type_suffix,
-    _equity_curve_recorder,
-    _extract_strategy_trades,
-    _normalize_instrument,
-    _validate_market_instruments,
-    StrategyBacktestResult,
-    StrategyLoadError,
-    bar_spec_for,
-)
+
+if TYPE_CHECKING:
+    from quant_platform.strategy_generation.backtest import StrategyBacktestResult
 
 
 def run_signal_backtest(
@@ -53,10 +43,29 @@ def run_signal_backtest(
     frequency: str,
     trend_bars_by_instrument: dict[str, tuple[Bar, ...]] | None = None,
     trend_frequency: str | None = None,
-    initial_cash: Decimal = _DEFAULT_INITIAL_CASH,
+    initial_cash: Decimal | None = None,
     venue_spec: VenueSpec | None = None,
 ) -> StrategyBacktestResult:
     """运行信号 spec 回测，返回与旧策略回测兼容的 StrategyBacktestResult。"""
+    # 惰性导入：strategy_generation 包 __init__ 会导入 service，而 service 又
+    # 导入本模块，模块级导入 strategy_generation.backtest 会形成循环。
+    # 后续应将共享的结果/提取件抽到中立模块（如 backtest.engine）。
+    from quant_platform.strategy_generation.backtest import (
+        _DEFAULT_FUTURES_FEE_SCHEDULE,
+        _DEFAULT_INITIAL_CASH,
+        _audit_t_plus_one,
+        _bar_type_suffix,
+        _equity_curve_recorder,
+        _extract_strategy_trades,
+        _normalize_instrument,
+        _validate_market_instruments,
+        StrategyBacktestResult,
+        StrategyLoadError,
+        bar_spec_for,
+    )
+
+    if initial_cash is None:
+        initial_cash = _DEFAULT_INITIAL_CASH
     _validate_market_instruments(market, instrument_ids)
     venues = {_normalize_instrument(item)[1] for item in instrument_ids}
     if len(venues) != 1:

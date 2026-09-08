@@ -24,10 +24,10 @@ from quant_platform.data_gateway.pit_store import (
 )
 from quant_platform.data_gateway.resolver import Bar
 from quant_platform.markets.nt.venue import VenueSpec
+from quant_platform.signal.runner import run_signal_backtest
 from quant_platform.strategy_generation.backtest import (
     aggregate_bars,
     db_instrument_id,
-    run_strategy_backtest,
 )
 
 _DEFAULT_INITIAL_CASH = Decimal("1000000")
@@ -247,7 +247,7 @@ class StrategyBacktestService:
                 )
                 for instrument_id in db_ids
             }
-        result = run_strategy_backtest(
+        result = run_signal_backtest(
             code=code,
             market=market,
             instrument_ids=db_ids,

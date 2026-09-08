@@ -27,6 +27,9 @@ from quant_platform.strategy_generation.backtest import (
     BacktestRequest,
     code_test_strategy,
 )
+from quant_platform.strategy_generation.backtest_context import (
+    format_backtest_context,
+)
 from quant_platform.strategy_generation.provisioning import (
     StrategyDataProvisioner,
     StrategyProvisionError,
@@ -101,7 +104,11 @@ def _draft_snapshot(record: StrategyDraftModel) -> dict[str, Any]:
         "frequency": record.frequency,
         "backtest_plan": record.backtest_plan,
         "code_test_result": record.code_test_result,
-        "backtest_results": record.backtest_results,
+        # 执行快照（code 等）仅供服务端重放，不随草稿快照下发，避免载荷膨胀。
+        "backtest_results": [
+            {key: value for key, value in entry.items() if key != "code"}
+            for entry in (record.backtest_results or [])
+        ],
         "paper_binding": record.paper_binding,
         "content_hash": record.content_hash,
         "saved_versions": record.saved_versions,
@@ -179,6 +186,74 @@ def build_strategy_router(
             detail="No strategy draft exists with this id, or you lack access.",
         )
 
+    def _replay_backtest(
+        draft: StrategyDraftModel,
+        backtest_hash: str,
+    ) -> dict[str, Any]:
+        """Resolve one recorded backtest and replay it without recording history."""
+        history = list(draft.backtest_results or [])
+        entry = next(
+            (
+                item
+                for item in history
+                if str(item.get("backtest_hash", "")) == backtest_hash
+            ),
+            None,
+        )
+        if entry is None:
+            raise _not_found()
+        if backtest_service is None:
+            raise ProblemError(
+                status=503,
+                code="BACKTEST_UNAVAILABLE",
+                title="Backtest unavailable",
+                detail="The strategy backtest service is not configured.",
+            )
+        # 优先用录制时的执行快照忠实重放；无快照的旧条目退回草稿当前值。
+        entry_code = entry.get("code")
+        code = entry_code if isinstance(entry_code, str) and entry_code else draft.code
+        if code is None:
+            raise ProblemError(
+                status=409,
+                code="STRATEGY_DRAFT_NOT_READY",
+                title="Strategy draft not ready",
+                detail="Strategy code is required to replay a backtest.",
+            )
+        entry_instruments = entry.get("instrument_ids")
+        instrument_ids = (
+            tuple(str(item) for item in entry_instruments)
+            if isinstance(entry_instruments, list) and entry_instruments
+            else tuple(draft.instrument_ids)
+        )
+
+        def _iso_date(value: object) -> date | None:
+            if not isinstance(value, str) or not value:
+                return None
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                return None
+
+        plan_start, plan_end, plan_frequency, plan_trend = _plan_defaults(draft)
+        entry_frequency = entry.get("frequency")
+        frequency = (
+            entry_frequency
+            if isinstance(entry_frequency, str) and entry_frequency in FREQUENCY_SET
+            else plan_frequency
+        )
+        try:
+            return backtest_service.run(
+                code=code,
+                market=draft.market,
+                instrument_ids=instrument_ids,
+                frequency=frequency,
+                trend_frequency=plan_trend,
+                start=_iso_date(entry.get("start")) or plan_start,
+                end=_iso_date(entry.get("end")) or plan_end,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return _error_payload(exc, draft)
+
     @router.get("/strategy-drafts")
     def list_strategy_drafts(
         state: StrategyDraftState | None = None,
@@ -248,13 +323,42 @@ def build_strategy_router(
         )
         if extra:
             user_content = f"{command.message}\n\n{extra}"
+        backtest_attachment: dict[str, Any] | None = None
+        if command.backtest_hash:
+            payload = _replay_backtest(draft, command.backtest_hash)
+            if payload.get("error"):
+                raise ProblemError(
+                    status=502,
+                    code="BACKTEST_REPLAY_FAILED",
+                    title="Imported backtest unavailable",
+                    detail=str(payload["error"]),
+                )
+            context = format_backtest_context(
+                payload,
+                backtest_hash=command.backtest_hash,
+                market=draft.market,
+            )
+            user_content = f"{user_content}\n\n{context}"
+            backtest_attachment = {
+                "name": (
+                    f"回测结果 {payload.get('start', '—')} 至 "
+                    f"{payload.get('end', '—')}"
+                ),
+                "kind": "backtest",
+                "extracted_text": "",
+                "object_key": "",
+                "backtest_hash": command.backtest_hash,
+            }
         history.append(StrategyMessage(role="user", content=user_content))
         output = _run_agent_turn(market=draft.market, history=history)
         updated = repository.apply_turn(
             draft_id=draft_id,
             user_content=command.message,
             output=output,
-            attachments=[a.model_dump(mode="json") for a in command.attachments],
+            attachments=[
+                *[a.model_dump(mode="json") for a in command.attachments],
+                *([backtest_attachment] if backtest_attachment else []),
+            ],
         )
         return _draft_snapshot(updated)
 
@@ -300,7 +404,11 @@ def build_strategy_router(
         if not actor.can({"strategy.read"}, project_id="local", market=draft.market):
             raise _not_found()
         messages = [
-            {"role": message.role, "content": message.content}
+            {
+                "role": message.role,
+                "content": message.content,
+                "attachments": message.attachments or [],
+            }
             for message in repository.list_messages(draft_id)
         ]
         snapshot = _draft_snapshot(draft)
@@ -547,8 +655,13 @@ def build_strategy_router(
         except Exception as exc:  # noqa: BLE001
             # 生成代码任意失败都以一致的错误 payload 返回，供对话修复。
             return _error_payload(exc, draft)
-        # 成功回测沉淀为可追溯历史（含 backtest_hash），供「回测」页对比。
-        repository.record_backtest(draft_id=draft_id, result=payload)
+        # 成功回测沉淀为可追溯历史（含 backtest_hash 与执行快照），供「回测」页对比。
+        repository.record_backtest(
+            draft_id=draft_id,
+            result=payload,
+            code=draft.code,
+            instrument_ids=list(draft.instrument_ids),
+        )
         return payload
 
     @router.get(
@@ -561,8 +674,8 @@ def build_strategy_router(
     ) -> dict[str, Any]:
         """按 backtest_hash 重放一次历史回测并返回完整结果（只读，不写入历史）。
 
-        冻结后的策略 code 固定、行情数据确定，同一参数重放会得到同一
-        backtest_hash，因此按条目记录的范围重算即可忠实还原当时那次回测。
+        条目录制时沉淀了代码与标的快照，即使草稿后续继续迭代，重放仍用
+        「当时那版代码」在同一范围重算，忠实还原当时那次回测。
         """
         draft = repository.get_draft(draft_id)
         if draft is None:
@@ -578,46 +691,7 @@ def build_strategy_router(
                 title="Backtest unavailable",
                 detail="The strategy backtest service is not configured.",
             )
-        history = list(draft.backtest_results or [])
-        entry = next(
-            (
-                item
-                for item in history
-                if str(item.get("backtest_hash", "")) == backtest_hash
-            ),
-            None,
-        )
-        if entry is None:
-            raise _not_found()
-
-        def _iso_date(value: object) -> date | None:
-            if not isinstance(value, str) or not value:
-                return None
-            try:
-                return date.fromisoformat(value)
-            except ValueError:
-                return None
-
-        plan_start, plan_end, plan_frequency, plan_trend = _plan_defaults(draft)
-        entry_frequency = entry.get("frequency")
-        frequency = (
-            entry_frequency
-            if isinstance(entry_frequency, str) and entry_frequency in FREQUENCY_SET
-            else plan_frequency
-        )
-        try:
-            return backtest_service.run(
-                code=draft.code,
-                market=draft.market,
-                instrument_ids=tuple(draft.instrument_ids),
-                frequency=frequency,
-                trend_frequency=plan_trend,
-                start=_iso_date(entry.get("start")) or plan_start,
-                end=_iso_date(entry.get("end")) or plan_end,
-            )
-        except Exception as exc:  # noqa: BLE001
-            # 与运行一致地返回统一错误 payload，供前端渲染修复提示。
-            return _error_payload(exc, draft)
+        return _replay_backtest(draft, backtest_hash)
 
     @router.post("/strategy-drafts/{draft_id}:code-test", status_code=200)
     def code_test_strategy_draft(

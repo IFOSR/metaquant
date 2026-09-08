@@ -53,9 +53,10 @@ class Attachment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1)
-    kind: Literal["text", "image"] = "text"
+    kind: Literal["text", "image", "backtest"] = "text"
     extracted_text: str = Field(default="")
     object_key: str = Field(default="")
+    backtest_hash: str | None = None
 
 
 class BacktestPlan(BaseModel):
@@ -100,6 +101,7 @@ class PostStrategyMessageCommand(BaseModel):
 
     message: str = Field(min_length=1)
     attachments: list[Attachment] = Field(default_factory=list)
+    backtest_hash: str | None = None
 
 
 class StrategyDraftRecord(BaseModel):

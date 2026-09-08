@@ -17,6 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from numbers import Integral
 from typing import Any
 
 from nautilus_trader.config import StrategyConfig
@@ -57,6 +58,7 @@ from quant_platform.strategy_generation.security import scan_strategy_source
 _DEFAULT_INITIAL_CASH = Decimal("1000000")
 
 SUPPORTED_FREQUENCIES = ("1d", "1w", "5m", "15m", "30m", "60m")
+_FUTURES_SUFFIXES = frozenset({"SHF", "SHFE", "DCE", "CZC", "CZCE", "INE", "GFE"})
 
 
 def _base_granularity(frequency: str) -> str:
@@ -218,6 +220,31 @@ def _normalize_instrument(instrument_id: str) -> tuple[str, str]:
     return symbol, venue
 
 
+def _validate_market_instruments(
+    market: str, instrument_ids: tuple[str, ...]
+) -> None:
+    """Reject a market/instrument mismatch before assembling the engine."""
+    futures = tuple(
+        instrument_id
+        for instrument_id in instrument_ids
+        if instrument_id.partition(".")[2].upper() in _FUTURES_SUFFIXES
+    )
+    equities = tuple(
+        instrument_id
+        for instrument_id in instrument_ids
+        if instrument_id.partition(".")[2].upper() not in _FUTURES_SUFFIXES
+    )
+    if market == "CN_A" and futures:
+        raise StrategyLoadError(
+            f"market CN_A cannot trade futures instruments: {', '.join(futures)}"
+        )
+    if market == "CN_COMMODITY_FUTURES" and equities:
+        raise StrategyLoadError(
+            "market CN_COMMODITY_FUTURES requires futures instruments: "
+            + ", ".join(equities)
+        )
+
+
 def db_instrument_id(instrument_id: str) -> str:
     """规范化到 PIT 存储里的标的 ID（``600000.SH`` → ``600000.SSE``）。
 
@@ -231,21 +258,66 @@ def db_instrument_id(instrument_id: str) -> str:
     return f"{symbol}.{suffix.upper()}"
 
 
+def _fill_action(side: str, quantity: float, position: float) -> tuple[str, float]:
+    """由成交前净仓推导方向化动作标签，返回 (标签, 成交后净仓)。
+
+    双边策略里裸 BUY/SELL 分不清是开仓还是平仓：BUY 在持空时是平空、
+    在净平时是开多；反手（一笔同时翻向）合并为「平空+开多」。
+    """
+    if side == "BUY":
+        closing = min(quantity, max(0.0, -position))
+        position += quantity
+        parts = [
+            label
+            for label, qty in (("平空", closing), ("开多", quantity - closing))
+            if qty > 0
+        ]
+        return "+".join(parts), position
+    closing = min(quantity, max(0.0, position))
+    position -= quantity
+    parts = [
+        label
+        for label, qty in (("平多", closing), ("开空", quantity - closing))
+        if qty > 0
+    ]
+    return "+".join(parts), position
+
+
 def _extract_strategy_trades(engine: Any) -> tuple[BacktestTrade, ...]:
-    """成交回报 + 逐笔费用（来自引擎 FeeModel，net 口径的基础）。"""
+    """成交回报 + 逐笔费用（来自引擎 FeeModel，net 口径的基础）。
+
+    每笔附带方向化动作（开多/开空/平多/平空），按时间顺序用逐笔净仓
+    演变推导，供交易记录与净值曲线标记区分多空方向。
+    """
     fills = engine.trader.generate_order_fills_report()
-    trades: list[BacktestTrade] = []
+    records: list[tuple[int, str, str, float, float, float]] = []
     for _, row in fills.iterrows():
         commissions = row["commissions"] or ()
-        commission = sum(_money_amount(item) for item in commissions)
+        records.append(
+            (
+                _timestamp_ns(row["ts_last"]),
+                str(row["instrument_id"]),
+                str(row["side"]),
+                float(row["filled_qty"]),
+                float(row["avg_px"]),
+                sum(_money_amount(item) for item in commissions),
+            )
+        )
+    records.sort(key=lambda item: item[0])
+    trades: list[BacktestTrade] = []
+    net: dict[str, float] = {}
+    for ts, instrument_id, side, quantity, price, commission in records:
+        action, position = _fill_action(side, quantity, net.get(instrument_id, 0.0))
+        net[instrument_id] = position
         trades.append(
             BacktestTrade(
-                time=_ns_to_iso(row["ts_last"]),
-                instrument_id=str(row["instrument_id"]),
-                side=str(row["side"]),
-                quantity=float(row["filled_qty"]),
-                price=float(row["avg_px"]),
+                time=_ns_to_iso(ts),
+                instrument_id=instrument_id,
+                side=side,
+                quantity=quantity,
+                price=price,
                 commission=commission,
+                action=action,
             )
         )
     return tuple(trades)
@@ -256,6 +328,20 @@ def _money_amount(value: object) -> float:
     text = str(value)
     amount, _, _ = text.partition(" ")
     return float(amount.replace(",", "").replace("_", ""))
+
+
+def _timestamp_ns(value: object) -> int:
+    """Normalize report timestamps for deterministic chronological sorting."""
+    if isinstance(value, datetime):
+        return int(value.timestamp() * 1e9)
+    raw = getattr(value, "value", None)
+    if isinstance(raw, Integral):
+        return int(raw)
+    if isinstance(value, Integral):
+        return int(value)
+    if isinstance(value, str):
+        return int(value)
+    raise TypeError(f"unsupported timestamp type: {type(value).__name__}")
 
 
 def _ns_to_iso(value: object) -> str:
@@ -361,18 +447,20 @@ def _equity_curve_recorder(
         trade_count: int,
         aggregate_daily: bool,
     ) -> tuple[tuple[tuple[str, float], ...], BacktestMetrics]:
-        if points:
-            points.append(
+        raw_points = list(points)
+        if raw_points:
+            raw_points.append(
                 (datetime.fromtimestamp(last_ts / 1e9, tz=UTC), _mark(last_close))
             )
-        if not points:
+        if not raw_points:
             return (), BacktestMetrics(0.0, None, 0.0, trade_count)
 
+        metric_points = raw_points
         if aggregate_daily:
             daily: dict[Any, float] = {}
-            for ts, value in points:
+            for ts, value in raw_points:
                 daily[ts.date()] = value
-            points[:] = [
+            metric_points = [
                 (datetime.combine(day, time.max, tzinfo=UTC), value)
                 for day, value in sorted(daily.items())
             ]
@@ -380,13 +468,19 @@ def _equity_curve_recorder(
         curve: list[tuple[str, float]] = []
         returns: list[float] = []
         previous_equity = float(initial_cash)
-        for ts, value in points:
+        for _ts, value in metric_points:
             if previous_equity > 0:
                 returns.append(value / previous_equity - 1.0)
             previous_equity = value
-            curve.append((ts.date().isoformat(), value))
+        for ts, value in raw_points:
+            curve.append(
+                (
+                    ts.isoformat() if aggregate_daily else ts.date().isoformat(),
+                    value,
+                )
+            )
 
-        final_equity = points[-1][1]
+        final_equity = raw_points[-1][1]
         total_return = final_equity / float(initial_cash) - 1.0
         sharpe: float | None = None
         if len(returns) >= 2:
@@ -397,7 +491,7 @@ def _equity_curve_recorder(
 
         peak = float(initial_cash)
         max_drawdown = 0.0
-        for _ts, value in points:
+        for _ts, value in metric_points:
             peak = max(peak, value)
             if peak > 0:
                 max_drawdown = max(max_drawdown, (peak - value) / peak)
@@ -537,6 +631,7 @@ def run_strategy_backtest(
         raise StrategyLoadError(f"unsupported trend frequency: {trend_frequency}")
     if not instrument_ids:
         raise StrategyLoadError("no instruments provided")
+    _validate_market_instruments(market, instrument_ids)
     venues = {_normalize_instrument(item)[1] for item in instrument_ids}
     if len(venues) != 1:
         raise StrategyLoadError("all instruments must share one venue")

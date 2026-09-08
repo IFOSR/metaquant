@@ -171,21 +171,23 @@ class SqlAlchemyStrategyRepository:
                     created_at=timestamp,
                 )
             )
-            draft.title = output.title
+            # 只覆盖 agent 本轮显式给出的字段：null/空值视为「未变更」，
+            # 避免纯讨论轮（agent 返回 code=null 等）抹掉已生成的策略内容。
+            if output.title:
+                draft.title = output.title
             draft.explanation = output.explanation
             draft.question = output.question
-            draft.code = output.code
+            if output.code is not None and output.code != draft.code:
+                # 代码被改写后，旧的「代码正确性测试」证据失效，须重跑门禁。
+                draft.code = output.code
+                draft.code_test_result = None
             draft.ready = output.ready
-            draft.instrument_ids = output.instrument_ids
+            if output.instrument_ids:
+                draft.instrument_ids = output.instrument_ids
             draft.frequency = output.frequency
             draft.kind = output.kind
-            draft.backtest_plan = (
-                output.backtest_plan.model_dump(mode="json")
-                if output.backtest_plan is not None
-                else None
-            )
-            # 代码被改写后，旧的「代码正确性测试」证据失效，须重跑门禁。
-            draft.code_test_result = None
+            if output.backtest_plan is not None:
+                draft.backtest_plan = output.backtest_plan.model_dump(mode="json")
             draft.state = (
                 StrategyDraftState.READY if output.ready else StrategyDraftState.DRAFT
             )
@@ -294,9 +296,18 @@ class SqlAlchemyStrategyRepository:
             return draft
 
     def record_backtest(
-        self, *, draft_id: str, result: dict[str, Any]
+        self,
+        *,
+        draft_id: str,
+        result: dict[str, Any],
+        code: str,
+        instrument_ids: list[str],
     ) -> StrategyDraftModel:
-        """把一次回测结果追加进可追溯历史（含 backtest_hash）。"""
+        """把一次回测结果追加进可追溯历史（含 backtest_hash 与执行快照）。
+
+        条目沉淀录制时的策略代码与标的：草稿后续继续迭代（代码改版）后，
+        重放该条目仍能用「当时那版代码」忠实还原回测，不受草稿当前状态影响。
+        """
         timestamp = _now()
         with self._sessions.begin() as session:
             draft = session.get(StrategyDraftModel, draft_id)
@@ -310,6 +321,8 @@ class SqlAlchemyStrategyRepository:
                     "end": result.get("end", ""),
                     "frequency": result.get("frequency", ""),
                     "metrics": result.get("metrics"),
+                    "code": code,
+                    "instrument_ids": list(instrument_ids),
                     "ran_at": timestamp.isoformat(),
                 }
             )

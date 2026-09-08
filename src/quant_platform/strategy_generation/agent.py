@@ -76,7 +76,8 @@ _SYSTEM_PROMPT_LINES = (
     '  "explanation": "plain-language summary of the strategy as understood, '
     "for a NON-programmer: what it trades, when it enters/exits, position "
     "sizing, stop loss, universe, frequency. It must fully reflect the code, "
-    'not drift from it.",',
+    'not drift from it. For two-sided strategies every entry/exit rule '
+    "must state its direction explicitly (开多 vs 开空, 平多 vs 平空).",
     '  "question": "the single most important clarifying question for the '
     'user, or empty string if the strategy is fully specified",',
     '  "code": "the complete NautilusTrader Python strategy source code, '
@@ -95,7 +96,10 @@ _SYSTEM_PROMPT_LINES = (
     'A-shares (SH/SZ suffix) or ["RB2610.SHF"] for futures '
     "(.SHF/.DCE/.CZC/.INE/.GFE suffix). Empty list until the user specifies "
     "them; ask in question when missing. Zhengzhou (郑商所, .CZC) contract "
-    "months are 3 digits (e.g. SA701, not SA2701).",
+    "months are 3 digits (e.g. SA701, not SA2701). When the user asks for "
+    "the main/continuous contract (主力/连续), use the iFinD 8888 "
+    "convention: SA8888.CZC, RB8888.SHF — NEVER 9999/0000 or any other "
+    "continuous code (they are rejected and un-fetchable).",
     '- frequency: "1d" (daily), "1w" (weekly), or minute bars '
     '"5m"/"15m"/"30m"/"60m". Default 1d.',
     "- backtest_plan: when ready=true you MUST fill it (null otherwise). "
@@ -116,13 +120,20 @@ _SYSTEM_PROMPT_LINES = (
     "nautilus_trader.trading.strategy.Strategy; create indicators in __init__; "
     "register them in on_start via register_indicator_for_bars; in on_bar first "
     "wait for self.indicators_initialized() (warm-up), then compare indicator "
-    "values and submit market orders.",
+    "values and submit market orders. NautilusTrader calls on_bar with the Bar "
+    "directly; do not read event.bar or wrap the Bar in another event object.",
     "- Multi-direction: use self.portfolio.is_flat / is_net_long / "
     "is_net_short and close_all_positions before reversing, exactly like the "
     "official example.",
     "- Market rules: CN_A = A-share equities, T+1, short selling is "
     "restricted, so generate LONG/FLAT only (never open shorts). "
     "CN_COMMODITY_FUTURES = commodity futures, both long and short are allowed.",
+    "- Directional clarity: when a strategy can trade BOTH directions "
+    "(CN_COMMODITY_FUTURES, or any futures strategy with short entries), the "
+    "explanation must distinguish 开多 vs 开空 for entries and 平多 vs 平空 "
+    "for exits — bare 开仓/平仓 is ambiguous and rejected. Even long-only "
+    "futures strategies should say 开多/平多. In CN_A (long-only) plain "
+    "开仓/平仓 is fine because they can only mean 开多/平多.",
     "- No high frequency: only daily (1d), weekly (1w) or minute "
     "(5m/15m/30m/60m) bar strategies; never write tick/quote-driven logic.",
     "- Multi-timeframe strategies (daily trend + minute entries): declare "
@@ -229,7 +240,7 @@ def run_turn(
         try:
             raw = complete(prompt)
             output = _parse(raw)
-            _static_check(output)
+            _static_check(output, market)
             return output
         except Exception as exc:  # noqa: BLE001
             last_error = exc
@@ -240,11 +251,14 @@ def run_turn(
     raise StrategyGenerationError(f"agent failed after retry: {last_error}")
 
 
-def _static_check(output: AgentOutput) -> None:
+def _static_check(output: AgentOutput, market: str) -> None:
     """轻量静态检查生成代码的常见错误（下单未提交、quantity 类型等）。"""
+    _check_market_instruments(output, market)
+    _check_instrument_conventions(output)
     code = output.code
     if not output.ready or not code:
         return
+    _check_directional_clarity(output, market)
     if "order_factory." in code and "submit_order(" not in code:
         raise StrategyGenerationError(
             "code creates orders via order_factory but never calls "
@@ -262,6 +276,11 @@ def _static_check(output: AgentOutput) -> None:
         raise StrategyGenerationError(
             "portfolio.net_position(...) returns a Decimal signed quantity; "
             "use it directly (no .signed_qty) or call close_all_positions"
+        )
+    if re.search(r"\b[A-Za-z_]\w*\.bar\b", code):
+        raise StrategyGenerationError(
+            "on_bar receives the NautilusTrader Bar directly; do not use "
+            "event.bar or another wrapper attribute"
         )
     for match in re.finditer(r"BarType\.from_str\(([^)]*)\)", code):
         arg = match.group(1).strip().strip("\"'")
@@ -285,6 +304,79 @@ def _static_check(output: AgentOutput) -> None:
             "which crashes the indicator constructor. Use plain integer "
             "literals or read from self.config."
         )
+
+
+_FUTURES_SUFFIXES = frozenset({"SHF", "SHFE", "DCE", "CZC", "CZCE", "INE", "GFE"})
+_BAD_CONTINUOUS_DIGITS = frozenset({"9999", "0000", "888", "88"})
+
+
+def _check_market_instruments(output: AgentOutput, market: str) -> None:
+    """Keep the generated market contract aligned with its instrument IDs."""
+    if not output.instrument_ids:
+        return
+    futures = tuple(
+        instrument_id
+        for instrument_id in output.instrument_ids
+        if instrument_id.partition(".")[2].upper() in _FUTURES_SUFFIXES
+    )
+    equities = tuple(
+        instrument_id
+        for instrument_id in output.instrument_ids
+        if instrument_id.partition(".")[2].upper() not in _FUTURES_SUFFIXES
+    )
+    if market == "CN_A" and futures:
+        raise StrategyGenerationError(
+            "CN_A strategies cannot trade futures instruments: "
+            + ", ".join(futures)
+        )
+    if market == "CN_COMMODITY_FUTURES" and equities:
+        raise StrategyGenerationError(
+            "CN_COMMODITY_FUTURES strategies require futures instruments: "
+            + ", ".join(equities)
+        )
+
+
+def _check_instrument_conventions(output: AgentOutput) -> None:
+    """期货 instrument 代码约定校验。
+
+    数据源（iFinD）的连续合约只有 ``8888`` 约定（如 SA8888.CZC）；
+    其它主力连续写法（9999/0000/888…）均不可拉取，出现即打回。
+    """
+    for instrument_id in output.instrument_ids:
+        symbol, _, suffix = instrument_id.partition(".")
+        if suffix.upper() not in _FUTURES_SUFFIXES:
+            continue
+        digits = "".join(ch for ch in symbol if ch.isdigit())
+        if digits in _BAD_CONTINUOUS_DIGITS:
+            raise StrategyGenerationError(
+                f"invalid continuous-contract code {instrument_id}: the data "
+                "source only supports the 8888 convention (e.g. SA8888.CZC, "
+                "RB8888.SHF); fix it or use a specific contract (e.g. "
+                "SA701.CZC)"
+            )
+
+
+def _check_directional_clarity(output: AgentOutput, market: str) -> None:
+    """双边市场的 explanation 必须区分开多/开空、平多/平空。
+
+    裸『开仓/平仓』在可做空的市场里有歧义（用户无法分辨方向），
+    出现即打回重生成。只要求出现方向性词汇（多/空 或 long/short），
+    不限定具体句式。
+    """
+    if market != "CN_COMMODITY_FUTURES":
+        return
+    explanation = output.explanation or ""
+    if "多" in explanation or "空" in explanation:
+        return
+    lowered = explanation.lower()
+    if "long" in lowered or "short" in lowered:
+        return
+    raise StrategyGenerationError(
+        "two-sided strategy (futures) explanation must distinguish direction "
+        "explicitly: 开多 vs 开空 for entries and 平多 vs 平空 for exits "
+        "(open long/open short, close long/close short); bare 开仓/平仓 is "
+        "ambiguous"
+    )
 
 
 def _build_system_prompt() -> str:

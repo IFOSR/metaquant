@@ -137,9 +137,15 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
             entry_price=self._entry_price,
             bars_since_entry=self._bars_since_entry,
             stop_price=self._stop_price,
+            ready=self._all_initialized(),
         )
         signal = self._spec.compute_signal(ctx)
         self._apply_signal(signal, bar)
+
+    def _all_initialized(self) -> bool:
+        return all(op.initialized for op in self._exec_ops.values()) and all(
+            op.initialized for op in self._trend_ops.values()
+        )
 
     def _apply_signal(self, signal: Signal, bar: NautilusBar) -> None:
         target = int(signal.target_qty)

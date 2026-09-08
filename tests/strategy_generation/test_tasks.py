@@ -21,21 +21,9 @@ from quant_platform.strategy_generation.service import StrategyBacktestService
 from quant_platform.strategy_generation.tasks import BacktestTaskService
 
 _CODE = (
-    "from nautilus_trader.config import StrategyConfig\n"
-    "from nautilus_trader.trading.strategy import Strategy\n"
-    "from nautilus_trader.model.identifiers import InstrumentId\n"
-    "from nautilus_trader.model.data import BarType\n"
-    "class GenStrategy(Strategy):\n"
-    "    def __init__(self, instrument_id: str, bar_type_str: str):\n"
-    "        super().__init__(StrategyConfig(strategy_id='GEN'))\n"
-    "        self._instrument_id = InstrumentId.from_str(instrument_id)\n"
-    "        self._bar_type = BarType.from_str(bar_type_str)\n"
-    "    def on_start(self):\n"
-    "        self.subscribe_bars(self._bar_type)\n"
-    "    def on_bar(self, bar):\n"
-    "        pass\n"
-    "    def on_stop(self):\n"
-    "        pass\n"
+    "INDICATORS = []\n"
+    "def compute_signal(ctx):\n"
+    "    return Signal(target_qty=0)\n"
 )
 
 _BASE = datetime(2026, 1, 5, 15, 0, tzinfo=UTC)

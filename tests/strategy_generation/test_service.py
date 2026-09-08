@@ -208,50 +208,15 @@ def test_data_status_window_head_beyond_grace_not_ready() -> None:
 # ── 趋势周期预热 lead（不同周期多策略回测窗口）─────────────────────────────
 
 _TREND_GATE = """\
-from nautilus_trader.config import StrategyConfig
-from nautilus_trader.indicators import SimpleMovingAverage
-from nautilus_trader.model.data import BarType
-from nautilus_trader.model.enums import OrderSide
-from nautilus_trader.model.identifiers import InstrumentId
-from nautilus_trader.trading.strategy import Strategy
-
-class Config(StrategyConfig):
-    pass
-
-
-class TrendGate(Strategy):
-    def __init__(self, instrument_id: str, bar_type_str: str,
-                 trend_bar_type_str: str | None = None):
-        super().__init__(Config(strategy_id="TG"))
-        self._instrument_id = InstrumentId.from_str(instrument_id)
-        self._bar_type = BarType.from_str(bar_type_str)
-        self._trend_bar_type = (
-            BarType.from_str(trend_bar_type_str)
-            if trend_bar_type_str
-            else self._bar_type
-        )
-        self.trend = SimpleMovingAverage(20)
-        self.fast = SimpleMovingAverage(5)
-
-    def on_start(self):
-        self.register_indicator_for_bars(self._trend_bar_type, self.trend)
-        self.register_indicator_for_bars(self._bar_type, self.fast)
-        self.subscribe_bars(self._bar_type)
-        self.subscribe_bars(self._trend_bar_type)
-
-    def on_bar(self, bar):
-        if not self.indicators_initialized():
-            return
-        if self.portfolio.is_flat(self._instrument_id):
-            price = bar.close.as_double()
-            if price > self.trend.value:
-                instrument = self.cache.instrument(self._instrument_id)
-                order = self.order_factory.market(
-                    instrument_id=self._instrument_id,
-                    order_side=OrderSide.BUY,
-                    quantity=instrument.make_qty(1),
-                )
-                self.submit_order(order)
+INDICATORS = [
+    {"key": "trend_sma", "type": "sma", "period": 20},
+]
+def compute_signal(ctx):
+    if not ctx.ready:
+        return Signal(target_qty=0)
+    if ctx.position == 0 and ctx.bar.close > ctx.trend.trend_sma.value:
+        return Signal(target_qty=1)
+    return Signal(target_qty=ctx.position)
 """
 
 

@@ -158,6 +158,9 @@ _SYSTEM_PROMPT_LINES = (
     "- If the user's request cannot be expressed with the available "
     "indicators, say so in explanation and ask a question instead of "
     "inventing an indicator or silently writing something else.",
+    "- explanation must NEVER be empty: even when the user only tweaks one "
+    "detail (e.g. switch timeframe), re-summarize the FULL strategy in one "
+    "or two sentences. Empty explanation is rejected.",
     "- ready=true ONLY when the signal spec is complete and self-consistent; "
     "otherwise keep asking until the strategy is fully specified (but do "
     "not drag on pointlessly: once everything essential is known, fill "
@@ -192,7 +195,11 @@ def run_turn(
             last_error = exc
             prompt = (
                 "Your previous output failed validation: "
-                f"{exc}. Fix it and return only valid JSON matching the schema."
+                f"{exc}. Fix it and return ONLY valid JSON matching the "
+                "schema. Reminder: 'explanation' must be a non-empty "
+                "plain-language summary of the full strategy (even for a "
+                "small change like a timeframe switch); 'question' may be "
+                "an empty string."
             )
     raise StrategyGenerationError(f"agent failed after retry: {last_error}")
 

@@ -55,6 +55,25 @@ def test_run_turn_retries_on_invalid_json() -> None:
     assert len(calls) == 2
 
 
+def test_run_turn_retries_when_explanation_empty() -> None:
+    """explanation 为空（min_length=1 校验失败）时触发一次修正重试。"""
+    calls: list[str] = []
+
+    def flaky(_prompt: str) -> str:
+        calls.append(_prompt)
+        if len(calls) == 1:
+            return json.dumps({**_VALID, "explanation": ""})
+        return json.dumps(_VALID)
+
+    output = run_turn(
+        market="CN_A",
+        history=[StrategyMessage(role="user", content="用1小时K线")],
+        runner=flaky,
+    )
+    assert len(calls) == 2
+    assert output.explanation == _VALID["explanation"]
+
+
 def test_run_turn_prompt_includes_market() -> None:
     captured: list[str] = []
 

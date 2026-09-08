@@ -11,7 +11,13 @@ _VALID = {
     "title": "MA cross",
     "explanation": "Buy when the 5-day MA crosses above the 20-day MA.",
     "question": "",
-    "code": "class MAStrategy(Strategy): ...",
+    "code": (
+        "INDICATORS = [{\"key\": \"ma5\", \"type\": \"sma\", \"period\": 5}]\n"
+        "def compute_signal(ctx):\n"
+        "    if not ctx.ready:\n"
+        "        return Signal(target_qty=0)\n"
+        "    return Signal(target_qty=1)\n"
+    ),
     "ready": True,
 }
 
@@ -54,7 +60,9 @@ def test_run_turn_prompt_includes_market() -> None:
 
     def capture(prompt: str) -> str:
         captured.append(prompt)
-        return json.dumps(_VALID)
+        return json.dumps(
+            {**_VALID, "explanation": "金叉开多，死叉平多并反手开空。"}
+        )
 
     run_turn(
         market="CN_COMMODITY_FUTURES",
@@ -64,47 +72,167 @@ def test_run_turn_prompt_includes_market() -> None:
     assert "CN_COMMODITY_FUTURES" in captured[0]
 
 
+_VALID_FUTURES = {
+    **_VALID,
+    "instrument_ids": ["SA701.CZC"],
+    "explanation": "金叉开多，死叉平多并反手开空。",
+}
+
+
+def test_instrument_9999_continuous_code_rejected_and_retried() -> None:
+    """连续合约写成 9999（不可拉取）时打回重生成，改用 8888 约定。"""
+    bad = {**_VALID_FUTURES, "instrument_ids": ["SA9999.CZC"]}
+    good = {**_VALID_FUTURES, "instrument_ids": ["SA8888.CZC"]}
+    calls: list[str] = []
+
+    def flaky(_prompt: str) -> str:
+        calls.append(_prompt)
+        if len(calls) == 1:
+            return json.dumps(bad)
+        return json.dumps(good)
+
+    output = run_turn(
+        market="CN_COMMODITY_FUTURES",
+        history=[StrategyMessage(role="user", content="用纯碱连续合约")],
+        runner=flaky,
+    )
+    assert len(calls) == 2
+    assert output.instrument_ids == ["SA8888.CZC"]
+
+
+def test_instrument_8888_continuous_code_accepted() -> None:
+    """iFinD 的 8888 连续约定直接放行。"""
+    good = {**_VALID_FUTURES, "instrument_ids": ["RB8888.SHF"]}
+
+    output = run_turn(
+        market="CN_COMMODITY_FUTURES",
+        history=[StrategyMessage(role="user", content="用螺纹主力")],
+        runner=lambda _p: json.dumps(good),
+    )
+    assert output.instrument_ids == ["RB8888.SHF"]
+
+
+def test_market_instrument_mismatch_is_retried() -> None:
+    """A 股市场不能生成商品期货标的，避免回测套用错误费用模型。"""
+    bad = {**_VALID_FUTURES, "instrument_ids": ["SA8888.CZC"]}
+    good = {**_VALID, "instrument_ids": ["600000.SH"]}
+    calls: list[str] = []
+
+    def flaky(_prompt: str) -> str:
+        calls.append(_prompt)
+        return json.dumps(bad if len(calls) == 1 else good)
+
+    output = run_turn(
+        market="CN_A",
+        history=[StrategyMessage(role="user", content="做纯碱期货")],
+        runner=flaky,
+    )
+
+    assert len(calls) == 2
+    assert output.instrument_ids == ["600000.SH"]
+
+
+def test_system_prompt_states_8888_continuous_convention() -> None:
+    from quant_platform.strategy_generation.agent import _build_system_prompt
+
+    prompt = _build_system_prompt()
+    assert "SA8888.CZC" in prompt
+    assert "8888" in prompt
+    assert "9999" in prompt
+
+
+def test_system_prompt_requires_directional_clarity() -> None:
+    """双边策略提示词必须要求区分开多/开空、平多/平空。"""
+    from quant_platform.strategy_generation.agent import _build_system_prompt
+
+    prompt = _build_system_prompt()
+    assert "开多" in prompt
+    assert "开空" in prompt
+    assert "平多" in prompt
+    assert "平空" in prompt
+
+
+def test_two_sided_explanation_without_direction_retried() -> None:
+    """期货策略 explanation 只写『开仓/平仓』时打回重生成。"""
+    ambiguous = {**_VALID, "explanation": "金叉时开仓，死叉时平仓。"}
+    directional = {**_VALID, "explanation": "金叉时开多，死叉时平多并反手开空。"}
+    calls: list[str] = []
+
+    def flaky(_prompt: str) -> str:
+        calls.append(_prompt)
+        if len(calls) == 1:
+            return json.dumps(ambiguous)
+        return json.dumps(directional)
+
+    output = run_turn(
+        market="CN_COMMODITY_FUTURES",
+        history=[StrategyMessage(role="user", content="均线金叉")],
+        runner=flaky,
+    )
+    assert len(calls) == 2
+    assert "开多" in output.explanation
+    assert "开空" in output.explanation
+
+
+def test_two_sided_explanation_english_directional_words_pass() -> None:
+    """英文 explanation 含 open/close long/short 也算方向明确。"""
+    directional = {
+        **_VALID,
+        "explanation": "Open long on golden cross; close long and open short "
+        "on death cross.",
+    }
+
+    output = run_turn(
+        market="CN_COMMODITY_FUTURES",
+        history=[StrategyMessage(role="user", content="均线金叉")],
+        runner=lambda _p: json.dumps(directional),
+    )
+    assert output.ready is True
+
+
+def test_long_only_market_allows_bare_open_close_wording() -> None:
+    """A股（只能做多）开仓/平仓无歧义，不要求方向词。"""
+    bare = {**_VALID, "explanation": "金叉时开仓，死叉时平仓。"}
+
+    output = run_turn(
+        market="CN_A",
+        history=[StrategyMessage(role="user", content="均线金叉")],
+        runner=lambda _p: json.dumps(bare),
+    )
+    assert output.explanation == bare["explanation"]
+
+
 def test_system_prompt_lists_nt_indicators() -> None:
     from quant_platform.strategy_generation.agent import _build_system_prompt
 
     prompt = _build_system_prompt()
-    assert "ExponentialMovingAverage" in prompt
-    assert "MovingAverageConvergenceDivergence" in prompt
-    assert "BollingerBands" in prompt
+    assert "sma(period)" in prompt
+    assert "macd(fast, slow, signal=9)" in prompt
+    assert "adx(period)" in prompt
+    assert "bollinger(period, k=2)" in prompt
 
 
-def test_system_prompt_injects_real_today() -> None:
-    """提示词必须注入真实当前日期，否则 LLM 以训练截止日为锚推时间段。"""
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
+def test_system_prompt_describes_signal_spec() -> None:
     from quant_platform.strategy_generation.agent import _build_system_prompt
 
     prompt = _build_system_prompt()
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    assert today in prompt
-    assert "{today}" not in prompt  # 占位符已全部替换
+    assert "INDICATORS" in prompt
+    assert "compute_signal" in prompt
+    assert "Signal(target_qty" in prompt
+    assert "ctx.ready" in prompt
 
 
-def test_run_turn_retries_when_order_not_submitted() -> None:
-    """生成代码创建了订单但没 submit_order 时，触发一次自动修正重试。"""
-    bad_code = (
-        "class S(Strategy):\n"
-        "    def on_bar(self, bar):\n"
-        "        order = self.order_factory.market(\n"
-        "            instrument_id=self._instrument_id,\n"
-        "            order_side=OrderSide.BUY,\n"
-        "            quantity=instrument.make_qty(100),\n"
-        "        )\n"
-    )
-    good = {**_VALID, "code": "... make_qty(100) ... self.submit_order(order)"}
+def test_run_turn_retries_when_missing_indicators() -> None:
+    """信号文件缺 INDICATORS 时触发一次自动修正重试。"""
+    bad = {
+        **_VALID,
+        "code": "def compute_signal(ctx):\n    return Signal(target_qty=1)\n",
+    }
     calls: list[str] = []
 
     def flaky(_prompt: str) -> str:
         calls.append(_prompt)
-        if len(calls) == 1:
-            return json.dumps({**_VALID, "code": bad_code})
-        return json.dumps(good)
+        return json.dumps(bad if len(calls) == 1 else _VALID)
 
     output = run_turn(
         market="CN_A",
@@ -112,31 +240,27 @@ def test_run_turn_retries_when_order_not_submitted() -> None:
         runner=flaky,
     )
     assert len(calls) == 2
-    assert output.code == good["code"]
+    assert output.code == _VALID["code"]
 
 
-def test_run_turn_retries_when_subscribe_bars_has_instrument() -> None:
-    """subscribe_bars 误传 instrument_id 时触发自动修正重试。"""
-    bad_code = (
-        "class S(Strategy):\n"
-        "    def on_start(self):\n"
-        "        self.subscribe_bars(self._bar_type, self._instrument_id)\n"
-        "    def on_bar(self, bar):\n"
-        "        order = self.order_factory.market(\n"
-        "            instrument_id=self._instrument_id,\n"
-        "            order_side=OrderSide.BUY,\n"
-        "            quantity=instrument.make_qty(100),\n"
-        "        )\n"
-        "        self.submit_order(order)\n"
-    )
-    good = {**_VALID, "code": "... make_qty(100) ... self.submit_order(order)"}
+def test_run_turn_retries_when_uses_pipeline_api() -> None:
+    """信号代码使用管道 API（order_factory/submit_order）时触发修正重试。"""
+    bad = {
+        **_VALID,
+        "code": (
+            "INDICATORS = []\n"
+            "def compute_signal(ctx):\n"
+            "    order = self.order_factory.market(instrument_id='x', "
+            "order_side=OrderSide.BUY, quantity=1)\n"
+            "    self.submit_order(order)\n"
+            "    return Signal(target_qty=0)\n"
+        ),
+    }
     calls: list[str] = []
 
     def flaky(_prompt: str) -> str:
         calls.append(_prompt)
-        if len(calls) == 1:
-            return json.dumps({**_VALID, "code": bad_code})
-        return json.dumps(good)
+        return json.dumps(bad if len(calls) == 1 else _VALID)
 
     output = run_turn(
         market="CN_A",
@@ -144,27 +268,25 @@ def test_run_turn_retries_when_subscribe_bars_has_instrument() -> None:
         runner=flaky,
     )
     assert len(calls) == 2
-    assert output.code == good["code"]
+    assert output.code == _VALID["code"]
 
 
-def test_run_turn_retries_when_config_class_attr_read() -> None:
-    """从配置类读类属性会崩 indicator 构造，应触发一次自动修正重试。"""
-    bad_code = (
-        "class MyConfig(StrategyConfig):\n"
-        "    ma_period: int = 20\n"
-        "class S(Strategy):\n"
-        "    def __init__(self, instrument_id, bar_type_str):\n"
-        "        super().__init__(StrategyConfig(strategy_id='GEN'))\n"
-        "        self.ma = SimpleMovingAverage(MyConfig.ma_period)\n"
-    )
-    good = {**_VALID, "code": "... SimpleMovingAverage(20) ..."}
+def test_run_turn_retries_when_imports() -> None:
+    """信号代码 import/class 时触发修正重试（隔离契约）。"""
+    bad = {
+        **_VALID,
+        "code": (
+            "import os\n"
+            "INDICATORS = []\n"
+            "def compute_signal(ctx):\n"
+            "    return Signal(target_qty=0)\n"
+        ),
+    }
     calls: list[str] = []
 
     def flaky(_prompt: str) -> str:
         calls.append(_prompt)
-        if len(calls) == 1:
-            return json.dumps({**_VALID, "code": bad_code})
-        return json.dumps(good)
+        return json.dumps(bad if len(calls) == 1 else _VALID)
 
     output = run_turn(
         market="CN_A",
@@ -172,4 +294,4 @@ def test_run_turn_retries_when_config_class_attr_read() -> None:
         runner=flaky,
     )
     assert len(calls) == 2
-    assert output.code == good["code"]
+    assert output.code == _VALID["code"]

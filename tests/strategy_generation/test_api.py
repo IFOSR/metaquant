@@ -6,6 +6,7 @@ import json
 from collections.abc import Callable
 from unittest.mock import Mock
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -28,7 +29,11 @@ _READY = {
     "title": "MA cross",
     "explanation": "Buy when the 5-day MA crosses above the 20-day MA.",
     "question": "",
-    "code": "class MAStrategy(Strategy): ...",
+    "code": (
+        "INDICATORS = []\n"
+        "def compute_signal(ctx):\n"
+        "    return Signal(target_qty=1)\n"
+    ),
     "ready": True,
     "instrument_ids": ["600000.SH"],
     "frequency": "1d",
@@ -132,6 +137,8 @@ def test_backtest_appends_traceable_history() -> None:
     got = client.get(f"/v1/strategy-drafts/{created['id']}", headers=_HEADERS).json()
     assert len(got["backtest_results"]) == 1
     assert got["backtest_results"][0]["backtest_hash"] == "hash-1"
+    # 代码快照仅供服务端重放，不随草稿快照下发（避免载荷膨胀）
+    assert "code" not in got["backtest_results"][0]
     assert got["stage"] == "BACKTESTED"
 
 
@@ -157,6 +164,269 @@ def test_post_message_appends_turn() -> None:
         "user",
         "assistant",
     ]
+
+
+def test_backtest_context_contract() -> None:
+    service = Mock()
+    service.run.return_value = {
+        "schema_version": "strategy-backtest/v1",
+        "backtest_hash": "hash-context-1",
+        "start": "2026-03-07",
+        "end": "2026-09-07",
+        "frequency": "15m",
+        "metrics": {
+            "total_return": 0.12,
+            "sharpe": 1.2,
+            "max_drawdown": 0.04,
+            "trade_count": 2,
+        },
+        "equity_curve": [],
+        "trades": [],
+        "positions": [],
+        "error": None,
+    }
+    client = _make_client(_ok, backtest_service=service)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}:backtest",
+        headers=_HEADERS,
+    )
+
+    response = client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={
+            "message": "分析这次回测并提出优化建议",
+            "backtest_hash": "hash-context-1",
+        },
+    )
+
+    assert response.status_code == 202, response.text
+    messages = client.get(
+        f"/v1/strategy-drafts/{created['id']}",
+        headers=_HEADERS,
+    ).json()["messages"]
+    assert messages[-2]["attachments"][0]["kind"] == "backtest"
+    assert messages[-2]["attachments"][0]["backtest_hash"] == "hash-context-1"
+
+
+def test_imported_backtest_is_injected_into_agent_context() -> None:
+    prompts: list[str] = []
+
+    def runner(prompt: str) -> str:
+        prompts.append(prompt)
+        return _ok(prompt)
+
+    service = Mock()
+    service.run.return_value = {
+        "schema_version": "strategy-backtest/v1",
+        "backtest_hash": "hash-context-2",
+        "start": "2026-03-07",
+        "end": "2026-09-07",
+        "frequency": "15m",
+        "metrics": {
+            "total_return": -0.023,
+            "sharpe": -0.4,
+            "max_drawdown": 0.08,
+            "trade_count": 4,
+        },
+        "total_fees": 128.0,
+        "equity_curve": [],
+        "trades": [
+            {
+                "time": "2026-05-07T05:45:00+00:00",
+                "instrument_id": "SA8888.CZCE",
+                "side": "BUY",
+                "quantity": 1,
+                "price": 1264,
+                "action": "开多",
+            }
+        ],
+        "positions": [],
+        "venue_spec": {
+            "market": "CN_COMMODITY_FUTURES",
+            "cost_basis": "net_of_fees",
+        },
+        "error": None,
+    }
+    client = _make_client(runner, backtest_service=service)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}:backtest",
+        headers=_HEADERS,
+    )
+
+    response = client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={
+            "message": "请分析这次回测为什么亏损",
+            "backtest_hash": "hash-context-2",
+        },
+    )
+
+    assert response.status_code == 202, response.text
+    assert "请分析这次回测为什么亏损" in prompts[-1]
+    assert "[导入的历史回测结果]" in prompts[-1]
+    assert "总收益：-2.30%" in prompts[-1]
+    assert "开多" in prompts[-1]
+    assert service.run.call_count == 2
+
+
+def test_replay_uses_code_snapshot_from_recording_time() -> None:
+    """重放历史回测必须用录制时的代码快照，而不是草稿当前（可能已改版）的代码。"""
+    code_v2 = (
+        "INDICATORS = []\n"
+        "def compute_signal(ctx):\n"
+        "    return Signal(target_qty=1)\n"
+    )
+
+    def runner(prompt: str) -> str:
+        if "反转" in prompt:
+            return json.dumps({**_READY, "code": code_v2})
+        return _ok(prompt)
+
+    service = Mock()
+    service.run.return_value = {
+        "schema_version": "strategy-backtest/v1",
+        "backtest_hash": "hash-v1",
+        "start": "2025-01-01",
+        "end": "2026-01-01",
+        "frequency": "1d",
+        "metrics": {"total_return": 0.1},
+        "equity_curve": [],
+        "error": None,
+    }
+    client = _make_client(runner, backtest_service=service)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}:backtest",
+        headers=_HEADERS,
+    )
+    # 代码改版：agent 本轮返回 v2 代码
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={"message": "改成反转策略"},
+    )
+    assert service.run.call_count == 1
+
+    replayed = client.get(
+        f"/v1/strategy-drafts/{created['id']}/backtests/hash-v1",
+        headers=_HEADERS,
+    )
+
+    assert replayed.status_code == 200, replayed.text
+    assert service.run.call_count == 2
+    assert service.run.call_args.kwargs["code"] == _READY["code"]
+
+
+def test_imported_backtest_survives_null_code_agent_turn() -> None:
+    """agent 纯讨论轮返回 code=null 后，导入历史回测求建议必须仍然可用。"""
+    discussion = {
+        **_READY,
+        "code": None,
+        "ready": False,
+        "instrument_ids": [],
+        "question": "想聊聊哪部分思路？",
+    }
+
+    def runner(prompt: str) -> str:
+        if "聊聊" in prompt:
+            return json.dumps(discussion)
+        return _ok(prompt)
+
+    service = Mock()
+    service.run.return_value = {
+        "schema_version": "strategy-backtest/v1",
+        "backtest_hash": "hash-null-code",
+        "start": "2025-01-01",
+        "end": "2026-01-01",
+        "frequency": "1d",
+        "metrics": {"total_return": 0.1},
+        "equity_curve": [],
+        "error": None,
+    }
+    client = _make_client(runner, backtest_service=service)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}:backtest",
+        headers=_HEADERS,
+    )
+    # 纯讨论轮：agent 返回 code=null，不得影响后续回测导入
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={"message": "我们聊聊思路"},
+    )
+
+    response = client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={
+            "message": "针对这次回测给些优化建议",
+            "backtest_hash": "hash-null-code",
+        },
+    )
+
+    assert response.status_code == 202, response.text
+    assert service.run.call_count == 2
+
+
+def test_unknown_backtest_hash_is_rejected_before_agent_call() -> None:
+    runner = Mock(side_effect=lambda _prompt: _ok(""))
+    service = Mock()
+    service.run.return_value = {
+        "backtest_hash": "hash-context-3",
+        "start": "2026-03-07",
+        "end": "2026-09-07",
+        "frequency": "1d",
+        "metrics": {},
+        "equity_curve": [],
+        "trades": [],
+        "positions": [],
+        "error": None,
+    }
+    client = _make_client(runner, backtest_service=service)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    client.post(
+        f"/v1/strategy-drafts/{created['id']}:backtest",
+        headers=_HEADERS,
+    )
+    runner.reset_mock()
+
+    response = client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages",
+        headers=_HEADERS,
+        json={
+            "message": "分析回测",
+            "backtest_hash": "not-owned-by-draft",
+        },
+    )
+
+    assert response.status_code == 404, response.text
+    runner.assert_not_called()
+    assert service.run.call_count == 1
 
 
 def test_freeze_ready_draft() -> None:
@@ -416,7 +686,17 @@ def test_upload_attachment_extracts_text() -> None:
     assert body["extracted_text"] == "buy on ma cross"
 
 
-def test_upload_attachment_image_returns_reference() -> None:
+def test_upload_attachment_image_returns_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The API test should not depend on optional vision-provider credentials.
+    from quant_platform.strategy_generation import api as strategy_api
+
+    monkeypatch.setattr(
+        strategy_api,
+        "extract_attachment",
+        lambda _name, _content: ("image", ""),
+    )
     client = _make_client(_ok)
     response = client.post(
         "/v1/strategy-drafts/attachments?market=CN_A",

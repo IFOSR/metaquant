@@ -7,7 +7,6 @@ strategy plus a plain-language explanation. Reuses the backend selection from
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -22,51 +21,35 @@ from quant_platform.strategy_generation.schemas import AgentOutput, StrategyMess
 _SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 _INDICATORS = (
-    # 均线
-    "SimpleMovingAverage",
-    "ExponentialMovingAverage",
-    "WeightedMovingAverage",
-    "WilderMovingAverage",
-    "HullMovingAverage",
-    "DoubleExponentialMovingAverage",
-    "AdaptiveMovingAverage",
-    "VariableIndexDynamicAverage",
-    # 动量/振荡
-    "MovingAverageConvergenceDivergence (MACD)",
-    "RelativeStrengthIndex (RSI)",
-    "RelativeVolatilityIndex",
-    "ChandeMomentumOscillator",
-    "CommodityChannelIndex",
-    "RateOfChange",
-    "Stochastics",
-    "EfficiencyRatio",
-    "PsychologicalLine",
-    "Bias",
-    # 趋势
-    "AroonOscillator",
-    "DirectionalMovement",
-    "IchimokuCloud",
-    "DonchianChannel",
-    "KeltnerChannel",
-    "LinearRegression",
-    "Swings",
-    "VerticalHorizontalFilter",
-    # 波动
-    "AverageTrueRange (ATR)",
-    "BollingerBands",
-    "VolatilityRatio",
-    # 成交量
-    "OnBalanceVolume",
-    "KlingerVolumeOscillator",
-    "VolumeWeightedAveragePrice",
-    "Pressure",
+    "sma(period) -> value",
+    "ema(period) -> value",
+    "wma(period) -> value",
+    "dema(period) -> value",
+    "hma(period) -> value",
+    "macd(fast, slow, signal=9) -> dif, dea",
+    "atr(period) -> value",
+    "adx(period) -> adx, di_plus, di_minus",
+    "bollinger(period, k=2) -> upper, mid, lower",
+    "rsi(period) -> value",
+    "roc(period) -> value",
+    "cci(period) -> value",
+    "stoch(period_k, period_d, slowing=1) -> k, d",
+    "aroon(period) -> value, up, down",
+    "cmo(period) -> value",
+    "linreg(period) -> value, slope, intercept",
+    "keltner(period, k=2) -> upper, mid, lower",
+    "donchian(period) -> upper, mid, lower",
+    "obv(period) -> value",
 )
 
 _SYSTEM_PROMPT_LINES = (
     "You are a quantitative trading strategy engineer. You work with a user "
     "through a multi-turn conversation to turn their natural-language "
-    "description of a trading strategy into an executable NautilusTrader "
-    "(Python) strategy.",
+    "description of a trading strategy into a SIGNAL SPECIFICATION: a "
+    "declarative indicator list plus a pure signal function. The platform "
+    "(not you) owns the entire pipeline — bar subscription, indicator "
+    "computation, order submission, position tracking, stop/take-profit "
+    "enforcement.",
     "",
     "Each turn you receive the full conversation transcript plus the target "
     "market. Read it, update your understanding, and respond with a JSON "
@@ -75,13 +58,14 @@ _SYSTEM_PROMPT_LINES = (
     '  "title": "short strategy name",',
     '  "explanation": "plain-language summary of the strategy as understood, '
     "for a NON-programmer: what it trades, when it enters/exits, position "
-    "sizing, stop loss, universe, frequency. It must fully reflect the code, "
-    'not drift from it. For two-sided strategies every entry/exit rule '
-    "must state its direction explicitly (开多 vs 开空, 平多 vs 平空).",
+    "sizing, stop loss, universe, frequency. It must fully reflect the "
+    "signal logic, not drift from it. For two-sided strategies every "
+    "entry/exit rule must state its direction explicitly (开多 vs 开空, "
+    "平多 vs 平空).",
     '  "question": "the single most important clarifying question for the '
     'user, or empty string if the strategy is fully specified",',
-    '  "code": "the complete NautilusTrader Python strategy source code, '
-    'or null if the strategy is not yet fully specified",',
+    '  "code": "the signal specification Python source (INDICATORS + '
+    'compute_signal), or null if not yet fully specified",',
     '  "instrument_ids": ["600000.SH"],',
     '  "frequency": "1d",',
     '  "kind": "strategy",',
@@ -90,8 +74,8 @@ _SYSTEM_PROMPT_LINES = (
     "",
     "Rules:",
     '- kind: "strategy" when the user describes buy/sell rules that become a '
-    'NautilusTrader strategy; "factor" when the user asks to mine a '
-    "predictive factor/alpha from a report or data. Default strategy.",
+    'strategy; "factor" when the user asks to mine a predictive '
+    "factor/alpha from a report or data. Default strategy.",
     '- instrument_ids: the instruments to trade, e.g. ["600000.SH"] for '
     'A-shares (SH/SZ suffix) or ["RB2610.SHF"] for futures '
     "(.SHF/.DCE/.CZC/.INE/.GFE suffix). Empty list until the user specifies "
@@ -113,110 +97,72 @@ _SYSTEM_PROMPT_LINES = (
     'months" means end={today}, "近一年" means end={today} minus one '
     "year. NEVER invent or guess the current date.",
     "rationale: one sentence explaining why the period and range fit.",
-    "- Use ONLY these NautilusTrader indicators (all already available):",
-    "INDICATORS",
-    "  plus raw bar fields open/high/low/close/volume.",
-    "- Follow the official EMA-cross strategy skeleton: subclass "
-    "nautilus_trader.trading.strategy.Strategy; create indicators in __init__; "
-    "register them in on_start via register_indicator_for_bars; in on_bar first "
-    "wait for self.indicators_initialized() (warm-up), then compare indicator "
-    "values and submit market orders. NautilusTrader calls on_bar with the Bar "
-    "directly; do not read event.bar or wrap the Bar in another event object.",
-    "- Multi-direction: use self.portfolio.is_flat / is_net_long / "
-    "is_net_short and close_all_positions before reversing, exactly like the "
-    "official example.",
+    "",
+    "The 'code' field is a SIGNAL SPECIFICATION. It must contain exactly two "
+    "top-level objects and nothing else:",
+    'INDICATORS = [{"key": "trend_sma", "type": "sma", "period": 20}, ...]',
+    "def compute_signal(ctx):",
+    "    ...",
+    "    return Signal(target_qty=..., stop_price=..., take_profit=...)",
+    "",
+    "- No imports, no classes, no NautilusTrader API. You may use `math` and "
+    "the `Signal` dataclass. Any pipeline symbol (subscribe_bars, "
+    "order_factory, submit_order, register_indicator_for_bars, Strategy, "
+    "StrategyConfig, close_all_positions, ...) is forbidden — the platform "
+    "owns it.",
+    "- INDICATORS: a list of dicts. Each is "
+    '{"key": <string>, "type": <one of the available types>, ...params}. '
+    "Available types (with their params and the fields exposed on their "
+    "values):",
+    "AVAILABLE_INDICATORS",
+    "- The platform computes every declared indicator on BOTH timeframes "
+    "automatically. In compute_signal read current values as "
+    "ctx.exec.<key>.<field> (execution timeframe) and "
+    "ctx.trend.<key>.<field> (trend timeframe); previous-bar values as "
+    "ctx.prev.exec.<key>.<field> / ctx.prev.trend.<key>.<field> (for "
+    "golden/death cross detection). ctx.trend is empty unless the strategy "
+    "is multi-timeframe (user configured a trend timeframe).",
+    "- ctx fields: bar (open/high/low/close/volume/ts), trend_bar (None if "
+    "single-timeframe), exec/trend/prev (indicator values), position "
+    "(current signed lots), entry_price, bars_since_entry, stop_price "
+    "(current stop level), ready (True only when ALL indicators are warmed "
+    "up).",
+    "- Signal(target_qty, stop_price=None, take_profit=None). target_qty is "
+    "the signed TARGET position in lots (1 = one contract/lot, 0 = flat, "
+    "-1 = short one lot). Return the target and the platform submits the "
+    "market orders to reach it. stop_price/take_profit are OPTIONAL "
+    "protection levels: set them to arm, omit them (or None) to disarm. "
+    "Trailing stop: ratchet from ctx.stop_price, e.g. "
+    "stop_price = max(ctx.stop_price, ctx.bar.close - 2 * ctx.exec.atr.value).",
+    "- Warm-up: ctx.ready is False until ALL declared indicators are "
+    "initialized. ALWAYS start compute_signal with:",
+    "    if not ctx.ready:",
+    "        return Signal(target_qty=0)",
+    "- Multi-timeframe: declare each indicator ONCE; reference it as "
+    "ctx.trend.<key> for the trend (larger) timeframe and ctx.exec.<key> "
+    "for the execution (smaller) timeframe. The USER sets "
+    "exec_timeframe/trend_timeframe in the backtest plan — you NEVER "
+    "hardcode a timeframe or bar type anywhere in the code.",
     "- Market rules: CN_A = A-share equities, T+1, short selling is "
-    "restricted, so generate LONG/FLAT only (never open shorts). "
-    "CN_COMMODITY_FUTURES = commodity futures, both long and short are allowed.",
+    "restricted, so generate LONG/FLAT only (never negative target_qty). "
+    "CN_COMMODITY_FUTURES = commodity futures, both long and short are "
+    "allowed.",
     "- Directional clarity: when a strategy can trade BOTH directions "
-    "(CN_COMMODITY_FUTURES, or any futures strategy with short entries), the "
-    "explanation must distinguish 开多 vs 开空 for entries and 平多 vs 平空 "
-    "for exits — bare 开仓/平仓 is ambiguous and rejected. Even long-only "
-    "futures strategies should say 开多/平多. In CN_A (long-only) plain "
-    "开仓/平仓 is fine because they can only mean 开多/平多.",
+    "(CN_COMMODITY_FUTURES, or any futures strategy with short entries), "
+    "the explanation must distinguish 开多 vs 开空 for entries and 平多 vs "
+    "平空 for exits — bare 开仓/平仓 is ambiguous and rejected. Even "
+    "long-only futures strategies should say 开多/平多. In CN_A (long-only) "
+    "plain 开仓/平仓 is fine because they can only mean 开多/平多.",
     "- No high frequency: only daily (1d), weekly (1w) or minute "
     "(5m/15m/30m/60m) bar strategies; never write tick/quote-driven logic.",
-    "- Multi-timeframe strategies (daily trend + minute entries): declare "
-    "__init__(self, instrument_id: str, bar_type_str: str, "
-    "trend_bar_type_str: str | None = None). bar_type_str is the EXECUTION "
-    "(smaller) timeframe; trend_bar_type_str is the TREND (larger) timeframe. "
-    "Convert both via BarType.from_str. Register trend indicators with "
-    "register_indicator_for_bars(trend_bar_type, indicator) and execution "
-    "indicators with register_indicator_for_bars(bar_type, indicator); "
-    "subscribe_bars for BOTH bar types. In on_bar (fired per execution bar) "
-    "read trend indicator .value as the trend filter. When "
-    "trend_bar_type_str is None, behave as a single-timeframe strategy.",
-    "- Code must be a single self-contained Python file defining a "
-    "StrategyConfig subclass and a Strategy subclass. Import only from "
-    "nautilus_trader and the standard library.",
-    "- Imports must be exact. Import indicators ONLY from the top-level "
-    "package, e.g. `from nautilus_trader.indicators import "
-    "SimpleMovingAverage, ExponentialMovingAverage, "
-    "MovingAverageConvergenceDivergence, RelativeStrengthIndex, "
-    "BollingerBands, AverageTrueRange`. NEVER import from indicator "
-    "submodules (paths like nautilus_trader.indicators.sma do not exist). "
-    "Other correct imports: `from nautilus_trader.config import "
-    "StrategyConfig`; `from nautilus_trader.trading.strategy import "
-    "Strategy`; `from nautilus_trader.model.identifiers import "
-    "InstrumentId`; `from nautilus_trader.model.data import BarType`; "
-    "`from nautilus_trader.model.enums import OrderSide`.",
-    "- Indicator constructor: moving averages take a period int, e.g. "
-    "SimpleMovingAverage(5); MACD takes (fast_period, slow_period). "
-    "Read the latest value via indicator.value; check readiness via "
-    "indicator.initialized or self.indicators_initialized().",
-    "- Orders: create then SUBMIT. `order = "
-    "self.order_factory.market(instrument_id=..., order_side=..., "
-    "quantity=instrument.make_qty(100))` followed by "
-    "`self.submit_order(order)`. Creating an order without "
-    "self.submit_order(order) does NOTHING — this is the most common "
-    "mistake. quantity MUST be created via instrument.make_qty(<number>) "
-    "(get the instrument with self.cache.instrument(self._instrument_id)); "
-    "NEVER pass a raw int/Decimal as quantity.",
-    "- Portfolio: portfolio.is_flat/is_net_long/is_net_short(instrument_id) "
-    "return bool. portfolio.net_position(instrument_id) returns a Decimal "
-    "signed quantity — use it directly; it has NO .signed_qty attribute. "
-    "To exit a position, prefer "
-    "self.close_all_positions(self._instrument_id).",
-    "- Indicator attribute reference (these are the ONLY attributes; do not "
-    "invent others like .signal or .histogram):",
-    "  SimpleMovingAverage(n)/ExponentialMovingAverage(n) -> .value",
-    "  MovingAverageConvergenceDivergence(fast, slow) -> .value (DIF only; "
-    "no signal/DEA line). For DEA: keep a second ExponentialMovingAverage(9) "
-    "NOT registered for bars, and call dea.update_raw(self.macd.value) each "
-    "bar; read dea.value after dea.initialized.",
-    "  Stochastics(period_k, period_d) -> .value_k and .value_d (KDJ)",
-    "  BollingerBands(period, k) -> .upper .middle .lower",
-    "  DonchianChannel(period) -> .upper .middle .lower",
-    "  RelativeStrengthIndex(n)/AverageTrueRange(n) -> .value",
-    "  DirectionalMovement(n) -> .pos .neg .value (DMI/ADX)",
-    "  AroonOscillator(n) -> .aroon_up .aroon_down .value",
     "- If the user's request cannot be expressed with the available "
-    "indicators, say so in explanation and ask a question instead of inventing "
-    "an indicator or silently writing something else.",
-    "- ready=true ONLY when code is complete and self-consistent; otherwise "
-    "keep asking until the strategy is fully specified (but do not drag on "
-    "pointlessly: once everything essential is known, fill reasonable "
-    "defaults, state them in explanation, and set ready=true).",
-    "- The Strategy subclass __init__ must accept exactly "
-    "(instrument_id: str, bar_type_str: str): call "
-    'super().__init__(StrategyConfig(strategy_id="GEN-001")); convert '
-    "InstrumentId.from_str(instrument_id) and BarType.from_str(bar_type_str); "
-    "create your indicators. In on_start register each indicator via "
-    "register_indicator_for_bars(bar_type, indicator) then subscribe_bars. "
-    "In on_bar wait for indicators_initialized() before trading.",
-    "- NEVER read configuration values via a config class attribute, e.g. "
-    "`SimpleMovingAverage(MyConfig.ma_period)`: NautilusTrader config classes "
-    "are pydantic models and `MyConfig.ma_period` is NOT a plain int — it makes "
-    "the indicator constructor raise 'an integer is required'. Read periods from "
-    "indicator literals (e.g. SimpleMovingAverage(20)) or from self.config.",
-    "- subscribe_bars takes ONLY the bar_type: "
-    "self.subscribe_bars(self._bar_type). NEVER pass instrument_id (or any "
-    "second argument) to subscribe_bars.",
-    "- The bar type MUST come from the passed argument: self._bar_type = "
-    "BarType.from_str(bar_type_str). NEVER hardcode a bar type string like "
-    "'RB2610.SHFE-1d' — hardcoded bar types are invalid and crash.",
+    "indicators, say so in explanation and ask a question instead of "
+    "inventing an indicator or silently writing something else.",
+    "- ready=true ONLY when the signal spec is complete and self-consistent; "
+    "otherwise keep asking until the strategy is fully specified (but do "
+    "not drag on pointlessly: once everything essential is known, fill "
+    "reasonable defaults, state them in explanation, and set ready=true).",
 )
-
 
 class StrategyGenerationError(RuntimeError):
     """Raised when the agent cannot produce a valid strategy turn."""
@@ -252,58 +198,34 @@ def run_turn(
 
 
 def _static_check(output: AgentOutput, market: str) -> None:
-    """轻量静态检查生成代码的常见错误（下单未提交、quantity 类型等）。"""
+    """轻量静态检查：信号文件契约 + 禁止管道/原生 NT API。"""
     _check_market_instruments(output, market)
     _check_instrument_conventions(output)
     code = output.code
     if not output.ready or not code:
         return
     _check_directional_clarity(output, market)
-    if "order_factory." in code and "submit_order(" not in code:
+    if "INDICATORS" not in code:
+        raise StrategyGenerationError("signal code must define INDICATORS")
+    if "compute_signal" not in code:
         raise StrategyGenerationError(
-            "code creates orders via order_factory but never calls "
-            "self.submit_order(order)"
+            "signal code must define compute_signal(ctx)"
         )
-    if "order_factory." in code and "make_qty(" not in code:
-        raise StrategyGenerationError(
-            "order quantity must be created via instrument.make_qty(...)"
-        )
-    if re.search(r"subscribe_bars\([^)]*instrument", code):
-        raise StrategyGenerationError(
-            "subscribe_bars takes only bar_type; do not pass instrument_id"
-        )
-    if "net_position(" in code and ".signed_qty" in code:
-        raise StrategyGenerationError(
-            "portfolio.net_position(...) returns a Decimal signed quantity; "
-            "use it directly (no .signed_qty) or call close_all_positions"
-        )
-    if re.search(r"\b[A-Za-z_]\w*\.bar\b", code):
-        raise StrategyGenerationError(
-            "on_bar receives the NautilusTrader Bar directly; do not use "
-            "event.bar or another wrapper attribute"
-        )
-    for match in re.finditer(r"BarType\.from_str\(([^)]*)\)", code):
-        arg = match.group(1).strip().strip("\"'")
-        if arg not in (
-            "bar_type_str",
-            "self.bar_type_str",
-            "self._bar_type_str",
-            "trend_bar_type_str",
-            "self.trend_bar_type_str",
-            "self._trend_bar_type_str",
-        ):
+    for forbidden in (
+        "subscribe_bars",
+        "order_factory",
+        "submit_order",
+        "register_indicator_for_bars",
+        "close_all_positions",
+        "StrategyConfig",
+        "class ",
+        "import ",
+    ):
+        if forbidden in code:
             raise StrategyGenerationError(
-                "bar type must be built from the passed bar_type_str argument; "
-                "never hardcode a bar type string"
+                f"signal code must not use '{forbidden.strip()}'; "
+                "the platform owns the pipeline"
             )
-    if re.search(r"\b[A-Z][A-Za-z0-9]*Config\.[a-z_]\w*", code):
-        raise StrategyGenerationError(
-            "never read config via a config class attribute "
-            "(e.g. MyConfig.ma_period); NautilusTrader config classes are "
-            "pydantic models and their class attributes are not plain ints, "
-            "which crashes the indicator constructor. Use plain integer "
-            "literals or read from self.config."
-        )
 
 
 _FUTURES_SUFFIXES = frozenset({"SHF", "SHFE", "DCE", "CZC", "CZCE", "INE", "GFE"})
@@ -384,7 +306,7 @@ def _build_system_prompt() -> str:
     today = datetime.now(_SHANGHAI).date().isoformat()
     return (
         "\n".join(_SYSTEM_PROMPT_LINES)
-        .replace("INDICATORS", indicator_line)
+        .replace("AVAILABLE_INDICATORS", indicator_line)
         .replace("{today}", today)
     )
 

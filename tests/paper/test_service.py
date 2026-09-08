@@ -18,11 +18,11 @@ from quant_platform.strategy_generation.repository import (
 from quant_platform.strategy_generation.schemas import AgentOutput
 
 _SAFE_CODE = (
-    "from nautilus_trader.trading.strategy import Strategy\n"
-    "class GenStrategy(Strategy):\n"
-    "    pass\n"
+    "INDICATORS = []\n"
+    "def compute_signal(ctx):\n"
+    "    return Signal(target_qty=0)\n"
 )
-_UNSAFE_CODE = "import os\nclass GenStrategy:\n    pass\n"
+_UNSAFE_CODE = "import os\nINDICATORS = []\ndef compute_signal(ctx):\n    return Signal(target_qty=0)\n"
 
 
 def make_service() -> tuple[PaperAccountService, SqlAlchemyStrategyRepository]:
@@ -89,7 +89,7 @@ def test_rejects_non_frozen_draft() -> None:
 def test_rejects_unsafe_code_even_if_frozen() -> None:
     service, drafts = make_service()
     draft_id = _freeze_draft(drafts, code=_UNSAFE_CODE)
-    with pytest.raises(PaperAccountError, match="security policy"):
+    with pytest.raises(PaperAccountError, match="rejected"):
         service.create_account(actor_id="tester", draft_id=draft_id)
 
 

@@ -42,7 +42,7 @@ class Operator:
 class NtOperator(Operator):
     """NT 指标薄壳：把 NT 指标包装成统一接口。
 
-    ``inputs``：喂给 NT ``update_raw`` 的 bar 字段序列（如 ``("high","low","close")``）。
+    ``inputs``：喂给 NT ``update_raw`` 的 bar 字段序列，如 ``("high","low","close")``。
     ``outputs``：快照字段名 → NT 属性名（如 ``{"mid": "middle"}``）。
     """
 
@@ -191,9 +191,7 @@ class AdxOperator(Operator):
         self.di_plus = 100.0 * self._pdm_s / self._tr if self._tr > 0 else 0.0
         self.di_minus = 100.0 * self._ndm_s / self._tr if self._tr > 0 else 0.0
         denom = self.di_plus + self.di_minus
-        dx = (
-            100.0 * abs(self.di_plus - self.di_minus) / denom if denom > 0 else 0.0
-        )
+        dx = 100.0 * abs(self.di_plus - self.di_minus) / denom if denom > 0 else 0.0
         self._dxs.append(dx)
         if len(self._dxs) <= self.period:
             self._adx_s = sum(self._dxs) / len(self._dxs)
@@ -212,21 +210,61 @@ _NT_INDICATORS: dict[
     str,
     tuple[Any, tuple[str, ...], dict[str, str], dict[str, str]],
 ] = {
-    "sma": (nt_ind.SimpleMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
-    "ema": (nt_ind.ExponentialMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
-    "wma": (nt_ind.WeightedMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
-    "dema": (nt_ind.DoubleExponentialMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
-    "hma": (nt_ind.HullMovingAverage, ("close",), {"value": "value"}, {"period": "period"}),
-    "atr": (nt_ind.AverageTrueRange, ("high", "low", "close"), {"value": "value"}, {"period": "period"}),
+    "sma": (
+        nt_ind.SimpleMovingAverage,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
+    "ema": (
+        nt_ind.ExponentialMovingAverage,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
+    "wma": (
+        nt_ind.WeightedMovingAverage,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
+    "dema": (
+        nt_ind.DoubleExponentialMovingAverage,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
+    "hma": (
+        nt_ind.HullMovingAverage,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
+    "atr": (
+        nt_ind.AverageTrueRange,
+        ("high", "low", "close"),
+        {"value": "value"},
+        {"period": "period"},
+    ),
     "bollinger": (
         nt_ind.BollingerBands,
         ("high", "low", "close"),
         {"upper": "upper", "mid": "middle", "lower": "lower"},
         {"period": "period", "k": "k"},
     ),
-    "rsi": (nt_ind.RelativeStrengthIndex, ("close",), {"value": "value"}, {"period": "period"}),
+    "rsi": (
+        nt_ind.RelativeStrengthIndex,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
     "roc": (nt_ind.RateOfChange, ("close",), {"value": "value"}, {"period": "period"}),
-    "cci": (nt_ind.CommodityChannelIndex, ("high", "low", "close"), {"value": "value"}, {"period": "period"}),
+    "cci": (
+        nt_ind.CommodityChannelIndex,
+        ("high", "low", "close"),
+        {"value": "value"},
+        {"period": "period"},
+    ),
     "stoch": (
         nt_ind.Stochastics,
         ("high", "low", "close"),
@@ -239,7 +277,12 @@ _NT_INDICATORS: dict[
         {"value": "value", "up": "aroon_up", "down": "aroon_down"},
         {"period": "period"},
     ),
-    "cmo": (nt_ind.ChandeMomentumOscillator, ("close",), {"value": "value"}, {"period": "period"}),
+    "cmo": (
+        nt_ind.ChandeMomentumOscillator,
+        ("close",),
+        {"value": "value"},
+        {"period": "period"},
+    ),
     "linreg": (
         nt_ind.LinearRegression,
         ("close",),

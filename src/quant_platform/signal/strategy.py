@@ -49,7 +49,9 @@ def _bar_view(bar: NautilusBar) -> BarView:
 
 
 def _snapshot(ops: dict[str, Operator]) -> SimpleNamespace:
-    return SimpleNamespace(**{key: SimpleNamespace(**op.snapshot()) for key, op in ops.items()})
+    return SimpleNamespace(
+        **{key: SimpleNamespace(**op.snapshot()) for key, op in ops.items()}
+    )
 
 
 class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
@@ -105,7 +107,9 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
                     low=float(bar.low.as_double()),
                     close=float(bar.close.as_double()),
                 )
-            self._cur_trend = {key: op.snapshot() for key, op in self._trend_ops.items()}
+            self._cur_trend = {
+                key: op.snapshot() for key, op in self._trend_ops.items()
+            }
             self._trend_bar_view = _bar_view(bar)
             return
         if bar.bar_type != self._bar_type:
@@ -127,10 +131,16 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
             trend=_snapshot(self._trend_ops),
             prev=SimpleNamespace(
                 exec=SimpleNamespace(
-                    **{key: SimpleNamespace(**fields) for key, fields in self._prev_exec.items()}
+                    **{
+                        key: SimpleNamespace(**fields)
+                        for key, fields in self._prev_exec.items()
+                    }
                 ),
                 trend=SimpleNamespace(
-                    **{key: SimpleNamespace(**fields) for key, fields in self._prev_trend.items()}
+                    **{
+                        key: SimpleNamespace(**fields)
+                        for key, fields in self._prev_trend.items()
+                    }
                 ),
             ),
             position=self._last_target,
@@ -185,16 +195,16 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
     def _enforce_protection(self, bar: NautilusBar) -> None:
         high = float(bar.high.as_double())
         low = float(bar.low.as_double())
-        if self._last_target > 0:
-            if self._stop_price is not None and low <= self._stop_price:
-                self._flatten()
-            elif self._take_profit is not None and high >= self._take_profit:
-                self._flatten()
-        elif self._last_target < 0:
-            if self._stop_price is not None and high >= self._stop_price:
-                self._flatten()
-            elif self._take_profit is not None and low <= self._take_profit:
-                self._flatten()
+        long_stop = self._last_target > 0 and (
+            (self._stop_price is not None and low <= self._stop_price)
+            or (self._take_profit is not None and high >= self._take_profit)
+        )
+        short_stop = self._last_target < 0 and (
+            (self._stop_price is not None and high >= self._stop_price)
+            or (self._take_profit is not None and low <= self._take_profit)
+        )
+        if long_stop or short_stop:
+            self._flatten()
 
     def _flatten(self) -> None:
         self._submit_delta(-self._last_target)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from quant_platform.signal.contract import Signal, load_signal_spec
+from quant_platform.signal.contract import load_signal_spec
 
 GOOD = """
 INDICATORS = [{"key": "macd", "fast": 3, "slow": 5}]
@@ -26,7 +26,9 @@ def test_missing_compute_signal_rejected() -> None:
 
 def test_import_rejected() -> None:
     with pytest.raises(ValueError):
-        load_signal_spec("import os\nINDICATORS = []\ndef compute_signal(ctx):\n    return Signal()")
+        load_signal_spec(
+            "import os\nINDICATORS = []\ndef compute_signal(ctx):\n    return Signal()"
+        )
 
 
 def test_dangerous_call_rejected() -> None:
@@ -42,7 +44,5 @@ def test_dangerous_call_rejected() -> None:
 def test_dunder_escape_rejected() -> None:
     with pytest.raises(ValueError):
         load_signal_spec(
-            "INDICATORS = []\n"
-            "def compute_signal(ctx):\n"
-            "    return (1).__class__\n"
+            "INDICATORS = []\ndef compute_signal(ctx):\n    return (1).__class__\n"
         )

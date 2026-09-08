@@ -83,7 +83,7 @@ def _is_dunder(name: str) -> bool:
 def _validate_ast(code: str) -> None:
     tree = ast.parse(code)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
+        if isinstance(node, ast.Import | ast.ImportFrom):
             raise ValueError("signal code must not import modules")
         if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
             raise ValueError(f"forbidden name: {node.id}")

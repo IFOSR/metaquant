@@ -22,8 +22,8 @@ from quant_platform.paper.contracts import (
     next_state,
 )
 from quant_platform.paper.repository import SqlAlchemyPaperRepository
+from quant_platform.signal.contract import load_signal_spec
 from quant_platform.strategy_generation.repository import SqlAlchemyStrategyRepository
-from quant_platform.strategy_generation.security import scan_strategy_source
 
 _DEFAULT_INITIAL_CASH = Decimal("1000000")
 
@@ -59,11 +59,10 @@ class PaperAccountService:
                 "paper simulation currently supports frequencies "
                 f"{', '.join(FREQUENCIES)}; this strategy uses {draft.frequency}"
             )
-        violations = scan_strategy_source(draft.code)
-        if violations:
-            raise PaperAccountError(
-                "strategy code rejected by security policy: " + "; ".join(violations)
-            )
+        try:
+            load_signal_spec(draft.code)
+        except ValueError as exc:
+            raise PaperAccountError(f"strategy code rejected: {exc}") from exc
         artifact = FrozenStrategyArtifact(
             draft_id=draft.id,
             market=draft.market,

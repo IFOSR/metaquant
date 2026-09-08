@@ -19,7 +19,7 @@ from typing import Any
 
 from nautilus_trader.adapters.sandbox.config import SandboxExecutionClientConfig
 from nautilus_trader.common.component import Logger
-from nautilus_trader.config import LoggingConfig, TradingNodeConfig
+from nautilus_trader.config import LoggingConfig, StrategyConfig, TradingNodeConfig
 from nautilus_trader.live.factories import LiveExecClientFactory
 from nautilus_trader.live.node import TradingNode
 from nautilus_trader.model.data import BarSpecification, BarType
@@ -53,10 +53,11 @@ from quant_platform.paper.sim_venue import (
     sandbox_config_for,
     venue_for_instrument,
 )
+from quant_platform.signal.contract import load_signal_spec
+from quant_platform.signal.strategy import SignalStrategy
 from quant_platform.strategy_generation.backtest import (
     StrategyLoadError,
     _normalize_instrument,
-    load_strategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,7 @@ class PaperNodeRunner:
     ) -> None:
         self._account = account
         self._code = code
+        self._spec = load_signal_spec(code)
         self._repository = repository
         self._poller = poller
         self._poll_interval = poll_interval_seconds
@@ -276,8 +278,11 @@ class PaperNodeRunner:
             )
             node.cache.add_instrument(instrument)
             bar_type_str = f"{instrument.id}-{bar_suffix}"
-            strategy = load_strategy(
-                self._code, instrument_id=str(instrument.id), bar_type_str=bar_type_str
+            strategy = SignalStrategy(
+                StrategyConfig(strategy_id=f"paper-{instrument.id.symbol}"),
+                instrument_id=str(instrument.id),
+                bar_type_str=bar_type_str,
+                spec=self._spec,
             )
             node.trader.add_strategy(strategy)
             self._strategy_bar_types.append(

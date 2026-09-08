@@ -28,9 +28,9 @@ from quant_platform.strategy_generation.schemas import AgentOutput
 
 _HEADERS = {"Authorization": "Bearer paper-tester"}
 _SAFE_CODE = (
-    "from nautilus_trader.trading.strategy import Strategy\n"
-    "class GenStrategy(Strategy):\n"
-    "    pass\n"
+    "INDICATORS = []\n"
+    "def compute_signal(ctx):\n"
+    "    return Signal(target_qty=0)\n"
 )
 
 

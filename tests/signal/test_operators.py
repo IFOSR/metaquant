@@ -7,8 +7,6 @@ import math
 import pytest
 
 from quant_platform.signal.operators import (
-    AdxOperator,
-    MacdOperator,
     build_operator,
 )
 
@@ -20,16 +18,36 @@ _NT_TYPES = {
     "dema": ({"type": "dema", "period": 3}, {"close"}, {"value"}),
     "hma": ({"type": "hma", "period": 4}, {"close"}, {"value"}),
     "atr": ({"type": "atr", "period": 3}, {"high", "low", "close"}, {"value"}),
-    "bollinger": ({"type": "bollinger", "period": 3}, {"high", "low", "close"}, {"upper", "mid", "lower"}),
+    "bollinger": (
+        {"type": "bollinger", "period": 3},
+        {"high", "low", "close"},
+        {"upper", "mid", "lower"},
+    ),
     "rsi": ({"type": "rsi", "period": 3}, {"close"}, {"value"}),
     "roc": ({"type": "roc", "period": 3}, {"close"}, {"value"}),
     "cci": ({"type": "cci", "period": 3}, {"high", "low", "close"}, {"value"}),
-    "stoch": ({"type": "stoch", "period_k": 5, "period_d": 3}, {"high", "low", "close"}, {"k", "d"}),
+    "stoch": (
+        {"type": "stoch", "period_k": 5, "period_d": 3},
+        {"high", "low", "close"},
+        {"k", "d"},
+    ),
     "aroon": ({"type": "aroon", "period": 3}, {"high", "low"}, {"value", "up", "down"}),
     "cmo": ({"type": "cmo", "period": 3}, {"close"}, {"value"}),
-    "linreg": ({"type": "linreg", "period": 3}, {"close"}, {"value", "slope", "intercept"}),
-    "keltner": ({"type": "keltner", "period": 3}, {"high", "low", "close"}, {"upper", "mid", "lower"}),
-    "donchian": ({"type": "donchian", "period": 3}, {"high", "low"}, {"upper", "mid", "lower"}),
+    "linreg": (
+        {"type": "linreg", "period": 3},
+        {"close"},
+        {"value", "slope", "intercept"},
+    ),
+    "keltner": (
+        {"type": "keltner", "period": 3},
+        {"high", "low", "close"},
+        {"upper", "mid", "lower"},
+    ),
+    "donchian": (
+        {"type": "donchian", "period": 3},
+        {"high", "low"},
+        {"upper", "mid", "lower"},
+    ),
     "obv": ({"type": "obv", "period": 3}, {"open", "close", "volume"}, {"value"}),
 }
 

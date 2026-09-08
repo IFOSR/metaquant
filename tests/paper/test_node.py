@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
-import asyncio
 
 import pytest
-
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from quant_platform.markets.nt.fees import AShareFeeModel
 from quant_platform.markets.nt.futures_fee import FuturesFeeModel
 from quant_platform.paper.contracts import PaperAccount, PaperAccountState
+
+_SIGNAL = "INDICATORS = []\ndef compute_signal(ctx):\n    return Signal(target_qty=0)\n"
 from quant_platform.paper.node import (
     ChinaVenueSandboxExecFactory,
     PaperNodeRunner,
@@ -55,7 +56,7 @@ def _repository() -> SqlAlchemyPaperRepository:
 def test_build_config_binds_venue_and_trader() -> None:
     runner = PaperNodeRunner(
         account=_account(),
-        code="class S: ...",
+        code=_SIGNAL,
         repository=_repository(),
         poller=None,  # type: ignore[arg-type]
     )
@@ -70,7 +71,7 @@ def test_build_config_binds_venue_and_trader() -> None:
 def test_build_config_futures_margin_venue() -> None:
     runner = PaperNodeRunner(
         account=_account("CN_COMMODITY_FUTURES"),
-        code="class S: ...",
+        code=_SIGNAL,
         repository=_repository(),
         poller=None,  # type: ignore[arg-type]
     )
@@ -121,7 +122,7 @@ def test_run_until_builds_node_inside_running_loop() -> None:
     """
     runner = PaperNodeRunner(
         account=_account(),
-        code="class S: ...",
+        code=_SIGNAL,
         repository=_repository(),
         poller=None,  # type: ignore[arg-type]
     )
@@ -158,7 +159,7 @@ def test_run_until_records_error_state_when_build_fails() -> None:
     repository = _repository()
     runner = PaperNodeRunner(
         account=_account(),
-        code="class S: ...",
+        code=_SIGNAL,
         repository=repository,
         poller=None,  # type: ignore[arg-type]
     )

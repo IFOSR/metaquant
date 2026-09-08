@@ -7,7 +7,6 @@ from quant_platform.strategy_generation.agent import (
 from quant_platform.strategy_generation.api import build_strategy_router
 from quant_platform.strategy_generation.backtest import (
     StrategyLoadError,
-    run_strategy_backtest,
 )
 from quant_platform.strategy_generation.repository import (
     SqlAlchemyStrategyRepository,
@@ -20,6 +19,5 @@ __all__ = [
     "StrategyGenerationError",
     "StrategyLoadError",
     "build_strategy_router",
-    "run_strategy_backtest",
     "run_turn",
 ]

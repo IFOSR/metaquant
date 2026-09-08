@@ -1,59 +1,41 @@
-"""Execute a generated NautilusTrader strategy against historical bars (G19-P2/P3).
+"""信号回测的结果/提取件与 code-test 门禁（G19-P3）。
 
-Loads untrusted strategy source (a ``Strategy`` subclass with the constructor
-contract ``(instrument_id: str, bar_type_str: str)``), enforces the static
-security policy, runs it on a NautilusTrader backtest engine wired with China
-market fee models (net-of-fees cost basis), and returns a deterministic result
-(equity curve + metrics + trades + positions + T+1 audit).
+本模块不再加载完整 Strategy 子类（已信号化，见 ``quant_platform.signal``），
+只保留：bar 聚合/周期映射、成交/持仓提取、净值曲线采样、T+1 审计、回测结果
+dataclass、code test 门禁。实际运行信号回测用 ``quant_platform.signal.runner``。
 """
 
 from __future__ import annotations
 
-import inspect
 import math
-import re
 import time as _clock
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from numbers import Integral
 from typing import Any
 
-from nautilus_trader.config import StrategyConfig
 from nautilus_trader.model.currencies import CNY
 from nautilus_trader.model.data import BarSpecification, BarType
 from nautilus_trader.model.enums import BarAggregation, PriceType
-from nautilus_trader.model.identifiers import InstrumentId, Venue
-from nautilus_trader.trading.strategy import Strategy
+from nautilus_trader.model.identifiers import Venue
 
 from quant_platform.backtest.service import (
-    _CONTRACT_SPECS,
     _VENUE_BY_SUFFIX,
     BacktestMetrics,
     BacktestPosition,
     BacktestTrade,
-    _extract_positions,
-    _underlying,
 )
 from quant_platform.data_gateway.resolver import Bar
 from quant_platform.markets.futures import CloseOffset, FeeRate, FeeSchedule
 from quant_platform.markets.nt import (
-    backtest_hash,
-    build_equity_engine,
-    build_futures_engine,
     day_bar_spec,
-    equity_instrument,
-    futures_contract,
     minute_bar_spec,
-    run_engine,
-    to_nautilus_bars,
 )
 from quant_platform.markets.nt.venue import (
     VenueSpec,
-    venue_spec_for_market,
 )
-from quant_platform.strategy_generation.security import scan_strategy_source
 
 _DEFAULT_INITIAL_CASH = Decimal("1000000")
 
@@ -145,65 +127,6 @@ _DEFAULT_FUTURES_FEE_SCHEDULE = FeeSchedule(
 
 class StrategyLoadError(RuntimeError):
     """Raised when generated strategy code cannot be compiled or instantiated."""
-
-
-def load_strategy(
-    code: str,
-    *,
-    instrument_id: str,
-    bar_type_str: str,
-    trend_bar_type_str: str | None = None,
-) -> Strategy:
-    """Compile and instantiate the generated ``Strategy`` subclass.
-
-    The source must first pass the static security policy (import allowlist,
-    forbidden calls, dunder-access ban) — LLM output is untrusted input.
-    The generated code must define exactly one ``Strategy`` subclass whose
-    ``__init__`` accepts ``(instrument_id: str, bar_type_str: str)``；多周期
-    策略可再声明可选参数 ``trend_bar_type_str``（仅在声明时传入）。
-    """
-    violations = scan_strategy_source(code)
-    if violations:
-        raise StrategyLoadError(
-            "strategy code rejected by security policy: " + "; ".join(violations)
-        )
-    namespace: dict[str, Any] = {
-        "StrategyConfig": StrategyConfig,
-        "Strategy": Strategy,
-        "InstrumentId": InstrumentId,
-        "BarType": BarType,
-    }
-    # 兼容旧生成代码：NautilusTrader 配置类是 pydantic 模型，类属性是
-    # member_descriptor（返回器描述对象而非原始值）。把 `SomeConfig.attr`
-    # 读成 `SomeConfig().attr`，让指标构造拿到真正的数值。新生成代码由
-    # 静态检查拦截（agent 自动纠错），这里只为让已冻结的旧策略能加载。
-    code = re.sub(r"\b([A-Z][A-Za-z0-9]*Config)\.([a-z_]\w*)", r"\1().\2", code)
-    try:
-        exec(compile(code, "<strategy>", "exec"), namespace)  # noqa: S102
-    except Exception as exc:  # noqa: BLE001
-        raise StrategyLoadError(f"code failed to compile: {exc}") from exc
-    strategy_cls: type[Strategy] | None = None
-    for value in namespace.values():
-        if (
-            isinstance(value, type)
-            and issubclass(value, Strategy)
-            and value is not Strategy
-        ):
-            strategy_cls = value
-            break
-    if strategy_cls is None:
-        raise StrategyLoadError("no Strategy subclass found in generated code")
-    kwargs: dict[str, str] = {
-        "instrument_id": instrument_id,
-        "bar_type_str": bar_type_str,
-    }
-    params = inspect.signature(strategy_cls.__init__).parameters
-    if trend_bar_type_str is not None and "trend_bar_type_str" in params:
-        kwargs["trend_bar_type_str"] = trend_bar_type_str
-    try:
-        return strategy_cls(**kwargs)
-    except Exception as exc:  # noqa: BLE001
-        raise StrategyLoadError(f"strategy init failed: {exc}") from exc
 
 
 def _normalize_instrument(instrument_id: str) -> tuple[str, str]:
@@ -599,171 +522,6 @@ class BacktestRequest:
         from quant_platform.experiments import canonical_hash
 
         return canonical_hash(self.to_dict())
-
-
-def run_strategy_backtest(
-    *,
-    code: str,
-    market: str,
-    instrument_ids: tuple[str, ...],
-    bars_by_instrument: dict[str, tuple[Bar, ...]],
-    frequency: str,
-    trend_bars_by_instrument: dict[str, tuple[Bar, ...]] | None = None,
-    trend_frequency: str | None = None,
-    initial_cash: Decimal = _DEFAULT_INITIAL_CASH,
-    futures_fee_schedule: FeeSchedule = _DEFAULT_FUTURES_FEE_SCHEDULE,
-    venue_spec: VenueSpec | None = None,
-) -> StrategyBacktestResult:
-    """Run the generated strategy on NautilusTrader against the given bars.
-
-    ``frequency`` 为执行周期；``trend_frequency`` 为趋势周期（多周期策略，
-    引擎会同时喂入两套 bar，策略通过 ``trend_bar_type_str`` 读取趋势指标）。
-    成本口径为 net of fees：默认按市场装配完整 ``VenueSpec``（费用 + 涨跌停
-    撮合，对齐 NT ``add_venue`` 交互），可传入自定义 ``venue_spec`` 覆盖。
-    净值曲线直接从引擎账户/持仓盯市派生（删除手搓双轨）；结果同时附带 A 股
-    T+1 同日回转审计与口径声明。
-    """
-    if market not in ("CN_A", "CN_COMMODITY_FUTURES"):
-        raise StrategyLoadError(f"unsupported market: {market}")
-    if frequency not in SUPPORTED_FREQUENCIES:
-        raise StrategyLoadError(f"unsupported frequency: {frequency}")
-    if trend_frequency is not None and trend_frequency not in SUPPORTED_FREQUENCIES:
-        raise StrategyLoadError(f"unsupported trend frequency: {trend_frequency}")
-    if not instrument_ids:
-        raise StrategyLoadError("no instruments provided")
-    _validate_market_instruments(market, instrument_ids)
-    venues = {_normalize_instrument(item)[1] for item in instrument_ids}
-    if len(venues) != 1:
-        raise StrategyLoadError("all instruments must share one venue")
-    missing = [item for item in instrument_ids if item not in bars_by_instrument]
-    if missing:
-        raise StrategyLoadError(f"no market data for instruments: {', '.join(missing)}")
-    if trend_frequency is not None:
-        if trend_bars_by_instrument is None:
-            raise StrategyLoadError("trend bars required for multi-timeframe strategy")
-        missing_trend = [
-            item for item in instrument_ids if item not in trend_bars_by_instrument
-        ]
-        if missing_trend:
-            raise StrategyLoadError(
-                "no trend market data for instruments: " + ", ".join(missing_trend)
-            )
-
-    resolved_venue_spec = venue_spec or venue_spec_for_market(
-        market, futures_fee_schedule=futures_fee_schedule
-    )
-    bar_spec = bar_spec_for(frequency)
-    bar_type_suffix = _bar_type_suffix(frequency)
-    trend_bar_spec = bar_spec_for(trend_frequency) if trend_frequency else None
-    trend_suffix = _bar_type_suffix(trend_frequency) if trend_frequency else None
-
-    engine = None
-    all_nt_bars = []
-    id_map: dict[str, str] = {}
-    exec_bar_type: BarType | None = None
-    for instrument_id in instrument_ids:
-        bars = bars_by_instrument[instrument_id]
-        symbol, venue = _normalize_instrument(instrument_id)
-        days = [bar.timestamp for bar in bars]
-        if trend_bars_by_instrument is not None:
-            days += [bar.timestamp for bar in trend_bars_by_instrument[instrument_id]]
-        if venue in ("SSE", "SZSE"):
-            instrument = equity_instrument(symbol=symbol, venue=venue)
-            if engine is None:
-                engine = build_equity_engine(
-                    instrument=instrument,
-                    initial_cash=initial_cash,
-                    venue=venue,
-                    venue_spec=resolved_venue_spec,
-                )
-            else:
-                engine.add_instrument(instrument)
-            precision = 2
-        else:
-            increment, multiplier, precision = _CONTRACT_SPECS.get(
-                _underlying(symbol), _CONTRACT_SPECS["RB"]
-            )
-            instrument = futures_contract(
-                symbol=symbol,
-                venue=venue,
-                underlying=_underlying(symbol),
-                price_increment=increment,
-                multiplier=multiplier,
-                price_precision=precision,
-                activation_ns=int((min(days) - timedelta(days=30)).timestamp() * 1e9),
-                expiration_ns=int((max(days) + timedelta(days=120)).timestamp() * 1e9),
-            )
-            if engine is None:
-                engine = build_futures_engine(
-                    instrument=instrument,
-                    initial_cash=initial_cash,
-                    venue=venue,
-                    venue_spec=resolved_venue_spec,
-                )
-            else:
-                engine.add_instrument(instrument)
-
-        bar_type_str = f"{instrument.id}-{bar_type_suffix}"
-        id_map[str(instrument.id)] = instrument_id
-        if exec_bar_type is None:
-            exec_bar_type = BarType.from_str(bar_type_str)
-        trend_bar_type_str = f"{instrument.id}-{trend_suffix}" if trend_suffix else None
-        strategy = load_strategy(
-            code,
-            instrument_id=str(instrument.id),
-            bar_type_str=bar_type_str,
-            trend_bar_type_str=trend_bar_type_str,
-        )
-        engine.add_strategy(strategy)
-        all_nt_bars.extend(
-            to_nautilus_bars(
-                bars,
-                instrument_id=instrument.id,
-                bar_spec=bar_spec,
-                price_precision=precision,
-            )
-        )
-        if trend_bars_by_instrument is not None and trend_bar_spec is not None:
-            all_nt_bars.extend(
-                to_nautilus_bars(
-                    trend_bars_by_instrument[instrument_id],
-                    instrument_id=instrument.id,
-                    bar_spec=trend_bar_spec,
-                    price_precision=precision,
-                )
-            )
-    assert engine is not None
-    assert exec_bar_type is not None
-
-    finalize_curve = _equity_curve_recorder(engine=engine, exec_bar_type=exec_bar_type)
-    run_engine(engine, bars=all_nt_bars)
-
-    trades = _extract_strategy_trades(engine)
-    total_fees = sum(trade.commission for trade in trades)
-    curve, metrics = finalize_curve(
-        initial_cash=initial_cash,
-        trade_count=len(trades),
-        aggregate_daily=frequency.endswith("m"),
-    )
-    violations = _audit_t_plus_one(trades=trades, id_map=id_map)
-    all_bar_days = sorted(
-        {bar.timestamp.date() for bars in bars_by_instrument.values() for bar in bars}
-    )
-    return StrategyBacktestResult(
-        instrument_ids=instrument_ids,
-        start=all_bar_days[0].isoformat(),
-        end=all_bar_days[-1].isoformat(),
-        frequency=frequency,
-        initial_cash=float(initial_cash),
-        metrics=metrics,
-        equity_curve=curve,
-        trades=trades,
-        positions=_extract_positions(engine),
-        backtest_hash=backtest_hash(engine),
-        constraint_violations=violations,
-        total_fees=total_fees,
-        venue_spec=resolved_venue_spec,
-    )
 
 
 @dataclass(frozen=True, slots=True)

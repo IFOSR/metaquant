@@ -8,14 +8,18 @@ SignalStrategy」。
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from nautilus_trader.config import StrategyConfig
 from nautilus_trader.model.data import BarType
 
-from quant_platform.backtest.service import _CONTRACT_SPECS, _extract_positions, _underlying
+from quant_platform.backtest.service import (
+    _CONTRACT_SPECS,
+    _extract_positions,
+    _underlying,
+)
 from quant_platform.data_gateway.resolver import Bar
 from quant_platform.markets.nt import (
     backtest_hash,
@@ -53,14 +57,14 @@ def run_signal_backtest(
     from quant_platform.strategy_generation.backtest import (
         _DEFAULT_FUTURES_FEE_SCHEDULE,
         _DEFAULT_INITIAL_CASH,
+        StrategyBacktestResult,
+        StrategyLoadError,
         _audit_t_plus_one,
         _bar_type_suffix,
         _equity_curve_recorder,
         _extract_strategy_trades,
         _normalize_instrument,
         _validate_market_instruments,
-        StrategyBacktestResult,
-        StrategyLoadError,
         bar_spec_for,
     )
 
@@ -143,9 +147,7 @@ def run_signal_backtest(
         id_map[str(instrument.id)] = instrument_id
         if exec_bar_type is None:
             exec_bar_type = BarType.from_str(bar_type_str)
-        trend_bar_type_str = (
-            f"{instrument.id}-{trend_suffix}" if trend_suffix else None
-        )
+        trend_bar_type_str = f"{instrument.id}-{trend_suffix}" if trend_suffix else None
         strategy = SignalStrategy(
             StrategyConfig(strategy_id=f"sig-{instrument.id.symbol}"),
             instrument_id=str(instrument.id),

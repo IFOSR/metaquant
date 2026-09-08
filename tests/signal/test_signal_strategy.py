@@ -36,7 +36,9 @@ def compute_signal(ctx):
 """
 
 
-def _bars(closes: tuple[float, ...], lows: dict[int, float] | None = None) -> tuple[Bar, ...]:
+def _bars(
+    closes: tuple[float, ...], lows: dict[int, float] | None = None
+) -> tuple[Bar, ...]:
     base = datetime(2026, 1, 5, 15, 0, tzinfo=SHANGHAI)
     bars: list[Bar] = []
     for i, close in enumerate(closes):

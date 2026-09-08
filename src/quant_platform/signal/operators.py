@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class Operator:
     """算子基类。"""
@@ -172,19 +174,22 @@ class AdxOperator(Operator):
         close: float | None = None,
     ) -> None:
         assert high is not None and low is not None and close is not None
-        if self._prev_high is None:
+        prev_high = self._prev_high
+        prev_low = self._prev_low
+        prev_close = self._prev_close
+        if prev_high is None or prev_low is None or prev_close is None:
             tr = high - low
             pdm = 0.0
             ndm = 0.0
         else:
-            up = high - self._prev_high
-            dn = self._prev_low - low
+            up = high - prev_high
+            dn = prev_low - low
             pdm = up if (up > dn and up > 0) else 0.0
             ndm = dn if (dn > up and dn > 0) else 0.0
             tr = max(
                 high - low,
-                abs(high - self._prev_close),
-                abs(low - self._prev_close),
+                abs(high - prev_close),
+                abs(low - prev_close),
             )
         self._prev_high = high
         self._prev_low = low
@@ -308,9 +313,11 @@ OPERATORS: dict[str, type[Operator]] = {
 }
 
 
-def build_operator(spec: dict) -> Operator:
+def build_operator(spec: dict[str, Any]) -> Operator:
     """由声明式指标 spec 构建算子（``{"type": "sma", "period": 3}``）。"""
     type_name = spec.get("type")
+    if not isinstance(type_name, str):
+        raise ValueError("indicator spec requires a string 'type'")
     if type_name == "macd":
         return MacdOperator(fast=spec["fast"], slow=spec["slow"])
     if type_name == "bollinger" and "k" in spec:

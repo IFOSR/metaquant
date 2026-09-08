@@ -23,7 +23,7 @@ class Signal:
 
 @dataclass
 class SignalSpec:
-    indicators: list[dict]
+    indicators: list[dict[str, Any]]
     compute_signal: Callable[[Any], Signal]
 
 

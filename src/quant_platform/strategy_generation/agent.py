@@ -57,12 +57,15 @@ _SYSTEM_PROMPT_LINES = (
     "object (no markdown fences) with exactly this shape:",
     "{",
     '  "title": "short strategy name",',
-    '  "explanation": "plain-language summary of the strategy as understood, '
-    "for a NON-programmer: what it trades, when it enters/exits, position "
-    "sizing, stop loss, universe, frequency. It must fully reflect the "
-    "signal logic, not drift from it. For two-sided strategies every "
-    "entry/exit rule must state its direction explicitly (开多 vs 开空, "
-    "平多 vs 平空).",
+    '  "explanation": "structured plain-language summary using 【】section '
+    "markers, one section per line, in this fixed order: "
+    "【策略概览】【开多条件】【开空条件】【离场规则】【风控】. "
+    "【策略概览】covers market, instrument, timeframe, direction "
+    "(long-only vs long/short), and fixed position size (1 lot). "
+    "【开空条件】may be omitted for long-only strategies. Keep each "
+    "section 1-3 short sentences and make it fully reflect the signal "
+    "logic (never drift). For two-sided strategies state "
+    "开多/开空/平多/平空 explicitly.",
     '  "question": "the single most important clarifying question for the '
     'user, or empty string if the strategy is fully specified",',
     '  "code": "the signal specification Python source (INDICATORS + '

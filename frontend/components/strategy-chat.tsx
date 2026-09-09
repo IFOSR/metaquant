@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { quantApiClient } from "../lib/client";
 import { MARKET_LABEL_KEYS } from "../lib/domain";
@@ -40,6 +40,12 @@ const STATUS_KEYS = {
   FROZEN: "strategyChat.statusFrozen",
 } as const;
 
+const THINKING_STAGE_KEYS: MessageKey[] = [
+  "strategyChat.thinkingStage.understand",
+  "strategyChat.thinkingStage.generate",
+  "strategyChat.thinkingStage.validate",
+];
+
 const STAGE_ORDER: ResearchStage[] = [
   "CREATING",
   "READY",
@@ -55,6 +61,37 @@ const STAGE_LABEL_KEYS: Record<ResearchStage, MessageKey> = {
   BACKTESTED: "research.stage.backtested",
   PAPER_LINKED: "research.stage.paperLinked",
 };
+
+function renderStructuredContent(content: string) {
+  // 按【标题】分节渲染：整段策略说明拆成可读的标题块。
+  const sections = content.split(/(【[^】]+】)/g);
+  if (sections.length === 1) {
+    return content.split("\n\n").map((paragraph, i) => <p key={i}>{paragraph}</p>);
+  }
+  const nodes: ReactNode[] = [];
+  let currentTitle: string | null = null;
+  for (const part of sections) {
+    if (!part) continue;
+    if (/^【[^】]+】$/.test(part)) {
+      currentTitle = part;
+    } else if (currentTitle) {
+      nodes.push(
+        <div className="sc-section" key={nodes.length}>
+          <div className="sc-section-title">{currentTitle}</div>
+          {part.split("\n").filter(Boolean).map((line, i) => (
+            <p key={i}>{line}</p>
+          ))}
+        </div>,
+      );
+      currentTitle = null;
+    } else {
+      part.split("\n").filter(Boolean).forEach((line, i) => {
+        nodes.push(<p key={`${nodes.length}-${i}`}>{line}</p>);
+      });
+    }
+  }
+  return nodes;
+}
 
 function StageRail({ stage }: { stage: ResearchStage }) {
   const { t } = useI18n();
@@ -101,6 +138,7 @@ export function StrategyChat() {
   );
   const [backtestPickerOpen, setBacktestPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [backtest, setBacktest] = useState<StrategyBacktestResult | null>(null);
   const [codeTest, setCodeTest] = useState<StrategyCodeTestResult | null>(null);
@@ -149,6 +187,15 @@ export function StrategyChat() {
       cancelled = true;
     };
   }, [draft, btFrequency, btStart, btEnd, btEdited]);
+
+  // 思考中：轮换阶段提示，让用户感知 agent 在推进。
+  useEffect(() => {
+    if (!busy) return;
+    const timer = setInterval(() => {
+      setThinkingStage((stage) => (stage + 1) % THINKING_STAGE_KEYS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [busy]);
 
   useEffect(() => {
     const draftId = searchParams.get("draft");
@@ -213,6 +260,7 @@ export function StrategyChat() {
     const pendingBacktest = selectedBacktest;
     setBusy(true);
     setError(null);
+    setThinkingStage(0);
     // 立即清空输入框：点击发送后文本就应消失，等请求返回才清会让人
     // 误以为没发出去，或当成下一条要输入的内容产生歧义。
     setInput("");
@@ -491,9 +539,11 @@ export function StrategyChat() {
                       : t("strategyChat.roleAgent")}
                   </span>
                   <div className="sc-msg-bubble">
-                    {message.content.split("\n\n").map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
-                    ))}
+                    {message.role === "assistant"
+                      ? renderStructuredContent(message.content)
+                      : message.content.split("\n\n").map((paragraph, i) => (
+                          <p key={i}>{paragraph}</p>
+                        ))}
                     {message.attachments && message.attachments.length > 0 && (
                       <div className="sc-msg-attachments">
                         {message.attachments.map((attachment, i) => (
@@ -515,7 +565,7 @@ export function StrategyChat() {
                     <span className="sc-dot" />
                     <span className="sc-dot" />
                     <span className="sc-dot" />
-                    <em>{t("strategyChat.thinking")}</em>
+                    <em>{t(THINKING_STAGE_KEYS[thinkingStage])}</em>
                   </div>
                 </div>
               )}

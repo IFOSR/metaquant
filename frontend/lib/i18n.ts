@@ -662,6 +662,9 @@ const zh = {
   "strategyChat.frozenHint":
     "策略已冻结，对话已锁定；可继续回测。如需修改请新建对话。",
   "strategyChat.thinking": "Agent 正在思考…",
+  "strategyChat.thinkingStage.understand": "正在理解需求…",
+  "strategyChat.thinkingStage.generate": "正在生成策略信号…",
+  "strategyChat.thinkingStage.validate": "正在校验策略…",
   "strategyChat.roleUser": "你",
   "strategyChat.roleAgent": "Agent",
   "strategyChat.new": "新建对话",

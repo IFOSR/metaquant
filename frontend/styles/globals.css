@@ -700,6 +700,15 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 }
 .sc-msg-bubble p { margin: 0; }
 .sc-msg-bubble p + p { margin-top: 8px; }
+.sc-section + .sc-section { margin-top: 12px; }
+.sc-section-title {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.sc-section p { margin: 0; }
+.sc-section p + p { margin-top: 4px; }
 .sc-msg-attachments {
   display: flex;
   flex-wrap: wrap;

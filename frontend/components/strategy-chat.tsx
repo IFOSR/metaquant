@@ -75,10 +75,11 @@ const STAGE_LABEL_KEYS: Record<ResearchStage, MessageKey> = {
 };
 
 function detectMarket(message: string): MarketId {
-  // 从消息里识别市场：出现期货合约后缀则视为商品期货，否则 A 股。
-  return /\.(SHF|DCE|CZCE|CZC|INE|GFE|GFEX)/i.test(message)
-    ? "CN_COMMODITY_FUTURES"
-    : "CN_A";
+  // 本平台以商品期货为主：默认期货，只有明确出现 A 股代码（6/0/3 开头的
+  // 6 位数字，如 600000、000001、300750）时才判 A 股。
+  return /\b[603]\d{5}\b/.test(message)
+    ? "CN_A"
+    : "CN_COMMODITY_FUTURES";
 }
 
 function renderStructuredContent(content: string) {
@@ -147,7 +148,7 @@ export function StrategyChat() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [market, setMarket] = useState<MarketId>("CN_A");
+  const [market, setMarket] = useState<MarketId>("CN_COMMODITY_FUTURES");
   const [draft, setDraft] = useState<StrategyDraft | null>(null);
   const [messages, setMessages] = useState<StrategyMessage[]>([]);
   const [input, setInput] = useState("");

@@ -103,9 +103,11 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
             self._prev_trend = self._cur_trend
             for op in self._trend_ops.values():
                 op.update(
+                    open=float(bar.open.as_double()),
                     high=float(bar.high.as_double()),
                     low=float(bar.low.as_double()),
                     close=float(bar.close.as_double()),
+                    volume=float(bar.volume.as_double()),
                 )
             self._cur_trend = {
                 key: op.snapshot() for key, op in self._trend_ops.items()
@@ -118,9 +120,11 @@ class SignalStrategy(Strategy):  # type: ignore[misc]  # Strategy 为 C 扩展
         self._prev_exec = self._cur_exec
         for op in self._exec_ops.values():
             op.update(
+                open=float(bar.open.as_double()),
                 high=float(bar.high.as_double()),
                 low=float(bar.low.as_double()),
                 close=float(bar.close.as_double()),
+                volume=float(bar.volume.as_double()),
             )
         self._cur_exec = {key: op.snapshot() for key, op in self._exec_ops.items()}
 

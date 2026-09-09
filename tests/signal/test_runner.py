@@ -219,3 +219,27 @@ def test_minute_equity_curve_preserves_intraday_timestamps() -> None:
         {point[0][:10] for point in result.equity_curve}
     )
     assert any("T" in point[0] for point in result.equity_curve)
+
+
+def test_signal_with_volume_operator_does_not_crash() -> None:
+    """使用 obv（依赖 open/volume 的算子）的信号必须能跑通。
+
+    SignalStrategy 喂算子时必须传入 open/volume，否则 obv 的 update_raw 收到
+    None 会抛 TypeError(must be real number, not NoneType)。
+    """
+    signal = (
+        "INDICATORS = [{\"key\": \"obv\", \"type\": \"obv\", \"period\": 5}]\n"
+        "def compute_signal(ctx):\n"
+        "    if not ctx.ready:\n"
+        "        return Signal(target_qty=0)\n"
+        "    return Signal(target_qty=1)\n"
+    )
+    result = run_signal_backtest(
+        code=signal,
+        market="CN_A",
+        instrument_ids=("600000.SH",),
+        bars_by_instrument={"600000.SH": _daily_bars(40)},
+        frequency="1d",
+        initial_cash=Decimal("1000000"),
+    )
+    assert result.metrics.trade_count > 0

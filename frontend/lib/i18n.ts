@@ -238,6 +238,8 @@ const zh = {
   "home.deleteConfirm": "确定删除该策略？此操作不可恢复。",
   "home.clearConfirm": "确定清空全部策略？此操作不可恢复。",
   "home.deleteFailed": "删除失败",
+  "home.deleteDone": "已删除",
+  "home.clearDone": "已清空",
   "home.footerNote":
     "证据优先 —— Agent 负责提议，控制面负责裁决；事件只是提示，快照才是事实；门禁齐备前，模拟盘与实盘保持关闭。",
   "home.taskCenter": "任务中心",

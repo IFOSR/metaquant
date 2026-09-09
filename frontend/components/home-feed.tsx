@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { quantApiClient } from "../lib/client";
 import {
@@ -23,29 +24,23 @@ export interface HomeResearch {
 
 type Filter = "all" | "factor" | "strategy";
 
+const ALL = "all" as const;
+
 export function HomeFeed({ items }: { items: HomeResearch[] }) {
   const { t } = useI18n();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [localItems, setLocalItems] = useState(items);
+  const router = useRouter();
+  const [filter, setFilter] = useState<Filter>(ALL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const counts = useMemo(
-    () => ({
-      all: localItems.length,
-      factor: localItems.filter((item) => item.kind === "factor").length,
-      strategy: localItems.filter((item) => item.kind === "strategy").length,
-    }),
-    [localItems],
-  );
+  const counts = {
+    all: items.length,
+    factor: items.filter((item) => item.kind === "factor").length,
+    strategy: items.filter((item) => item.kind === "strategy").length,
+  };
 
-  const filtered = useMemo(
-    () =>
-      filter === "all"
-        ? localItems
-        : localItems.filter((item) => item.kind === filter),
-    [localItems, filter],
-  );
+  const filtered =
+    filter === ALL ? items : items.filter((item) => item.kind === filter);
 
   async function deleteStrategy(id: string) {
     if (busy || !window.confirm(t("home.deleteConfirm"))) return;
@@ -53,9 +48,8 @@ export function HomeFeed({ items }: { items: HomeResearch[] }) {
     setError(null);
     try {
       await quantApiClient.deleteStrategyDraft(id);
-      setLocalItems((previous) =>
-        previous.filter((item) => !(item.kind === "strategy" && item.id === id)),
-      );
+      router.refresh();
+      setError(t("home.deleteDone"));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("home.deleteFailed"));
     } finally {
@@ -69,9 +63,8 @@ export function HomeFeed({ items }: { items: HomeResearch[] }) {
     setError(null);
     try {
       await quantApiClient.clearStrategyDrafts();
-      setLocalItems((previous) =>
-        previous.filter((item) => item.kind !== "strategy"),
-      );
+      router.refresh();
+      setError(t("home.clearDone"));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("home.deleteFailed"));
     } finally {
@@ -80,7 +73,7 @@ export function HomeFeed({ items }: { items: HomeResearch[] }) {
   }
 
   const tabs: Array<{ key: Filter; label: string; count: number }> = [
-    { key: "all", label: t("home.filterAll"), count: counts.all },
+    { key: ALL, label: t("home.filterAll"), count: counts.all },
     {
       key: "factor",
       label: t(RESEARCH_KIND_LABEL_KEYS.factor),

@@ -14,6 +14,7 @@ global config.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -28,6 +29,11 @@ import httpx
 from quant_platform.research.schemas import BriefContent
 
 Runner = Callable[[str], str]
+
+# 流式 runner：在生成过程中把 token/思考分片通过回调推出去，最终返回完整文本。
+# 事件约定：{"kind": "thinking", "delta": ...} 或 {"kind": "text", "delta": ...}
+StreamEvent = Callable[[dict[str, Any]], None]
+StreamingRunner = Callable[[str], str]
 
 # 活跃 Agent 基座模型配置解析器（由 app 层装配，读 DB；每次调用即时解析）。
 _agent_config_resolver: Callable[[], Any] | None = None
@@ -326,6 +332,88 @@ def _pi_complete(
     return result.stdout.strip()
 
 
+def _pi_stream_complete(
+    prompt: str,
+    *,
+    provider: str = "",
+    model: str = "",
+    api_key: str = "",
+    on_event: StreamEvent,
+) -> str:
+    """流式调用 ``pi`` 的 RPC 模式，逐分片推送思考/答案内容。
+
+    ``--mode rpc`` 以 JSONL 在 stdout 流式发事件（``message_update`` 里的
+    ``thinking_delta`` 是模型推理、``text_delta`` 是最终答案），全部经
+    ``on_event`` 透出；返回完整答案文本（供上层解析 JSON）。
+    """
+    binary = _resolve_cli("pi")
+    if not binary:
+        raise FactorExtractionError(
+            "pi CLI not found: install it (npm i -g @earendil-works/pi-coding-agent) "
+            "or add its bin dir (e.g. ~/.npm-global/bin) to the backend PATH"
+        )
+    argv = [
+        binary,
+        "--mode", "rpc",
+        "--no-session",
+        "--no-extensions",
+        "--no-skills",
+        "--thinking", "high",
+    ]
+    if provider:
+        argv += ["--provider", provider]
+    if model:
+        argv += ["--model", model]
+    if api_key:
+        argv += ["--api-key", api_key]
+    proc = subprocess.Popen(
+        argv,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert proc.stdin is not None
+    assert proc.stdout is not None
+    assert proc.stderr is not None
+    proc.stdin.write(json.dumps({"type": "prompt", "message": prompt}) + "\n")
+    proc.stdin.flush()
+
+    text_parts: list[str] = []
+    for line in proc.stdout:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "message_update":
+            inner = event.get("assistantMessageEvent") or {}
+            inner_type = inner.get("type")
+            if inner_type == "thinking_delta":
+                on_event({"kind": "thinking", "delta": inner.get("delta", "")})
+            elif inner_type == "text_delta":
+                delta = inner.get("delta", "")
+                text_parts.append(delta)
+                on_event({"kind": "text", "delta": delta})
+        elif event.get("type") == "agent_settled":
+            break
+    with contextlib.suppress(Exception):
+        proc.stdin.close()
+    try:
+        proc.wait(timeout=300)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise FactorExtractionError("pi streaming timed out") from None
+    stderr = proc.stderr.read() if proc.stderr else ""
+    if proc.returncode != 0:
+        raise FactorExtractionError(
+            f"pi exited {proc.returncode}: {stderr.strip()}"
+        )
+    return "".join(text_parts).strip()
+
+
 def _codex_complete(
     prompt: str,
     *,
@@ -508,6 +596,48 @@ def default_runner(
         "no agent runner configured: set DEEPSEEK_API_KEY, ZHIPU_API_KEY, "
         "PI_PROVIDER/PI_MODEL, or CODE_CLI_API_KEY (pi)"
     )
+
+
+def default_streaming_runner(
+    system_prompt: str | None = None,
+    *,
+    on_event: StreamEvent,
+    json_mode: bool = True,
+) -> Runner:
+    """选择支持流式的 agent 后端，把 token/思考分片经 ``on_event`` 透出。
+
+    只有 pi 的 RPC 模式支持真正的逐分片流式；其它后端退回一次性调用，
+    在完成时把完整文本作为单个 ``text`` 事件发出去（不流式但可用）。
+    """
+    prompt = system_prompt or _SYSTEM_PROMPT
+    config = _resolve_agent_config()
+    if config is not None:
+        agent = getattr(config, "agent", "") or ""
+        if agent == "pi":
+            if not _resolve_cli("pi"):
+                raise FactorExtractionError(
+                    "active agent config is pi but the pi CLI is not "
+                    "installed or not on this backend's PATH; install it "
+                    "(npm i -g @earendil-works/pi-coding-agent), add its bin "
+                    "dir (e.g. ~/.npm-global/bin) to PATH, or switch the "
+                    "active agent config"
+                )
+            return lambda user: _pi_stream_complete(
+                f"{prompt}\n\n{user}",
+                provider=getattr(config, "provider", "") or "",
+                model=getattr(config, "model", "") or "",
+                api_key=getattr(config, "api_key", "") or "",
+                on_event=on_event,
+            )
+    # 非流式后端：一次性调用，完成后发一个完整 text 事件。
+    complete = default_runner(system_prompt=prompt, json_mode=json_mode)
+
+    def _once(user: str) -> str:
+        text = complete(user)
+        on_event({"kind": "text", "delta": text})
+        return text
+
+    return _once
 
 
 def _default_runner() -> Runner:

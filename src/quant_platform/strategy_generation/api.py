@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import queue
+import threading
 from datetime import date
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, File, Header, UploadFile
+from fastapi.responses import StreamingResponse
 
 from quant_platform.artifacts import ArtifactStore
 from quant_platform.experiment_runtime.execution_state_service import (
@@ -336,6 +340,36 @@ def build_strategy_router(
         )
         return _draft_snapshot(updated)
 
+    @router.post("/strategy-drafts/stream", status_code=200)
+    def create_strategy_draft_stream(
+        command: CreateStrategyDraftCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> StreamingResponse:
+        _authorize_write(command.market, actor)
+        draft = repository.create_draft(actor_id=actor.actor_id, market=command.market)
+        user_content = command.first_message
+        extra = _attachment_text(
+            [a.model_dump(mode="json") for a in command.attachments]
+        )
+        if extra:
+            user_content = f"{command.first_message}\n\n{extra}"
+
+        def _apply(output: AgentOutput) -> dict[str, Any]:
+            updated = repository.apply_turn(
+                draft_id=draft.id,
+                user_content=command.first_message,
+                output=output,
+                attachments=[a.model_dump(mode="json") for a in command.attachments],
+            )
+            return _draft_snapshot(updated)
+
+        return _sse_agent_turn(
+            market=command.market,
+            history=[StrategyMessage(role="user", content=user_content)],
+            state=None,
+            on_output=_apply,
+        )
+
     @router.post("/strategy-drafts/{draft_id}/messages", status_code=202)
     def post_strategy_message(
         draft_id: str,
@@ -406,6 +440,127 @@ def build_strategy_router(
             ],
         )
         return _draft_snapshot(updated)
+
+    def _sse_agent_turn(
+        *,
+        market: str,
+        history: list[StrategyMessage],
+        state: dict[str, Any] | None,
+        on_output: Any,
+    ) -> StreamingResponse:
+        """把一次 agent 回合以 SSE 流式返回：阶段 + token/思考分片 + 最终草稿。"""
+        event_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
+
+        def _emit(event: dict[str, Any]) -> None:
+            event_queue.put(("event", event))
+
+        def _worker() -> None:
+            try:
+                output = _run_agent_turn(
+                    market=market,
+                    history=history,
+                    state=state,
+                    on_event=_emit,
+                )
+                event_queue.put(("draft", on_output(output)))
+            except Exception as exc:  # noqa: BLE001
+                event_queue.put(("error", {"detail": str(exc)}))
+            event_queue.put(("done", None))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+        def _stream() -> Any:
+            while True:
+                item = event_queue.get()
+                if item[0] == "done":
+                    break
+                if item[0] == "event":
+                    event = item[1]
+                    kind = event.get("kind")
+                    if kind == "stage":
+                        yield f"event: stage\ndata: {json.dumps(event)}\n\n"
+                    else:
+                        yield f"event: token\ndata: {json.dumps(event)}\n\n"
+                elif item[0] == "draft":
+                    yield f"event: draft\ndata: {json.dumps(item[1])}\n\n"
+                elif item[0] == "error":
+                    yield f"event: error\ndata: {json.dumps(item[1])}\n\n"
+
+        return StreamingResponse(_stream(), media_type="text/event-stream")
+
+    @router.post("/strategy-drafts/{draft_id}/messages/stream", status_code=200)
+    def post_strategy_message_stream(
+        draft_id: str,
+        command: PostStrategyMessageCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> StreamingResponse:
+        draft = repository.get_draft(draft_id)
+        if draft is None:
+            raise _not_found()
+        _authorize_write(draft.market, actor)
+        if draft.state == StrategyDraftState.FROZEN:
+            raise ProblemError(
+                status=409,
+                code="STRATEGY_DRAFT_FROZEN",
+                title="Strategy draft is frozen",
+                detail="This strategy draft is frozen and read-only.",
+            )
+        history = _history(repository.list_messages(draft_id))
+        user_content = command.message
+        extra = _attachment_text(
+            [a.model_dump(mode="json") for a in command.attachments]
+        )
+        if extra:
+            user_content = f"{command.message}\n\n{extra}"
+        backtest_attachment: dict[str, Any] | None = None
+        if command.backtest_hash:
+            payload = _replay_backtest(draft, command.backtest_hash)
+            if payload.get("error"):
+                raise ProblemError(
+                    status=502,
+                    code="BACKTEST_REPLAY_FAILED",
+                    title="Imported backtest unavailable",
+                    detail=str(payload["error"]),
+                )
+            context = format_backtest_context(
+                payload,
+                backtest_hash=command.backtest_hash,
+                market=draft.market,
+            )
+            user_content = f"{user_content}\n\n{context}"
+            backtest_attachment = {
+                "name": (
+                    f"回测结果 {payload.get('start', '—')} 至 "
+                    f"{payload.get('end', '—')}"
+                ),
+                "kind": "backtest",
+                "extracted_text": "",
+                "object_key": "",
+                "backtest_hash": command.backtest_hash,
+            }
+        history.append(StrategyMessage(role="user", content=user_content))
+
+        def _apply(output: AgentOutput) -> dict[str, Any]:
+            updated = repository.apply_turn(
+                draft_id=draft_id,
+                user_content=command.message,
+                output=output,
+                attachments=[
+                    *[a.model_dump(mode="json") for a in command.attachments],
+                    *([backtest_attachment] if backtest_attachment else []),
+                ],
+            )
+            return _draft_snapshot(updated)
+
+        return _sse_agent_turn(
+            market=draft.market,
+            history=history,
+            state={
+                "instrument_ids": draft.instrument_ids,
+                "frequency": draft.frequency,
+            },
+            on_output=_apply,
+        )
 
     @router.patch("/strategy-drafts/{draft_id}", status_code=200)
     def update_strategy_parameters(
@@ -967,9 +1122,16 @@ def build_strategy_router(
         market: str,
         history: list[StrategyMessage],
         state: dict[str, Any] | None = None,
+        on_event: Any = None,
     ) -> AgentOutput:
         try:
-            return run_turn(market=market, history=history, runner=runner, state=state)
+            return run_turn(
+                market=market,
+                history=history,
+                runner=runner,
+                state=state,
+                on_event=on_event,
+            )
         except Exception as exc:  # noqa: BLE001
             # LLM 任意失败（含网络超时）都以 502 优雅返回，绝不裸 500。
             raise ProblemError(

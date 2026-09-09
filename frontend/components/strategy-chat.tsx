@@ -4,6 +4,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { quantApiClient } from "../lib/client";
+import {
+  mapStrategyAttachmentToApi,
+  mapStrategyDraft,
+  type ApiStrategyDraft,
+} from "../lib/api";
 import { MARKET_LABEL_KEYS } from "../lib/domain";
 import type { MessageKey } from "../lib/i18n";
 import type {
@@ -45,6 +50,13 @@ const THINKING_STAGE_KEYS: MessageKey[] = [
   "strategyChat.thinkingStage.generate",
   "strategyChat.thinkingStage.validate",
 ];
+
+const STAGE_KEY_MAP: Record<string, MessageKey> = {
+  generate: "strategyChat.stage.generate",
+  parse: "strategyChat.stage.parse",
+  validate: "strategyChat.stage.validate",
+  retry: "strategyChat.stage.retry",
+};
 
 const STAGE_ORDER: ResearchStage[] = [
   "CREATING",
@@ -146,6 +158,10 @@ export function StrategyChat() {
   const [backtestPickerOpen, setBacktestPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [thinkingStage, setThinkingStage] = useState(0);
+  const [stream, setStream] = useState<{
+    stage: string;
+    thinking: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [backtest, setBacktest] = useState<StrategyBacktestResult | null>(null);
   const [codeTest, setCodeTest] = useState<StrategyCodeTestResult | null>(null);
@@ -292,38 +308,70 @@ export function StrategyChat() {
       },
     ]);
     try {
-      if (draft === null) {
-        // 无手动市场切换：从消息里的合约后缀自动识别市场。
-        const resolvedMarket = detectMarket(trimmed);
-        setMarket(resolvedMarket);
-        const created = await quantApiClient.createStrategyDraft(
-          resolvedMarket,
-          trimmed,
-          pending,
-        );
-        setDraft(created);
-        if (!btEdited) applyPlan(created);
-        setMessages((previous) => [...previous, assistantReply(created)]);
-      } else {
-        const updated = await quantApiClient.postStrategyMessage(
-          draft.id,
-          trimmed,
-          pending,
-          pendingBacktestHash,
-        );
-        setDraft(updated);
-        if (!btEdited) applyPlan(updated);
-        setBacktest(null);
-        setCodeTest(null);
-        setMessages((previous) => [...previous, assistantReply(updated)]);
+      // 流式：把 agent 的阶段与思考内容实时推给前端。
+      setStream({ stage: "generate", thinking: "" });
+      const path =
+        draft === null
+          ? "/strategy-drafts/stream"
+          : `/strategy-drafts/${draft.id}/messages/stream`;
+      const body =
+        draft === null
+          ? {
+              market: detectMarket(trimmed),
+              first_message: trimmed,
+              attachments: pending.map(mapStrategyAttachmentToApi),
+            }
+          : {
+              message: trimmed,
+              attachments: pending.map(mapStrategyAttachmentToApi),
+              ...(pendingBacktestHash
+                ? { backtest_hash: pendingBacktestHash }
+                : {}),
+            };
+      let finalized = false;
+      let errored = false;
+      await quantApiClient.streamAgentTurn(path, body, (type, data) => {
+        if (type === "stage") {
+          const stage = (data as { stage?: string }).stage ?? "generate";
+          setStream((current) =>
+            current ? { ...current, stage } : { stage, thinking: "" },
+          );
+        } else if (type === "token") {
+          const ev = data as { kind?: string; delta?: string };
+          if (ev.kind === "thinking" && ev.delta) {
+            setStream((current) =>
+              current
+                ? { ...current, thinking: current.thinking + ev.delta }
+                : { stage: "generate", thinking: ev.delta ?? "" },
+            );
+          }
+        } else if (type === "draft") {
+          finalized = true;
+          const next = mapStrategyDraft(data as ApiStrategyDraft);
+          setDraft(next);
+          if (!btEdited) applyPlan(next);
+          setBacktest(null);
+          setCodeTest(null);
+          setMessages((previous) => [...previous, assistantReply(next)]);
+        } else if (type === "error") {
+          errored = true;
+          const err = data as { detail?: string };
+          setError(err.detail ?? "agent failed");
+        }
+      });
+      if (!finalized && !errored) {
+        setError("agent stream ended without a result");
       }
-      setAttachments([]);
-      setSelectedBacktestHash(null);
-      setBacktestPickerOpen(false);
+      if (finalized) {
+        setAttachments([]);
+        setSelectedBacktestHash(null);
+        setBacktestPickerOpen(false);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setBusy(false);
+      setStream(null);
     }
   }
 
@@ -523,11 +571,28 @@ export function StrategyChat() {
                   <span className="sc-msg-role">
                     {t("strategyChat.roleAgent")}
                   </span>
-                  <div className="sc-msg-bubble sc-thinking">
-                    <span className="sc-dot" />
-                    <span className="sc-dot" />
-                    <span className="sc-dot" />
-                    <em>{t(THINKING_STAGE_KEYS[thinkingStage])}</em>
+                  <div className="sc-msg-bubble sc-stream">
+                    <div className="sc-stream-status">
+                      <span className="sc-dot" />
+                      <span className="sc-dot" />
+                      <span className="sc-dot" />
+                      <em>
+                        {t(
+                          stream?.stage
+                            ? (STAGE_KEY_MAP[stream.stage] ??
+                              THINKING_STAGE_KEYS[thinkingStage])
+                            : THINKING_STAGE_KEYS[thinkingStage],
+                        )}
+                      </em>
+                    </div>
+                    {stream?.thinking ? (
+                      <div className="sc-stream-thinking">
+                        <div className="sc-stream-thinking-label">
+                          {t("strategyChat.thinkingLabel")}
+                        </div>
+                        <pre>{stream.thinking}</pre>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}

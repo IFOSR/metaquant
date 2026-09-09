@@ -730,6 +730,11 @@ export interface QuantApiClient {
     attachments?: StrategyAttachment[],
     backtestHash?: string | null,
   ): Promise<StrategyDraft>;
+  streamAgentTurn(
+    path: string,
+    body: Record<string, unknown>,
+    onEvent: (type: string, data: unknown) => void,
+  ): Promise<void>;
   uploadStrategyAttachment(
     market: MarketId,
     file: File,
@@ -1980,6 +1985,67 @@ export class HttpQuantApiClient implements QuantApiClient {
       this.etags.set(id, etag);
     } else if (resourceVersion !== undefined) {
       this.etags.set(id, `"${resourceVersion}"`);
+    }
+  }
+
+  async streamAgentTurn(
+    path: string,
+    body: Record<string, unknown>,
+    onEvent: (type: string, data: unknown) => void,
+  ): Promise<void> {
+    const token =
+      typeof this.accessToken === "function"
+        ? await this.accessToken()
+        : this.accessToken;
+    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const problem = (await response
+        .json()
+        .catch(() => null)) as ApiProblem | null;
+      throw new QuantApiProblem(
+        problem ?? { type: "about:blank", title: "stream failed", status: response.status },
+        response.status,
+      );
+    }
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("stream response has no body");
+    }
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const raw = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        let eventName = "message";
+        let data = "";
+        for (const line of raw.split("\n")) {
+          if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+          else if (line.startsWith("data: ")) data += line.slice(6);
+        }
+        if (data) {
+          let parsed: unknown = data;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            // 保持原始文本
+          }
+          onEvent(eventName, parsed);
+        }
+        boundary = buffer.indexOf("\n\n");
+      }
     }
   }
 

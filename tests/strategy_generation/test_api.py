@@ -166,6 +166,27 @@ def test_post_message_appends_turn() -> None:
     ]
 
 
+def test_post_message_stream_emits_events() -> None:
+    """流式消息端点：SSE 返回阶段事件 + 最终草稿。"""
+    client = _make_client(_ok)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    response = client.post(
+        f"/v1/strategy-drafts/{created['id']}/messages/stream",
+        headers=_HEADERS,
+        json={"message": "加个止损"},
+    )
+    assert response.status_code == 200, response.text
+    assert "text/event-stream" in response.headers["content-type"]
+    body = response.text
+    assert "event: stage" in body
+    assert "event: draft" in body
+    assert created["id"] in body  # 最终草稿快照里包含草稿 id
+
+
 def test_update_parameters_preserves_code() -> None:
     """确定性参数更新：改标的/周期/区间，策略代码一字不动。"""
     client = _make_client(_ok)

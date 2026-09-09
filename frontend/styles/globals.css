@@ -742,6 +742,29 @@ span.trade-marker-buy, span.trade-marker-sell { background: none; }
 }
 .sc-thinking { align-items: center; display: flex; gap: 7px; }
 .sc-thinking em { color: var(--muted); font-size: 0.82rem; font-style: normal; margin-left: 4px; }
+.sc-stream-status { align-items: center; display: flex; gap: 7px; }
+.sc-stream-status em { color: var(--muted); font-size: 0.82rem; font-style: normal; margin-left: 4px; }
+.sc-stream-thinking {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.sc-stream-thinking-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-bottom: 4px;
+}
+.sc-stream-thinking pre {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sc-dot {
   animation: sc-dot-pulse 1.2s ease-in-out infinite;
   background: var(--muted);

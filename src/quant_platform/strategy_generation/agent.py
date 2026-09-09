@@ -7,7 +7,7 @@ strategy plus a plain-language explanation. Reuses the backend selection from
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -16,6 +16,7 @@ from quant_platform.research.factor_extract import (
     Runner,
     _extract_json,
     default_runner,
+    default_streaming_runner,
 )
 from quant_platform.strategy_generation.schemas import AgentOutput, StrategyMessage
 
@@ -185,23 +186,42 @@ def run_turn(
     history: Sequence[StrategyMessage],
     runner: Runner | None = None,
     state: dict[str, Any] | None = None,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> AgentOutput:
     """Run one agent turn over the conversation and return its output.
 
     任意失败（网络超时、JSON 解析、schema 校验、代码静态检查）都做一次纠正
     重试——LLM 侧偶发慢/错是常态，重试一次能消化大部分瞬时故障。
+
+    ``on_event`` 提供流式进度：{"kind": "stage", "stage": ...} 阶段事件，
+    {"kind": "thinking"|"text", "delta": ...} 模型分片。
     """
-    complete = runner or default_runner(system_prompt=_build_system_prompt())
+    if runner is None and on_event is not None:
+        complete = default_streaming_runner(
+            system_prompt=_build_system_prompt(), on_event=on_event
+        )
+    else:
+        complete = runner or default_runner(system_prompt=_build_system_prompt())
     prompt = _build_prompt(market, history, state)
     last_error: Exception | None = None
     for _ in range(2):
+        if on_event is not None:
+            on_event({"kind": "stage", "stage": "generate"})
         try:
             raw = complete(prompt)
+            if on_event is not None:
+                on_event({"kind": "stage", "stage": "parse"})
             output = _parse(raw)
+            if on_event is not None:
+                on_event({"kind": "stage", "stage": "validate"})
             _static_check(output, market)
+            if on_event is not None:
+                on_event({"kind": "stage", "stage": "done"})
             return output
         except Exception as exc:  # noqa: BLE001
             last_error = exc
+            if on_event is not None:
+                on_event({"kind": "stage", "stage": "retry", "detail": str(exc)})
             prompt = (
                 "Your previous output failed validation: "
                 f"{exc}. Fix it and return ONLY valid JSON matching the "

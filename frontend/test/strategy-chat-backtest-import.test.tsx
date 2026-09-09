@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StrategyChat } from "../components/strategy-chat";
+import type { ApiStrategyDraft } from "../lib/api";
 import { quantApiClient } from "../lib/client";
 import type { StrategyDraft } from "../lib/types";
 import { renderWithI18n } from "./render";
@@ -62,15 +63,91 @@ function draft(overrides: Partial<StrategyDraft> = {}): StrategyDraft {
   };
 }
 
+function toApiDraft(d: StrategyDraft): ApiStrategyDraft {
+  return {
+    id: d.id,
+    market: d.market,
+    kind: d.kind,
+    stage: d.stage,
+    state: d.state,
+    title: d.title,
+    explanation: d.explanation,
+    question: d.question,
+    code: d.code,
+    ready: d.ready,
+    instrument_ids: d.instrumentIds,
+    frequency: d.frequency,
+    backtest_plan: d.backtestPlan
+      ? {
+          timeframes: d.backtestPlan.timeframes,
+          trend_timeframe: d.backtestPlan.trendTimeframe,
+          exec_timeframe: d.backtestPlan.execTimeframe,
+          start: d.backtestPlan.start,
+          end: d.backtestPlan.end,
+          rationale: d.backtestPlan.rationale,
+        }
+      : null,
+    code_test_result: d.codeTestResult
+      ? {
+          passed: d.codeTestResult.passed,
+          exit_code: d.codeTestResult.exitCode,
+          stderr: d.codeTestResult.stderr,
+          duration_ms: d.codeTestResult.durationMs,
+        }
+      : null,
+    backtest_results: d.backtestResults.map((entry) => ({
+      backtest_hash: entry.backtestHash,
+      start: entry.start,
+      end: entry.end,
+      frequency: entry.frequency,
+      metrics: entry.metrics
+        ? {
+            total_return: entry.metrics.totalReturn,
+            sharpe: entry.metrics.sharpe,
+            max_drawdown: entry.metrics.maxDrawdown,
+            trade_count: entry.metrics.tradeCount,
+          }
+        : null,
+      ran_at: entry.ranAt,
+    })),
+    paper_binding: d.paperBinding
+      ? {
+          account_id: d.paperBinding.accountId,
+          published_at: d.paperBinding.publishedAt,
+        }
+      : null,
+    content_hash: d.contentHash,
+    resource_version: d.resourceVersion,
+    created_at: d.createdAt,
+    updated_at: d.updatedAt,
+  };
+}
+
+function mockStream(result: StrategyDraft) {
+  return vi.spyOn(quantApiClient, "streamAgentTurn").mockImplementation(
+    async (_path, _body, onEvent) => {
+      onEvent("stage", { stage: "generate" });
+      onEvent("draft", toApiDraft(result));
+    },
+  );
+}
+
+function mockStreamFail(detail: string) {
+  return vi.spyOn(quantApiClient, "streamAgentTurn").mockImplementation(
+    async (_path, _body, onEvent) => {
+      onEvent("stage", { stage: "generate" });
+      onEvent("error", { detail });
+    },
+  );
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("StrategyChat backtest import", () => {
   it("keeps the import entry disabled when the current draft has no history", async () => {
-    vi.spyOn(quantApiClient, "createStrategyDraft").mockResolvedValue(
-      draft({ backtestResults: [] }),
-    );
+    mockStream(draft({ backtestResults: [] }));
     renderWithI18n(<StrategyChat />);
 
     fireEvent.change(screen.getByRole("textbox"), {
@@ -85,12 +162,12 @@ describe("StrategyChat backtest import", () => {
   });
 
   it("selects one history entry, sends only its hash, and clears it after success", async () => {
-    vi.spyOn(quantApiClient, "createStrategyDraft").mockResolvedValue(
-      draft(),
-    );
+    mockStream(draft());
     const post = vi
-      .spyOn(quantApiClient, "postStrategyMessage")
-      .mockResolvedValue(draft());
+      .spyOn(quantApiClient, "streamAgentTurn")
+      .mockImplementation(async (_path, _body, onEvent) => {
+        onEvent("draft", toApiDraft(draft()));
+      });
     renderWithI18n(<StrategyChat />);
 
     fireEvent.change(screen.getByRole("textbox"), {
@@ -136,10 +213,12 @@ describe("StrategyChat backtest import", () => {
 
     await waitFor(() => {
       expect(post).toHaveBeenCalledWith(
-        "draft-1",
-        "请分析并优化",
-        [],
-        "bt-20260831-b",
+        "/strategy-drafts/draft-1/messages/stream",
+        expect.objectContaining({
+          message: "请分析并优化",
+          backtest_hash: "bt-20260831-b",
+        }),
+        expect.any(Function),
       );
     });
     expect(
@@ -150,11 +229,14 @@ describe("StrategyChat backtest import", () => {
   });
 
   it("clears the input immediately and keeps the backtest selection when sending fails", async () => {
-    vi.spyOn(quantApiClient, "createStrategyDraft").mockResolvedValue(
-      draft(),
-    );
-    vi.spyOn(quantApiClient, "postStrategyMessage").mockRejectedValue(
-      new Error("Agent unavailable"),
+    vi.spyOn(quantApiClient, "streamAgentTurn").mockImplementation(
+      async (path, _body, onEvent) => {
+        if (path === "/strategy-drafts/stream") {
+          onEvent("draft", toApiDraft(draft()));
+        } else {
+          onEvent("error", { detail: "Agent unavailable" });
+        }
+      },
     );
     renderWithI18n(<StrategyChat />);
 

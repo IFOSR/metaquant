@@ -44,6 +44,8 @@ export function BacktestWorkbench() {
   const [btStart, setBtStart] = useState("");
   const [btEnd, setBtEnd] = useState("");
   const [btEdited, setBtEdited] = useState(false);
+  const [instrumentInput, setInstrumentInput] = useState("");
+  const [paramSaved, setParamSaved] = useState(false);
   const [result, setResult] = useState<StrategyBacktestResult | null>(null);
   const [showFills, setShowFills] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export function BacktestWorkbench() {
 
   const applyPlan = useCallback((loaded: StrategyDraft) => {
     const plan = loaded.backtestPlan;
+    setInstrumentInput(loaded.instrumentIds.join(", "));
     if (plan === null) {
       setBtFrequency("1d");
       setBtStart("");
@@ -94,6 +97,35 @@ export function BacktestWorkbench() {
       setBusy(false);
     }
   }, [draft, busy, btFrequency, btStart, btEnd]);
+
+  const saveParameters = useCallback(async () => {
+    if (!draft || busy) return;
+    setBusy(true);
+    setError(null);
+    setParamSaved(false);
+    try {
+      const instrumentIds = instrumentInput
+        .split(/[,，\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const refreshed = await quantApiClient.updateStrategyParameters(draft.id, {
+        instrumentIds,
+        frequency: btFrequency,
+        start: btStart || undefined,
+        end: btEnd || undefined,
+      });
+      setDraft(refreshed);
+      setDrafts((current) =>
+        current.map((item) => (item.id === refreshed.id ? refreshed : item)),
+      );
+      applyPlan(refreshed);
+      setParamSaved(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  }, [draft, busy, instrumentInput, btFrequency, btStart, btEnd, applyPlan]);
 
   const openHistoryEntry = useCallback(
     async (entry: { backtestHash: string }, index: number) => {
@@ -314,6 +346,20 @@ export function BacktestWorkbench() {
                 </span>
 
                 <div className="bt-field">
+                  <span>{t("strategyChat.btInstrument")}</span>
+                  <input
+                    className="sc-bt-select"
+                    aria-label={t("strategyChat.btInstrument")}
+                    value={instrumentInput}
+                    placeholder="P8888.DCE"
+                    onChange={(event) => {
+                      setInstrumentInput(event.target.value);
+                      setParamSaved(false);
+                    }}
+                  />
+                </div>
+
+                <div className="bt-field">
                   <span>{t("strategyChat.btFrequency")}</span>
                   <select
                     className="sc-bt-select"
@@ -361,6 +407,24 @@ export function BacktestWorkbench() {
                   </div>
                 </div>
                 <small className="bt-range-hint">{t("strategyChat.btRangeHint")}</small>
+
+                <div className="bt-field">
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => void saveParameters()}
+                    disabled={busy || !draft}
+                  >
+                    {busy
+                      ? t("strategyChat.provisioning")
+                      : t("strategyChat.saveParams")}
+                  </button>
+                  {paramSaved && (
+                    <small className="bt-range-hint">
+                      {t("strategyChat.saveParamsDone")}
+                    </small>
+                  )}
+                </div>
 
                 {dataStatus && draft.instrumentIds.length > 0 && (
                   <div

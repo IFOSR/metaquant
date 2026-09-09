@@ -738,6 +738,16 @@ export interface QuantApiClient {
   freezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
   unfreezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
   saveStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  updateStrategyParameters(
+    draftId: string,
+    params: {
+      instrumentIds?: string[];
+      frequency?: StrategyFrequency;
+      start?: string;
+      end?: string;
+      trendTimeframe?: string | null;
+    },
+  ): Promise<StrategyDraft>;
   codeTestStrategyDraft(draftId: string): Promise<StrategyCodeTestResult>;
   backtestStrategyDraft(
     draftId: string,
@@ -1308,6 +1318,33 @@ export class HttpQuantApiClient implements QuantApiClient {
     const result = await this.request<ApiStrategyDraft>(
       `/strategy-drafts/${draftId}:save`,
       { method: "POST" },
+    );
+    return mapStrategyDraft(result.body);
+  }
+
+  async updateStrategyParameters(
+    draftId: string,
+    params: {
+      instrumentIds?: string[];
+      frequency?: StrategyFrequency;
+      start?: string;
+      end?: string;
+      trendTimeframe?: string | null;
+    },
+  ) {
+    const result = await this.request<ApiStrategyDraft>(
+      `/strategy-drafts/${draftId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instrument_ids: params.instrumentIds,
+          frequency: params.frequency,
+          start: params.start,
+          end: params.end,
+          trend_timeframe: params.trendTimeframe,
+        }),
+      },
     );
     return mapStrategyDraft(result.body);
   }

@@ -62,6 +62,13 @@ const STAGE_LABEL_KEYS: Record<ResearchStage, MessageKey> = {
   PAPER_LINKED: "research.stage.paperLinked",
 };
 
+function detectMarket(message: string): MarketId {
+  // 从消息里识别市场：出现期货合约后缀则视为商品期货，否则 A 股。
+  return /\.(SHF|DCE|CZCE|CZC|INE|GFE|GFEX)/i.test(message)
+    ? "CN_COMMODITY_FUTURES"
+    : "CN_A";
+}
+
 function renderStructuredContent(content: string) {
   // 按【标题】分节渲染：整段策略说明拆成可读的标题块。
   const sections = content.split(/(【[^】]+】)/g);
@@ -286,8 +293,11 @@ export function StrategyChat() {
     ]);
     try {
       if (draft === null) {
+        // 无手动市场切换：从消息里的合约后缀自动识别市场。
+        const resolvedMarket = detectMarket(trimmed);
+        setMarket(resolvedMarket);
         const created = await quantApiClient.createStrategyDraft(
-          market,
+          resolvedMarket,
           trimmed,
           pending,
         );
@@ -454,46 +464,10 @@ export function StrategyChat() {
     setBtEdited(false);
   }
 
-  const examples = [
-    t("strategyChat.example1"),
-    t("strategyChat.example2"),
-    t("strategyChat.example3"),
-  ];
-
   return (
     <div className="sc">
       <div className="sc-toolbar">
-        {draft === null ? (
-          <div
-            className="sc-segmented"
-            role="radiogroup"
-            aria-label={t("strategyChat.marketLabel")}
-          >
-            <span className="sc-segmented-label">
-              {t("strategyChat.marketLabel")}
-            </span>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={market === "CN_A"}
-              className={`sc-segment ${market === "CN_A" ? "is-active" : ""}`}
-              onClick={() => setMarket("CN_A")}
-            >
-              {t(MARKET_LABEL_KEYS.CN_A)}
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={market === "CN_COMMODITY_FUTURES"}
-              className={`sc-segment ${
-                market === "CN_COMMODITY_FUTURES" ? "is-active" : ""
-              }`}
-              onClick={() => setMarket("CN_COMMODITY_FUTURES")}
-            >
-              {t(MARKET_LABEL_KEYS.CN_COMMODITY_FUTURES)}
-            </button>
-          </div>
-        ) : (
+        {draft !== null && (
           <span className="sc-market-picked">
             {t("strategyChat.marketLabel")} · {t(MARKET_LABEL_KEYS[market])}
           </span>
@@ -514,18 +488,6 @@ export function StrategyChat() {
             <div className="sc-empty">
               <h3>{t("strategyChat.emptyTitle")}</h3>
               <p>{t("strategyChat.emptyHint")}</p>
-              <div className="sc-examples">
-                {examples.map((example) => (
-                  <button
-                    key={example}
-                    type="button"
-                    className="sc-example"
-                    onClick={() => setInput(example)}
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 

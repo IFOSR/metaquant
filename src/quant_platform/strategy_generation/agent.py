@@ -338,10 +338,6 @@ def _build_prompt(
         )
         lines.append(f"- instrument_ids: {state.get('instrument_ids', [])}")
         lines.append(f"- frequency: {state.get('frequency', '1d')}")
-        code = state.get("code")
-        if code:
-            lines.append("- current code (edit it in place, do not start over):")
-            lines.append(code)
     lines.append("")
     lines.append("Conversation:")
     for message in history:

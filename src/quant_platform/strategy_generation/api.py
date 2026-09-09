@@ -356,7 +356,6 @@ def build_strategy_router(
             state={
                 "instrument_ids": draft.instrument_ids,
                 "frequency": draft.frequency,
-                "code": draft.code,
             },
         )
         updated = repository.apply_turn(

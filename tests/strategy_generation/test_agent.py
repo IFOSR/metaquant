@@ -92,7 +92,7 @@ def test_run_turn_prompt_includes_market() -> None:
 
 
 def test_run_turn_prompt_includes_current_state() -> None:
-    """当前草稿状态（标的/周期/代码）必须注入提示词，防止 agent 漂移标的。"""
+    """当前草稿的标的/周期必须注入提示词，防止 agent 漂移标的。"""
     captured: list[str] = []
 
     def capture(prompt: str) -> str:
@@ -103,15 +103,10 @@ def test_run_turn_prompt_includes_current_state() -> None:
         market="CN_COMMODITY_FUTURES",
         history=[StrategyMessage(role="user", content="获取数据")],
         runner=capture,
-        state={
-            "instrument_ids": ["P8888.DCE"],
-            "frequency": "1d",
-            "code": "INDICATORS = []",
-        },
+        state={"instrument_ids": ["P8888.DCE"], "frequency": "1d"},
     )
     assert "PRESERVE" in captured[0]
     assert "P8888.DCE" in captured[0]
-    assert "INDICATORS = []" in captured[0]
 
 
 _VALID_FUTURES = {

@@ -315,6 +315,27 @@ def build_strategy_router(
             ]
         }
 
+    @router.delete("/strategy-drafts/{draft_id}", status_code=200)
+    def delete_strategy_draft(
+        draft_id: str,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        """删除单个策略草稿（连同其对话）。"""
+        draft = repository.get_draft(draft_id)
+        if draft is None:
+            raise _not_found()
+        _authorize_write(draft.market, actor)
+        repository.delete_draft(draft_id=draft_id)
+        return {"deleted": draft_id}
+
+    @router.delete("/strategy-drafts", status_code=200)
+    def clear_strategy_drafts(
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        """清空当前用户的全部策略草稿。"""
+        count = repository.clear_drafts(owner=actor.actor_id)
+        return {"deleted": count}
+
     @router.post("/strategy-drafts", status_code=202)
     def create_strategy_draft(
         command: CreateStrategyDraftCommand,

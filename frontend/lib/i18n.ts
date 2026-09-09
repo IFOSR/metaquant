@@ -232,6 +232,12 @@ const zh = {
   "home.quickPaper": "上传研报，从论文挖掘可执行因子",
   "home.quickBacktest": "打开回测工作台，核对已冻结研究",
   "home.filterAll": "全部",
+  "home.delete": "删除",
+  "home.clearStrategies": "清空策略",
+  "home.deleting": "删除中…",
+  "home.deleteConfirm": "确定删除该策略？此操作不可恢复。",
+  "home.clearConfirm": "确定清空全部策略？此操作不可恢复。",
+  "home.deleteFailed": "删除失败",
   "home.footerNote":
     "证据优先 —— Agent 负责提议，控制面负责裁决；事件只是提示，快照才是事实；门禁齐备前，模拟盘与实盘保持关闭。",
   "home.taskCenter": "任务中心",

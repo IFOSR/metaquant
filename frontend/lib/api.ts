@@ -740,6 +740,8 @@ export interface QuantApiClient {
     file: File,
   ): Promise<StrategyAttachment>;
   getStrategyDraft(draftId: string): Promise<StrategyDraft>;
+  deleteStrategyDraft(draftId: string): Promise<{ deleted: string }>;
+  clearStrategyDrafts(): Promise<{ deleted: number }>;
   freezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
   unfreezeStrategyDraft(draftId: string): Promise<StrategyDraft>;
   saveStrategyDraft(draftId: string): Promise<StrategyDraft>;
@@ -1301,6 +1303,22 @@ export class HttpQuantApiClient implements QuantApiClient {
       `/strategy-drafts/${draftId}`,
     );
     return mapStrategyDraft(result.body);
+  }
+
+  async deleteStrategyDraft(draftId: string) {
+    const result = await this.request<{ deleted: string }>(
+      `/strategy-drafts/${draftId}`,
+      { method: "DELETE" },
+    );
+    return result.body;
+  }
+
+  async clearStrategyDrafts() {
+    const result = await this.request<{ deleted: number }>(
+      `/strategy-drafts`,
+      { method: "DELETE" },
+    );
+    return result.body;
   }
 
   async freezeStrategyDraft(draftId: string) {

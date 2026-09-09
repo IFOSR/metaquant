@@ -264,6 +264,31 @@ def test_update_parameters_rejects_frozen() -> None:
         repo.update_parameters(draft_id=draft.id, frequency="1w")
 
 
+def test_delete_draft_removes_draft_and_messages() -> None:
+    repo = make_repository()
+    draft = repo.create_draft(actor_id="researcher-1", market="CN_A")
+    repo.apply_turn(
+        draft_id=draft.id,
+        user_content="均线金叉",
+        output=_output(ready=True),
+    )
+    assert repo.list_messages(draft.id)
+    assert repo.delete_draft(draft_id=draft.id) is True
+    assert repo.get_draft(draft.id) is None
+    assert repo.list_messages(draft.id) == []
+    assert repo.delete_draft(draft_id=draft.id) is False  # 已删，再删返回 False
+
+
+def test_clear_drafts_removes_all_for_owner() -> None:
+    repo = make_repository()
+    for _ in range(3):
+        repo.create_draft(actor_id="researcher-1", market="CN_A")
+    other = repo.create_draft(actor_id="researcher-2", market="CN_A")
+    assert repo.clear_drafts(owner="researcher-1") == 3
+    assert repo.list_drafts(owner="researcher-1") == []
+    assert repo.get_draft(other.id) is not None  # 他人草稿不受影响
+
+
 def test_record_backtest_appends_traceable_history() -> None:
     repo = make_repository()
     draft = repo.create_draft(actor_id="researcher-1", market="CN_A")

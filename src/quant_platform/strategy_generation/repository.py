@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import sessionmaker
 
 from quant_platform.experiments import canonical_hash
@@ -128,6 +128,41 @@ class SqlAlchemyStrategyRepository:
                 .order_by(StrategyMessageModel.ordinal)
             ).all()
             return list(rows)
+
+    def delete_draft(self, *, draft_id: str) -> bool:
+        """删除单个草稿（连同其消息），返回是否真的删除了。"""
+        with self._sessions.begin() as session:
+            draft = session.get(StrategyDraftModel, draft_id)
+            if draft is None:
+                return False
+            session.execute(
+                delete(StrategyMessageModel).where(
+                    StrategyMessageModel.draft_id == draft_id
+                )
+            )
+            session.delete(draft)
+            return True
+
+    def clear_drafts(self, *, owner: str) -> int:
+        """清空某用户的全部草稿（连同消息），返回删除条数。"""
+        with self._sessions.begin() as session:
+            draft_ids = list(
+                session.scalars(
+                    select(StrategyDraftModel.id).where(
+                        StrategyDraftModel.owner == owner
+                    )
+                ).all()
+            )
+            if draft_ids:
+                session.execute(
+                    delete(StrategyMessageModel).where(
+                        StrategyMessageModel.draft_id.in_(draft_ids)
+                    )
+                )
+            result = session.execute(
+                delete(StrategyDraftModel).where(StrategyDraftModel.owner == owner)
+            )
+            return result.rowcount or 0
 
     def apply_turn(
         self,

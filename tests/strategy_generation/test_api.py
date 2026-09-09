@@ -229,6 +229,40 @@ def test_update_parameters_rejects_market_instrument_mismatch() -> None:
     assert response.status_code == 422, response.text
 
 
+def test_delete_strategy_draft() -> None:
+    client = _make_client(_ok)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    response = client.delete(
+        f"/v1/strategy-drafts/{created['id']}",
+        headers=_HEADERS,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["deleted"] == created["id"]
+    got = client.get(f"/v1/strategy-drafts/{created['id']}", headers=_HEADERS)
+    assert got.status_code == 404
+
+
+def test_clear_strategy_drafts() -> None:
+    client = _make_client(_ok)
+    for _ in range(3):
+        client.post(
+            "/v1/strategy-drafts",
+            headers=_HEADERS,
+            json={"market": "CN_A", "first_message": "均线金叉"},
+        )
+    listed = client.get("/v1/strategy-drafts", headers=_HEADERS).json()
+    assert len(listed["items"]) == 3
+    response = client.delete("/v1/strategy-drafts", headers=_HEADERS)
+    assert response.status_code == 200, response.text
+    assert response.json()["deleted"] == 3
+    listed = client.get("/v1/strategy-drafts", headers=_HEADERS).json()
+    assert listed["items"] == []
+
+
 def test_backtest_context_contract() -> None:
     service = Mock()
     service.run.return_value = {

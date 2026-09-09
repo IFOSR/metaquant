@@ -213,6 +213,9 @@ export function StrategyChat() {
     const pendingBacktest = selectedBacktest;
     setBusy(true);
     setError(null);
+    // 立即清空输入框：点击发送后文本就应消失，等请求返回才清会让人
+    // 误以为没发出去，或当成下一条要输入的内容产生歧义。
+    setInput("");
     setMessages((previous) => [
       ...previous,
       {
@@ -259,7 +262,6 @@ export function StrategyChat() {
       setAttachments([]);
       setSelectedBacktestHash(null);
       setBacktestPickerOpen(false);
-      setInput("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {

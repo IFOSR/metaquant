@@ -149,7 +149,7 @@ describe("StrategyChat backtest import", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the selected backtest and input when sending fails", async () => {
+  it("clears the input immediately and keeps the backtest selection when sending fails", async () => {
     vi.spyOn(quantApiClient, "createStrategyDraft").mockResolvedValue(
       draft(),
     );
@@ -173,8 +173,9 @@ describe("StrategyChat backtest import", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
 
+    // 点击发送后输入框立即清空（无论成败）。
+    expect(screen.getByRole("textbox")).toHaveValue("");
     expect(await screen.findByText("Agent unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("分析失败时保留");
     expect(
       screen.getByRole("status", {
         name: "已导入回测 2026-03-07 ~ 2026-09-07",

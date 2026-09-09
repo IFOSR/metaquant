@@ -380,6 +380,7 @@ def _pi_stream_complete(
     proc.stdin.flush()
 
     text_parts: list[str] = []
+    final_text: str | None = None
     for line in proc.stdout:
         line = line.strip()
         if not line:
@@ -397,6 +398,18 @@ def _pi_stream_complete(
                 delta = inner.get("delta", "")
                 text_parts.append(delta)
                 on_event({"kind": "text", "delta": delta})
+        elif event.get("type") == "message_end":
+            # 有些 provider 不流式，答案只在 message_end 里：以它为权威兑底。
+            message = event.get("message") or {}
+            if message.get("role") == "assistant":
+                blocks = message.get("content") or []
+                texts = [
+                    block.get("text", "")
+                    for block in blocks
+                    if isinstance(block, dict) and block.get("type") == "text"
+                ]
+                if texts:
+                    final_text = "".join(texts)
         elif event.get("type") == "agent_settled":
             break
     with contextlib.suppress(Exception):
@@ -411,7 +424,7 @@ def _pi_stream_complete(
         raise FactorExtractionError(
             f"pi exited {proc.returncode}: {stderr.strip()}"
         )
-    return "".join(text_parts).strip()
+    return (final_text if final_text is not None else "".join(text_parts)).strip()
 
 
 def _codex_complete(

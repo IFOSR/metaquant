@@ -24,6 +24,7 @@ from quant_platform.strategy_generation.agent import (
     run_turn,
 )
 from quant_platform.strategy_generation.backtest import (
+    _FUTURES_SUFFIXES,
     BacktestRequest,
     code_test_strategy,
 )
@@ -43,9 +44,46 @@ from quant_platform.strategy_generation.schemas import (
     PostStrategyMessageCommand,
     StrategyDraftState,
     StrategyMessage,
+    UpdateStrategyParametersCommand,
 )
 from quant_platform.strategy_generation.service import StrategyBacktestService
 from quant_platform.strategy_generation.tasks import BacktestTaskService
+
+
+def _validate_parameter_market(
+    market: str, instrument_ids: list[str] | None
+) -> None:
+    """参数更新时保持市场/标的匹配（A 股不能塞期货，反之亦然）。"""
+    if not instrument_ids:
+        return
+    futures = tuple(
+        item
+        for item in instrument_ids
+        if item.partition(".")[2].upper() in _FUTURES_SUFFIXES
+    )
+    equities = tuple(
+        item
+        for item in instrument_ids
+        if item.partition(".")[2].upper() not in _FUTURES_SUFFIXES
+    )
+    if market == "CN_A" and futures:
+        raise ProblemError(
+            status=422,
+            code="MARKET_INSTRUMENT_MISMATCH",
+            title="Market/instrument mismatch",
+            detail=(
+                "CN_A strategies cannot trade futures instruments: "
+                + ", ".join(futures)
+            ),
+        )
+    if market == "CN_COMMODITY_FUTURES" and equities:
+        raise ProblemError(
+            status=422,
+            code="MARKET_INSTRUMENT_MISMATCH",
+            title="Market/instrument mismatch",
+            detail="CN_COMMODITY_FUTURES strategies require futures instruments: "
+            + ", ".join(equities),
+        )
 
 
 def _attachment_text(attachments: list[dict[str, Any]]) -> str:
@@ -366,6 +404,50 @@ def build_strategy_router(
                 *[a.model_dump(mode="json") for a in command.attachments],
                 *([backtest_attachment] if backtest_attachment else []),
             ],
+        )
+        return _draft_snapshot(updated)
+
+    @router.patch("/strategy-drafts/{draft_id}", status_code=200)
+    def update_strategy_parameters(
+        draft_id: str,
+        command: UpdateStrategyParametersCommand,
+        actor: ResearchPrincipal = Depends(principal),  # noqa: B008
+    ) -> dict[str, Any]:
+        """确定性更新策略参数（标的/周期/回测区间），不触碰策略代码。
+
+        参数是确定性字段：直接写回草稿，绝不重写 signal spec，
+        避免 agent 漂移策略逻辑。
+        """
+        draft = repository.get_draft(draft_id)
+        if draft is None:
+            raise _not_found()
+        _authorize_write(draft.market, actor)
+        if draft.state == StrategyDraftState.FROZEN:
+            raise ProblemError(
+                status=409,
+                code="STRATEGY_DRAFT_FROZEN",
+                title="Strategy draft is frozen",
+                detail="This strategy draft is frozen and read-only.",
+            )
+        _validate_parameter_market(draft.market, command.instrument_ids)
+        if (
+            command.start is not None
+            and command.end is not None
+            and command.end < command.start
+        ):
+            raise ProblemError(
+                status=422,
+                code="INVALID_BACKTEST_WINDOW",
+                title="Invalid backtest window",
+                detail="end must not precede start.",
+            )
+        updated = repository.update_parameters(
+            draft_id=draft_id,
+            instrument_ids=command.instrument_ids,
+            frequency=command.frequency,
+            start=command.start,
+            end=command.end,
+            trend_timeframe=command.trend_timeframe,
         )
         return _draft_snapshot(updated)
 

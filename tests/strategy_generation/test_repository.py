@@ -221,6 +221,49 @@ def test_record_code_test_persists_gate_evidence() -> None:
     assert recorded.code_test_result["duration_ms"] == 42
 
 
+def test_update_parameters_changes_params_without_touching_code() -> None:
+    repo = make_repository()
+    draft = repo.create_draft(actor_id="researcher-1", market="CN_A")
+    ready_draft = repo.apply_turn(
+        draft_id=draft.id,
+        user_content="均线金叉",
+        output=_output(ready=True),
+    )
+    repo.record_code_test(
+        draft_id=draft.id,
+        result={"passed": True, "exit_code": 0, "stderr": "", "duration_ms": 1},
+    )
+    original_code = ready_draft.code
+
+    updated = repo.update_parameters(
+        draft_id=draft.id,
+        instrument_ids=["P8888.DCE"],
+        frequency="15m",
+        start="2021-09-08",
+        end="2026-09-08",
+    )
+    assert updated.instrument_ids == ["P8888.DCE"]
+    assert updated.frequency == "15m"
+    assert updated.code == original_code  # 代码不动
+    assert updated.backtest_plan["start"] == "2021-09-08"
+    assert updated.backtest_plan["end"] == "2026-09-08"
+    assert updated.backtest_plan["exec_timeframe"] == "15m"
+    assert updated.code_test_result is None  # 参数变，代码测试证据失效
+
+
+def test_update_parameters_rejects_frozen() -> None:
+    repo = make_repository()
+    draft = repo.create_draft(actor_id="researcher-1", market="CN_A")
+    repo.apply_turn(
+        draft_id=draft.id,
+        user_content="均线金叉",
+        output=_output(ready=True),
+    )
+    repo.freeze(draft_id=draft.id, actor_id="researcher-1")
+    with pytest.raises(ValueError):
+        repo.update_parameters(draft_id=draft.id, frequency="1w")
+
+
 def test_record_backtest_appends_traceable_history() -> None:
     repo = make_repository()
     draft = repo.create_draft(actor_id="researcher-1", market="CN_A")

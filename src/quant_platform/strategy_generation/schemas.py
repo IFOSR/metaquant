@@ -104,6 +104,22 @@ class PostStrategyMessageCommand(BaseModel):
     backtest_hash: str | None = None
 
 
+class UpdateStrategyParametersCommand(BaseModel):
+    """确定性更新策略参数（标的/周期/回测区间），不触碰策略代码。
+
+    与「对话让 agent 改」不同：参数是确定性字段，直接写回草稿，
+    绝不重写 signal spec，从而避免 agent 漂移策略逻辑。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    instrument_ids: list[str] | None = None
+    frequency: Frequency | None = None
+    start: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    trend_timeframe: str | None = None
+
+
 class StrategyDraftRecord(BaseModel):
     """Public snapshot of a strategy draft."""
 

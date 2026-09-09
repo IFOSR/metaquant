@@ -166,6 +166,48 @@ def test_post_message_appends_turn() -> None:
     ]
 
 
+def test_update_parameters_preserves_code() -> None:
+    """确定性参数更新：改标的/周期/区间，策略代码一字不动。"""
+    client = _make_client(_ok)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    response = client.patch(
+        f"/v1/strategy-drafts/{created['id']}",
+        headers=_HEADERS,
+        json={
+            "instrument_ids": ["600519.SH"],
+            "frequency": "1w",
+            "start": "2021-09-08",
+            "end": "2026-09-08",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["instrument_ids"] == ["600519.SH"]
+    assert body["frequency"] == "1w"
+    assert body["code"] == created["code"]  # 代码不动
+    assert body["backtest_plan"]["start"] == "2021-09-08"
+
+
+def test_update_parameters_rejects_market_instrument_mismatch() -> None:
+    """参数更新必须保持市场/标的匹配（A 股不能塞期货标的）。"""
+    client = _make_client(_ok)
+    created = client.post(
+        "/v1/strategy-drafts",
+        headers=_HEADERS,
+        json={"market": "CN_A", "first_message": "均线金叉"},
+    ).json()
+    response = client.patch(
+        f"/v1/strategy-drafts/{created['id']}",
+        headers=_HEADERS,
+        json={"instrument_ids": ["P8888.DCE"]},
+    )
+    assert response.status_code == 422, response.text
+
+
 def test_backtest_context_contract() -> None:
     service = Mock()
     service.run.return_value = {

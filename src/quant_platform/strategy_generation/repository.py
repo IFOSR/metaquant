@@ -281,6 +281,61 @@ class SqlAlchemyStrategyRepository:
             draft.updated_at = timestamp
             return draft
 
+    def update_parameters(
+        self,
+        *,
+        draft_id: str,
+        instrument_ids: list[str] | None = None,
+        frequency: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
+        trend_timeframe: str | None = None,
+    ) -> StrategyDraftModel:
+        """确定性更新策略参数（标的/周期/回测区间），不触碰策略代码。
+
+        与「对话让 agent 改」不同：参数是确定性字段，直接写回草稿，
+        绝不重写 signal spec，从而避免 agent 漂移策略逻辑。
+        """
+        timestamp = _now()
+        with self._sessions.begin() as session:
+            draft = session.get(StrategyDraftModel, draft_id)
+            if draft is None:
+                raise KeyError(f"draft not found: {draft_id}")
+            if draft.state == StrategyDraftState.FROZEN:
+                raise ValueError("draft is frozen; parameters are immutable")
+            if instrument_ids is not None:
+                draft.instrument_ids = instrument_ids
+            if frequency is not None:
+                draft.frequency = frequency
+            if (
+                frequency is not None
+                or trend_timeframe is not None
+                or start is not None
+                or end is not None
+            ):
+                plan = dict(draft.backtest_plan or {})
+                if frequency is not None:
+                    plan["exec_timeframe"] = frequency
+                if trend_timeframe is not None:
+                    plan["trend_timeframe"] = trend_timeframe
+                if start is not None:
+                    plan["start"] = start
+                if end is not None:
+                    plan["end"] = end
+                if frequency is not None or trend_timeframe is not None:
+                    exec_tf = plan.get("exec_timeframe", draft.frequency)
+                    trend_tf = plan.get("trend_timeframe")
+                    timeframes = [exec_tf]
+                    if trend_tf and trend_tf != exec_tf:
+                        timeframes.append(trend_tf)
+                    plan["timeframes"] = timeframes
+                draft.backtest_plan = plan
+            # 参数变了，代码测试证据失效（数据/窗口变了），须重跑。
+            draft.code_test_result = None
+            draft.resource_version += 1
+            draft.updated_at = timestamp
+            return draft
+
     def record_code_test(
         self, *, draft_id: str, result: dict[str, Any]
     ) -> StrategyDraftModel:
